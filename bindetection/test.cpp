@@ -50,6 +50,7 @@ class Args
       bool writeVideo;  // write captured video to output
       int  frameStart;  // frame number to start from
       string inputName; // input file name or camera number
+      bool demoMode; //resize the window for 1080p screen
 
       Args(void)
       {
@@ -60,6 +61,7 @@ class Args
 	 ds           = false;
 	 writeVideo   = false;
 	 frameStart   = 0.0;
+	 demoMode     = false;
       }
 };
 
@@ -98,9 +100,13 @@ int main( int argc, const char** argv )
    VideoIn *cap; // video input - image, video or camera
    openVideoCap(args.inputName, cap, capPath, windowName, !args.batchMode);
 
-   if (!args.batchMode)
-      namedWindow(windowName, WINDOW_AUTOSIZE);
-
+   if (!args.batchMode) {
+      namedWindow(windowName, WINDOW_NORMAL);
+      if (args.demoMode) {
+      	resizeWindow(windowName,1870,1030);
+      	moveWindow(windowName, 0, 0);
+	}
+   }
    // Seek to start frame if necessary
    if (args.frameStart > 0)
       cap->frameCounter(args.frameStart);
@@ -124,6 +130,8 @@ int main( int argc, const char** argv )
    {
       string detectWindowName = "Detection Parameters";
       namedWindow(detectWindowName);
+      if (args.demoMode)
+      	moveWindow(detectWindowName,0,910); //move to lower left
       createTrackbar ("Scale", detectWindowName, &scale, 50, NULL);
       createTrackbar ("Neighbors", detectWindowName, &neighbors, 50, NULL);
       createTrackbar ("Min Detect", detectWindowName, &minDetectSize, 65, NULL);
@@ -633,6 +641,7 @@ bool processArgs(int argc, const char **argv, Args &args)
    const string rectsOpt      = "--no-rects";
    const string trackingOpt   = "--no-tracking";
    const string badOpt        = "--";
+   const string demoModeOpt   = "--demo";
 
 
    // Read through command line args, extract
@@ -650,6 +659,8 @@ bool processArgs(int argc, const char **argv, Args &args)
 	 args.ds = true;
       else if (writeVideoOpt.compare(0, writeVideoOpt.length(), argv[fileArgc], writeVideoOpt.length()) == 0)
 	 args.writeVideo = true;
+      else if (demoModeOpt.compare(0, demoModeOpt.length(), argv[fileArgc], demoModeOpt.length()) == 0)
+	 args.demoMode = true;
       else if (trackingOpt.compare(0, trackingOpt.length(), argv[fileArgc], trackingOpt.length()) == 0)
 	 args.tracking = false;
       else if (rectsOpt.compare(0, rectsOpt.length(), argv[fileArgc], rectsOpt.length()) == 0)
