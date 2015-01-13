@@ -1,1 +1,0 @@
-/home/ubuntu/Desktop/bindetection/CMakeFiles/test.dir

@@ -22,3 +22,7 @@ webcamtest
 *.bak
 *.sw[op]
 
+# Cmake stuff
+CMakeCache.txt
+CMakeFiles
+cmake_install.cmake
