@@ -10,7 +10,14 @@
 
 # Executables
 *.exe
+test
+webcamtest
 
 # Metadata
 *.aliases
 *.lvlps
+
+# backup files
+*~
+*.bak
+
