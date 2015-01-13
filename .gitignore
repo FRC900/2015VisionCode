@@ -20,4 +20,5 @@ webcamtest
 # backup files
 *~
 *.bak
+*.sw[op]
 
