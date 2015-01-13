@@ -1,0 +1,99 @@
+#include "opencv2/objdetect/objdetect.hpp"
+ #include "opencv2/highgui/highgui.hpp"
+ #include "opencv2/imgproc/imgproc.hpp"
+
+ #include <iostream>
+ #include <stdio.h>
+
+ #include "opencv2/gpu/gpu.hpp"
+
+ using namespace std;
+ using namespace cv;
+ using namespace cv::gpu;
+
+ /** Function Headers */
+ void detectAndDisplay( Mat frame, GpuMat gpuFrame );
+ /** Global variables */
+ String face_cascade_name = "/home/ubuntu/Desktop/bindetection/cascade.xml";
+ String eyes_cascade_name = "/usr/share/OpenCV/haarcascades/haarcascade_eye_tree_eyeglasses.xml";
+ CascadeClassifier_GPU face_cascade;
+ CascadeClassifier_GPU eyes_cascade;
+ string window_name = "Capture - Face detection";
+ RNG rng(12345);
+
+ /** @function main */
+ int main( int argc, const char** argv )
+ {`
+   CvCapture* capture;
+   Mat frame;
+   //-- 2. Read the video stream
+   VideoCapture videoIn( -1 );
+   videoIn.read (frame);
+   //-- 1. Load the cascades
+   if( !face_cascade.load( face_cascade_name ) ){ printf("--(!)Error loading\n"); return -1; };
+   if( !eyes_cascade.load( eyes_cascade_name ) ){ printf("--(!)Error loading\n"); return -1; };
+
+   
+  
+   if( videoIn.isOpened() )
+   {
+     while( true )
+     {
+   videoIn.read (frame);
+
+   //-- 3. Apply the classifier to the frame
+       if( !frame.empty() )
+       {  
+	GpuMat gpuFrame;
+	gpuFrame.upload(frame);
+	detectAndDisplay( frame, gpuFrame ); }
+       else
+        printf(" --(!) No captured frame -- Break!)");
+       }
+     }
+	//namedWindow("adjustments",0); //create a new windows for adjusting some variables during runtime
+	//createTrackbar("erode element size(pixels)","adjustments", &erodeSize, 10); //slider for erode size
+}
+
+
+/** @function detectAndDisplay */
+void detectAndDisplay( Mat frame, GpuMat gpuFrame )
+{
+  GpuMat gpuFaces;
+  GpuMat frame_gray;
+  
+
+  cvtColor( gpuFrame, frame_gray, CV_BGR2GRAY );
+  equalizeHist( frame_gray, frame_gray );
+
+  //-- Detect faces
+  int detections_num = face_cascade.detectMultiScale( frame_gray, gpuFaces, 1.1, 2, Size(30, 30) );
+  Mat obj_host;
+  gpuFaces.colRange(0, detections_num).download(obj_host);
+
+  Rect* faces = obj_host.ptr<Rect>();
+  for( size_t i = 0; i < detections_num; i++ )
+  {
+    Point center( faces[i].x + faces[i].width*0.5, faces[i].y + faces[i].height*0.5 );
+    ellipse( frame, center, Size( faces[i].width*0.5, faces[i].height*0.5), 0, 0, 360, Scalar( 255, 0, 255 ), 4, 8, 0 );
+
+    GpuMat faceROI = frame_gray( faces[i] );
+
+    //-- In each face, detect eyes
+    Mat cpuEyes;
+    GpuMat gpuEyes;
+    int num_eyes = eyes_cascade.detectMultiScale( faceROI, gpuEyes, 1.1, 2, Size(30, 30) );
+    gpuEyes.colRange(0, num_eyes).download(cpuEyes);
+    Rect* eyes = cpuEyes.ptr<Rect>();
+
+    for( size_t j = 0; j < num_eyes; j++ )
+     {
+       Point center( faces[i].x + eyes[j].x + eyes[j].width*0.5, faces[i].y + eyes[j].y + eyes[j].height*0.5 );
+       int radius = cvRound( (eyes[j].width + eyes[j].height)*0.25 );
+       circle( frame, center, radius, Scalar( 255, 0, 0 ), 4, 8, 0 );
+     }
+  }
+  //-- Show what you got
+  imshow( window_name, frame );
+ waitKey(1); 
+}
