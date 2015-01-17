@@ -7,11 +7,20 @@
 *.so
 *.so.*
 *.dylib
+*.o
+*.lib
+*.a
 
 # Executables
 *.exe
 test
 webcamtest
+imageclipper
+convert_cassade
+createsamples
+haartraining
+performance
+vec2img
 
 # Metadata
 *.aliases
