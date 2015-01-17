@@ -19,7 +19,9 @@ int main(void)
    while (dirp) {
       if ((dp = readdir(dirp)) != NULL) {
 
-	 if (strstr(dp->d_name, ".png") || strstr(dp->d_name, ".png") ){
+	 if (strstr(dp->d_name, ".png") || strstr(dp->d_name, ".jpg") ){
+	    if (strstr(dp->d_name, "_g.png") || strstr(dp->d_name, "_g.jpg"))
+	       continue;
 	    Mat frame = imread(dp->d_name);
 
 	    string str(dp->d_name);
