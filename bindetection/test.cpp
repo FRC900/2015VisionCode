@@ -12,7 +12,7 @@
  void detectAndDisplay( Mat frame, vector<Mat> &images );
 
  /** Global variables */
- String face_cascade_name = "classifier_bin_3/cascade.xml";
+ String face_cascade_name = "classifier_bin_4/cascade_25.xml";
  CascadeClassifier face_cascade;
  string window_name = "Capture - Face detection";
 
@@ -66,8 +66,9 @@ void writeImage(const vector<Mat> &images, size_t index, const char *path, int f
       fn << index;
       fn << ".png";
       imwrite(fn.str().substr(fn.str().rfind('\\')+1), images[index]);
+      cout << fn.str().substr(fn.str().rfind('\\')+1) << endl;
       // Save 20x20 version of the same image
-      fn.clear(); 
+      fn.str("");
       fn << path;
       fn << "_";
       fn << frameCount;
@@ -77,19 +78,21 @@ void writeImage(const vector<Mat> &images, size_t index, const char *path, int f
       Mat smallImg;
       resize(images[index], smallImg, Size(20,20));
       imwrite(fn.str().substr(fn.str().rfind('\\')+1), smallImg);
+      cout << fn.str().substr(fn.str().rfind('\\')+1) << endl;
    }
 }
 
 int main( int argc, const char** argv )
 {
-   VideoCapture cap(argv[1]);
+   //VideoCapture cap(argv[1]);
+   VideoCapture cap(0);
    Mat frame;
    Mat frame_copy;
    vector <Mat> images;
    int frameCount = 0;
-
+   	
    bool pause = false;
-
+   
    namedWindow("Parameters", WINDOW_AUTOSIZE);
    createTrackbar ("Scale", "Parameters", &scale, 200, NULL);
    createTrackbar ("Neighbors", "Parameters", &neighbors, 500, NULL);
@@ -109,6 +112,7 @@ int main( int argc, const char** argv )
    //-- 2. Read the video stream
    while( true )
    {
+
       if (!pause)
       {
 	 cap >> frame;
@@ -117,15 +121,16 @@ int main( int argc, const char** argv )
       }
       else
 	 frame = frame_copy.clone();
+         
 
       //-- 3. Apply the classifier to the frame
       if( !frame.empty() )
       { detectAndDisplay( frame, images ); }
       else
       { printf(" --(!) No captured frame -- Break!"); break; }
-      int c = waitKey(5);
+      char c = waitKey(5);
       if( c == 'c' ) { break; } // exit
-      else if( c == ' ') { pause = !pause; }
+      if( c == ' ') { pause = !pause; }
       else if( c == 'f')  // advance to next frame
       {
 	 cap >> frame;
@@ -135,11 +140,11 @@ int main( int argc, const char** argv )
       else if (c == 'a') // save all detected images
       {
 	 for (size_t index = 0; index < images.size(); index++)
-	    writeImage(images, index, argv[1], frameCount);
+	    writeImage(images, index, "negative/1-16", frameCount);
       }
       else if (isdigit(c)) // save a single detected image
       {
-	 writeImage(images, c - '0',  argv[1], frameCount);
+	 writeImage(images, c - '0',  "negative/1-16", frameCount);
       }
    }
       return 0;
