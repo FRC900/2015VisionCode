@@ -8,26 +8,24 @@
  using namespace std;
  using namespace cv;
 
+ const double DETECT_ASPECT_RATIO = 1.0;
  /** Function Headers */
  void detectAndDisplay( Mat frame, vector<Mat> &images );
 
  /** Global variables */
- String face_cascade_name = "classifier_bin_4/cascade_25.xml";
+ String face_cascade_name = "classifier_bin_4/cascade_10.xml";
  CascadeClassifier face_cascade;
  string window_name = "Capture - Face detection";
 
  int scale     = 3;
  int neighbors = 2;
- int min_row   = 20;
- int min_col   = 20;
- int max_row   = 200 * 4;
- int max_col   = 200 * 4;
+ int minDetectSize   = 20;
+ int maxDetectSize   = 200 * 4;
  //int r_min     = 65;
  //int r_max     = 90;
  //int b_min     = 100;
  //int b_max     = 170;
  int hist_divider = 1;
-
 
 // Convert type value to a human readable string. Useful for debug
 string type2str(int type) {
@@ -64,42 +62,48 @@ void writeImage(const vector<Mat> &images, size_t index, const char *path, int f
       fn << frameCount;
       fn << "_";
       fn << index;
-      fn << ".png";
-      imwrite(fn.str().substr(fn.str().rfind('\\')+1), images[index]);
-      cout << fn.str().substr(fn.str().rfind('\\')+1) << endl;
+      imwrite(fn.str().substr(fn.str().rfind('\\')+1) + ".png", images[index]);
+
+      // Save grayscale equalized version
+      Mat frameGray;
+      cvtColor( images[index], frameGray, CV_BGR2GRAY );
+      equalizeHist( frameGray, frameGray );
+      imwrite(fn.str().substr(fn.str().rfind('\\')+1) + "_g.png", frameGray);
+
       // Save 20x20 version of the same image
-      fn.str("");
-      fn << path;
-      fn << "_";
-      fn << frameCount;
-      fn << "_";
-      fn << index;
-      fn << "_s.png";
       Mat smallImg;
       resize(images[index], smallImg, Size(20,20));
-      imwrite(fn.str().substr(fn.str().rfind('\\')+1), smallImg);
-      cout << fn.str().substr(fn.str().rfind('\\')+1) << endl;
+      imwrite(fn.str().substr(fn.str().rfind('\\')+1) + "_s.png", smallImg);
+
+      // Save grayscale equalized version of small image
+      cvtColor( smallImg, frameGray, CV_BGR2GRAY );
+      equalizeHist( frameGray, frameGray );
+      imwrite(fn.str().substr(fn.str().rfind('\\')+1) + "_g_s.png", frameGray);
    }
 }
 
 int main( int argc, const char** argv )
 {
-   //VideoCapture cap(argv[1]);
-   VideoCapture cap(0);
+   VideoCapture cap;
+   if (argc < 2)
+      cap = VideoCapture(0);
+   else if (isdigit(*argv[1]))
+      cap = VideoCapture(*argv[1] - '0');
+   else
+      cap = VideoCapture(argv[1]);
    Mat frame;
    Mat frame_copy;
    vector <Mat> images;
    int frameCount = 0;
    	
    bool pause = false;
+   bool captureAll = false;
    
    namedWindow("Parameters", WINDOW_AUTOSIZE);
-   createTrackbar ("Scale", "Parameters", &scale, 200, NULL);
-   createTrackbar ("Neighbors", "Parameters", &neighbors, 500, NULL);
-   createTrackbar ("Min Row", "Parameters", &min_row, 1000, NULL);
-   createTrackbar ("Min Col", "Parameters", &min_col, 1000, NULL);
-   createTrackbar ("Max Row", "Parameters", &max_row, 1000, NULL);
-   createTrackbar ("Max Col", "Parameters", &max_col, 1000, NULL);
+   createTrackbar ("Scale", "Parameters", &scale, 50, NULL);
+   createTrackbar ("Neighbors", "Parameters", &neighbors, 50, NULL);
+   createTrackbar ("Min Detect", "Parameters", &minDetectSize, 1000, NULL);
+   createTrackbar ("Max Detect", "Parameters", &maxDetectSize, 1000, NULL);
    //createTrackbar ("R Min", "Parameters", &r_min, 256, NULL);
    //createTrackbar ("R Max", "Parameters", &r_max, 256, NULL);
    //createTrackbar ("B Min", "Parameters", &b_min, 256, NULL);
@@ -112,7 +116,6 @@ int main( int argc, const char** argv )
    //-- 2. Read the video stream
    while( true )
    {
-
       if (!pause)
       {
 	 cap >> frame;
@@ -127,15 +130,19 @@ int main( int argc, const char** argv )
       if( !frame.empty() )
       { detectAndDisplay( frame, images ); }
       else
-      { printf(" --(!) No captured frame -- Break!"); break; }
+      { printf(" --(!) No captured frame -- Break!\n"); break; }
       char c = waitKey(5);
       if( c == 'c' ) { break; } // exit
-      if( c == ' ') { pause = !pause; }
+      else if( c == ' ') { pause = !pause; }
       else if( c == 'f')  // advance to next frame
       {
 	 cap >> frame;
 	 frame_copy = frame.clone();
 	 frameCount += 1;
+      }
+      else if (c == 'A') // toggle capture-all
+      {
+	 captureAll = !captureAll;
       }
       else if (c == 'a') // save all detected images
       {
@@ -146,8 +153,10 @@ int main( int argc, const char** argv )
       {
 	 writeImage(images, c - '0',  "negative/1-16", frameCount);
       }
+      for (size_t index = 0; captureAll && (index < images.size()); index++)
+	 writeImage(images, index, "negative/1-16", frameCount);
    }
-      return 0;
+   return 0;
 }
 
  float range[] = { 0, 256 } ;
@@ -167,7 +176,7 @@ void detectAndDisplay( Mat frame, vector<Mat> &images )
   equalizeHist( frame_gray, frame_gray );
 
   //-- Detect faces
-  face_cascade.detectMultiScale( frame_gray, faces, 1.05 + scale/100., neighbors, 0|CV_HAAR_SCALE_IMAGE, Size(min_row, min_col), Size(max_row, max_col) );
+  face_cascade.detectMultiScale( frame_gray, faces, 1.05 + scale/100., neighbors, 0|CV_HAAR_SCALE_IMAGE, Size(minDetectSize * DETECT_ASPECT_RATIO, minDetectSize), Size(maxDetectSize * DETECT_ASPECT_RATIO, maxDetectSize) );
 
   // Mark and save up to 10 detected images
   for( size_t i = 0; i < min(faces.size(), (size_t)10); i++ )
@@ -205,7 +214,7 @@ void detectAndDisplay( Mat frame, vector<Mat> &images )
 	max_idx[j] = max.y;
      }
 
-     cerr << i << " " << max_idx[0] << " " << max_idx[1] << " " <<max_idx[2] << " " << images[i].cols <<  " " << images[i].rows << " " << type2str(images[i].type()) << endl;
+     //cerr << i << " " << max_idx[0] << " " << max_idx[1] << " " <<max_idx[2] << " " << images[i].cols <<  " " << images[i].rows << " " << type2str(images[i].type()) << endl;
 #if 0
      if ((max_idx[0] + max_idx[1]) < max_idx[2])
      {
