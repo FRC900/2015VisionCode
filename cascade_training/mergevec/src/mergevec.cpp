@@ -93,6 +93,8 @@ void icvMergeVecs( char* infoname, const char* outvecname, int showsamples, int 
         {
             break;
         }
+	for (char *p = onevecname + strlen(onevecname) - 1; (*p == '\n') || (*p == '\r'); --p)
+	   *p = '\0';
         invec.input = fopen( onevecname, "rb" );
         if ( invec.input == NULL )
         {
@@ -125,6 +127,8 @@ void icvMergeVecs( char* infoname, const char* outvecname, int showsamples, int 
 	{
             break;
         }
+	for (char *p = onevecname + strlen(onevecname) - 1; (*p == '\n') || (*p == '\r'); --p)
+	   *p = '\0';
         invec.input = fopen( onevecname, "rb" );
         fread( &invec.count,   sizeof( invec.count )  , 1, invec.input );
         fread( &invec.vecsize, sizeof( invec.vecsize ), 1, invec.input );
