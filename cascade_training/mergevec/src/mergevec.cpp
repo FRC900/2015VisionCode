@@ -89,7 +89,7 @@ void icvMergeVecs( char* infoname, const char* outvecname, int showsamples, int 
     outvec.count = 0;
     for ( filenum = 0; ; filenum++ )
     {
-        if ( fscanf( info, "%s", onevecname ) == EOF )
+	if ( fgets( onevecname, sizeof(onevecname), info) == NULL)
         {
             break;
         }
@@ -121,7 +121,8 @@ void icvMergeVecs( char* infoname, const char* outvecname, int showsamples, int 
     outvec.count = 0;
     for ( i = 0; i < filenum ; i++ )
     {
-        if (fscanf( info, "%s", onevecname ) == EOF) {
+	if ( fgets( onevecname, sizeof(onevecname), info) == NULL)
+	{
             break;
         }
         invec.input = fopen( onevecname, "rb" );

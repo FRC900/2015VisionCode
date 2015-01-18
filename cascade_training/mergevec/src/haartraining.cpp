@@ -54,7 +54,7 @@
 int main( int argc, char* argv[] )
 {
     int i = 0;
-    char* nullname = "(NULL)";
+    const char* nullname = "(NULL)";
     
     char* vecname = NULL;
     char* dirname = NULL;

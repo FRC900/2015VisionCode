@@ -94,7 +94,7 @@ int main( int argc, char* argv[] )
     int rocsize;
     
     FILE* info;
-    char* infoname;
+    const char* infoname;
     char fullname[PATH_MAX];
     char detfilename[PATH_MAX];
     char* filename;
