@@ -1,31 +1,40 @@
- #include "opencv2/objdetect/objdetect.hpp"
- #include "opencv2/highgui/highgui.hpp"
- #include "opencv2/imgproc/imgproc.hpp"
+#include "opencv2/objdetect/objdetect.hpp"
+#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
 
- #include <iostream>
- #include <stdio.h>
+#include <iostream>
+#include <stdio.h>
 
- using namespace std;
- using namespace cv;
+using namespace std;
+using namespace cv;
 
- const double DETECT_ASPECT_RATIO = 1.0;
- /** Function Headers */
- void detectAndDisplay( Mat frame, vector<Mat> &images );
+const double DETECT_ASPECT_RATIO = 1.0;
+/** Function Headers */
+void detectAndDisplay(Mat frame, const vector<Rect> &rect, vector<Mat> &images );
+void generateThreshold(const Mat &ImageIn, Mat &ImageOut);
 
- /** Global variables */
- String face_cascade_name = "classifier_bin_4/cascade_10.xml";
- CascadeClassifier face_cascade;
- string window_name = "Capture - Face detection";
+/** Global variables */
+String face_cascade_name = "../cascade_training/classifier_bin_5/cascade_16.xml";
+//String face_cascade_name = "classifier_bin_6/cascade_11.xml";
+CascadeClassifier face_cascade;
+string window_name = "Capture - Face detection";
 
- int scale     = 3;
- int neighbors = 2;
- int minDetectSize   = 20;
- int maxDetectSize   = 200 * 4;
- //int r_min     = 65;
- //int r_max     = 90;
- //int b_min     = 100;
- //int b_max     = 170;
- int hist_divider = 1;
+int scale     = 3;
+int neighbors = 2;
+int minDetectSize   = 20;
+int maxDetectSize   = 200 * 4;
+//int r_min     = 65;
+//int r_max     = 90;
+//int b_min     = 100;
+//int b_max     = 170;
+int hist_divider = 1;
+
+int H_MIN =  53;
+int H_MAX =  97;
+int S_MIN =  30;
+int S_MAX = 185;
+int V_MIN =  57;
+int V_MAX = 184;
 
 // Convert type value to a human readable string. Useful for debug
 string type2str(int type) {
@@ -84,13 +93,25 @@ void writeImage(const vector<Mat> &images, size_t index, const char *path, int f
 
 int main( int argc, const char** argv )
 {
+   string capPath;
    VideoCapture cap;
    if (argc < 2)
+   {
       cap = VideoCapture(0);
+      capPath = "negative/1-21";
+   }
    else if (isdigit(*argv[1]))
+   {
       cap = VideoCapture(*argv[1] - '0');
+      capPath = "negative/1-21" + (*argv[1] - '0');
+   }
    else
+   {
       cap = VideoCapture(argv[1]);
+      capPath = "negative/" + string(argv[1]).substr(string(argv[1]).rfind('/')+1);
+   }
+   cerr << capPath << endl;
+
    Mat frame;
    Mat frame_copy;
    vector <Mat> images;
@@ -108,10 +129,22 @@ int main( int argc, const char** argv )
    //createTrackbar ("R Max", "Parameters", &r_max, 256, NULL);
    //createTrackbar ("B Min", "Parameters", &b_min, 256, NULL);
    //createTrackbar ("B Max", "Parameters", &b_max, 256, NULL);
-   createTrackbar ("Hist Divider", "Parameters", &hist_divider, 16, NULL);
+   //createTrackbar ("Hist Divider", "Parameters", &hist_divider, 16, NULL);
+   string trackbarWindowName = "HSV";
+   namedWindow(trackbarWindowName, WINDOW_AUTOSIZE);
+   createTrackbar( "H_MIN", trackbarWindowName, &H_MIN, 179, NULL);
+   createTrackbar( "H_MAX", trackbarWindowName, &H_MAX, 179, NULL);
+   createTrackbar( "S_MIN", trackbarWindowName, &S_MIN, 255, NULL);
+   createTrackbar( "S_MAX", trackbarWindowName, &S_MAX, 255, NULL);
+   createTrackbar( "V_MIN", trackbarWindowName, &V_MIN, 255, NULL);
+   createTrackbar( "V_MAX", trackbarWindowName, &V_MAX, 255, NULL);
 
    //-- 1. Load the cascades
-   if( !face_cascade.load( face_cascade_name ) ){ printf("--(!)Error loading\n"); return -1; };
+   if( !face_cascade.load( face_cascade_name ) )
+   {
+      cerr << "--(!)Error loading " << face_cascade_name << endl; 
+      return -1; 
+   }
 
    //-- 2. Read the video stream
    while( true )
@@ -119,24 +152,66 @@ int main( int argc, const char** argv )
       if (!pause)
       {
 	 cap >> frame;
+	 if( frame.empty() )
+	 { 
+	    printf(" --(!) No captured frame -- Break!\n");
+	    exit(0); 
+	 }
+	 pyrDown(frame, frame);
 	 frame_copy = frame.clone();
 	 frameCount += 1;
       }
       else
 	 frame = frame_copy.clone();
          
+      minDetectSize = frame.cols * 0.057;
 
       //-- 3. Apply the classifier to the frame
-      if( !frame.empty() )
-      { detectAndDisplay( frame, images ); }
-      else
-      { printf(" --(!) No captured frame -- Break!\n"); break; }
+
+      // Threshold the image using supplied HSV value
+      Mat frameThresh;
+      vector<Mat> splitFrame;
+      vector < vector <Point> > contours;
+      vector < Rect > rects;
+
+      generateThreshold(frame, frameThresh);
+      imshow("Threshold", frameThresh);
+      findContours(frameThresh, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
+
+      // Find contours in the thresholded image.  Grab bounding
+      // rectangles around those. Ideally, if the HSV values are 
+      // set correctly, these rectangles will be the only
+      // places that green-enough objects are found
+      for (size_t i = 0; i < contours.size(); i++)
+      {
+	 Rect rect = boundingRect(contours[i]);
+	 // Scale up rectangle a bit so that the
+	 // bounds are larger than each green blob detected
+	 const double RECT_SCALE_UP = 0.33
+	 rect.x -= rect.height / (1/(RECT_SCALE_UP/2));
+	 rect.y -= rect.width / (1/(RECT_SCALE_UP/2));
+	 rect.height *= (1.0 + RECT_SCALE_UP);
+	 rect.width *= (1.0 + RECT_SCALE_UP);
+	 // Save bounding rects which are large enough
+	 // to actually contain the smallest image 
+	 // searched for
+	 if ((rect.width > (minDetectSize * DETECT_ASPECT_RATIO))&&(rect.height > minDetectSize))
+	 {
+	    rects.push_back(rect);
+	 }
+      }
+
+      detectAndDisplay( frame, rects, images ); 
+
       char c = waitKey(5);
       if( c == 'c' ) { break; } // exit
       else if( c == ' ') { pause = !pause; }
       else if( c == 'f')  // advance to next frame
       {
 	 cap >> frame;
+	 if( frame.empty() )
+	 { printf(" --(!) No captured frame -- Break!\n"); exit(0); }
+	 pyrDown(frame, frame);
 	 frame_copy = frame.clone();
 	 frameCount += 1;
       }
@@ -147,27 +222,28 @@ int main( int argc, const char** argv )
       else if (c == 'a') // save all detected images
       {
 	 for (size_t index = 0; index < images.size(); index++)
-	    writeImage(images, index, "negative/1-16", frameCount);
+	    writeImage(images, index, capPath.c_str(), frameCount);
       }
       else if (isdigit(c)) // save a single detected image
       {
-	 writeImage(images, c - '0',  "negative/1-16", frameCount);
+	 writeImage(images, c - '0', capPath.c_str(), frameCount);
       }
       for (size_t index = 0; captureAll && (index < images.size()); index++)
-	 writeImage(images, index, "negative/1-16", frameCount);
+	 writeImage(images, index, capPath.c_str(), frameCount);
    }
    return 0;
 }
 
- float range[] = { 0, 256 } ;
-  const float* histRange = { range };
-  bool uniform = true; bool accumulate = false;
+float range[] = { 0, 256 } ;
+const float* histRange = { range };
+bool uniform = true; bool accumulate = false;
 /** @function detectAndDisplay */
-void detectAndDisplay( Mat frame, vector<Mat> &images )
+void detectAndDisplay( Mat frame, const vector<Rect> &rects, vector<Mat> &images )
 {
   std::vector<Rect> faces;
   Mat frame_gray;
   Mat frame_copy;
+
   frame_copy = frame.clone();
   images.clear();
   int histSize = 256 / (hist_divider ? hist_divider : 1);
@@ -250,13 +326,17 @@ void detectAndDisplay( Mat frame, vector<Mat> &images )
      }
      else
 #endif
-	// First attempt at isolating bins : B >= R and G >= R.  
-	// This does reasonably well but there are still false positives
-	// negatives so more work is needed
-	if ((max_idx[0] >= max_idx[2]) && (max_idx[1] >= max_idx[2]))
+	// Hightlight detected images which are fully contained in 
+	// green contour bounding rectangles
+	bool inRect = false;
+	for (size_t j = 0 ; !inRect && (j < rects.size()); j++)
 	{
-	   rectangle( frame, faces[i], Scalar( 0, 0, 255 ),3);
+	   Rect intersect = faces[i] & rects[j];
+	   if (intersect == faces[i])
+	      inRect = true;
 	}
+	if (inRect)
+	   rectangle( frame, faces[i], Scalar( 0, 0, 255 ),3);
 	else
 	   rectangle( frame, faces[i], Scalar( 255, 0, 255 ),3);
 
@@ -307,7 +387,43 @@ void detectAndDisplay( Mat frame, vector<Mat> &images )
      rectangle( frame, faces[i], Scalar( 255, 0, 255 ),3);
   }
 #endif
+  for (size_t i = 0; i < rects.size(); i++)
+  {
+     Rect rect = rects[i];
+     rectangle (frame, rect, Scalar(255,255,0), 3);
+  }
+
   //-- Show what you got
   imshow( window_name, frame );
 }
 
+// Take an input image. Threshold it so that pixels within
+// the HSV range specified by [HSV]_[MIN,MAX] are set to non-zero
+// and the rest of the image is set to zero. Apply a morph
+// open to the resulting image
+void generateThreshold(const Mat &ImageIn, Mat &ImageOut)
+{
+   Mat ThresholdLocalImage;
+   vector<Mat> SplitImage;
+   Mat SplitImageLE;
+   Mat SplitImageGE;
+
+   cvtColor(ImageIn, ThresholdLocalImage, CV_BGR2HSV, 0);
+   split(ThresholdLocalImage, SplitImage);
+   int max[3] = {H_MAX, S_MAX, V_MAX};
+   int min[3] = {H_MIN, S_MIN, V_MIN};
+   for (size_t i = 0; i < SplitImage.size(); i++)
+   {
+      compare(SplitImage[i], min[i], SplitImageGE, cv::CMP_GE);
+      compare(SplitImage[i], max[i], SplitImageLE, cv::CMP_LE);
+      bitwise_and(SplitImageGE, SplitImageLE, SplitImage[i]);
+   }
+   bitwise_and(SplitImage[0], SplitImage[1], ImageOut);
+   bitwise_and(SplitImage[2], ImageOut, ImageOut);
+
+   Mat erodeElement (getStructuringElement( MORPH_RECT,Size(3,3)));
+   //dilate with larger element to make sure object is nicely visible
+   Mat dilateElement(getStructuringElement( MORPH_ELLIPSE,Size(11,11)));
+   erode(ImageOut, ImageOut, erodeElement, Point(-1,-1), 2);
+   dilate(ImageOut, ImageOut, dilateElement, Point(-1,-1), 2);
+}
