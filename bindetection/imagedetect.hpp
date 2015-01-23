@@ -7,7 +7,6 @@
 
 #include <vector>
 
-
 extern int H_MIN;
 extern int H_MAX;
 extern int S_MIN;
@@ -26,8 +25,8 @@ extern int maxDetectSize;
 extern int hist_divider;
 
 void thresholdImage(const cv::Mat &frame, cv::Mat &outFrame, std::vector <cv::Rect> &rects);
-void cascadeDetect ( const cv::Mat &frame, cv::CascadeClassifier &face_cascade, std::vector<cv::Rect> &imageRects );
-void filterUsingThreshold (const std::vector<cv::Rect> &detectRects,
-                           const std::vector<cv::Rect> &threshRects,
-			   std::vector<cv::Rect> filteredRects);
+void cascadeDetect(const cv::Mat &frame, cv::CascadeClassifier &face_cascade, std::vector<cv::Rect> &imageRects );
+void filterUsingThreshold(const std::vector<cv::Rect> &detectRects,
+                          const std::vector<cv::Rect> &threshRects,
+			  std::vector<cv::Rect> &filteredRects);
 #endif

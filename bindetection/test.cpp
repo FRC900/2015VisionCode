@@ -71,10 +71,10 @@ int main( int argc, const char** argv )
 {
    string capPath;
    VideoCapture cap;
-String face_cascade_name = "../cascade_training/classifier_bin_5/cascade.xml";
-//String detectCascade_name = "classifier_bin_6/cascade_11.xml";
-CascadeClassifier detectCascade;
-const size_t detectMax = 10;
+   String face_cascade_name = "../cascade_training/classifier_bin_5/cascade.xml";
+   //String detectCascade_name = "classifier_bin_6/cascade_11.xml";
+   CascadeClassifier detectCascade;
+   const size_t detectMax = 10;
    if (argc < 2)
    {
       cap = VideoCapture(0);
@@ -192,10 +192,7 @@ const size_t detectMax = 10;
       }
 
       for (size_t i = 0; i < threshRects.size(); i++)
-      {
-	 Rect rect = threshRects[i];
-	 rectangle (frame, rect, Scalar(255,255,0), 3);
-      }
+	 rectangle (frame, threshRects[i], Scalar(255,255,0), 3);
 
       //-- Show what you got
       imshow( window_name, frame );

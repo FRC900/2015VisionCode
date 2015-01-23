@@ -4,6 +4,8 @@
 
 #include "imagedetect.hpp"
 
+#include "iostream"
+
 int scale     = 3;
 int neighbors = 2;
 int minDetectSize   = 20;
@@ -20,7 +22,6 @@ int S_MIN =  30;
 int S_MAX = 185;
 int V_MIN =  57;
 int V_MAX = 184;
-
 
 const double DETECT_ASPECT_RATIO = 1.0;
 
@@ -57,7 +58,7 @@ static void generateThreshold(const Mat &ImageIn, Mat &ImageOut)
    dilate(ImageOut, ImageOut, dilateElement, Point(-1,-1), 2);
 }
 
-void thresholdImage(const Mat &frame,  Mat &outFrame, vector <Rect> &rects)
+void thresholdImage(const Mat &frame, Mat &outFrame, vector <Rect> &rects)
 {
    // Threshold the image using supplied HSV value
    vector < vector <Point> > contours;
@@ -88,6 +89,7 @@ void thresholdImage(const Mat &frame,  Mat &outFrame, vector <Rect> &rects)
       if ((rect.width > (minDetectSize * DETECT_ASPECT_RATIO))&&(rect.height > minDetectSize))
 	 rects.push_back(rect);
    }
+   cout << "ThreshRect " << rects.size() << endl;
 }
 
 /** @function detectAndDisplay */
@@ -109,20 +111,25 @@ void cascadeDetect ( const Mat &frame,
 	Size(maxDetectSize * DETECT_ASPECT_RATIO, maxDetectSize) );
 }
 
-void filterUsingThreshold (const vector<Rect> &detectRects,
-                           const vector<Rect> &threshRects,
-			   vector<Rect> filteredRects)
+// For each detected rectange, check if each rect is in
+// any of the thresholded rectangles. If so, push the detected
+// rectangle into filteredRects
+void filterUsingThreshold(const vector<Rect> &detectRects,
+                          const vector<Rect> &threshRects,
+			  vector<Rect> &filteredRects)
 {
    filteredRects.clear();
-   for( size_t i = 0; i < detectRects.size(); i++ )  
+   for(size_t i = 0; i < detectRects.size(); i++)
    {
       // Hightlight detected images which are fully contained in 
       // green contour bounding rectangles
       bool inRect = false;
-      for (size_t j = 0 ; !inRect && (j < threshRects.size()); j++)
+      for (size_t j = 0; !inRect && (j < threshRects.size()); j++)
       {
-	 Rect intersect = detectRects[i] & threshRects[j];
-	 if (intersect == detectRects[i])
+	 // If the intersection is the same as the smaller
+	 // detected rectangle, the detected rectangle is fully
+	 // contained in the threshold rectangle
+	 if ((detectRects[i] & threshRects[j]) == detectRects[i])
 	    inRect = true;
       }
       if (inRect)
