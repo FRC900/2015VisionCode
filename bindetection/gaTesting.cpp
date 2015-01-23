@@ -47,7 +47,7 @@ float Objective(GAGenome& g) {
 GA2DBinaryStringGenome & genome = (GA2DBinaryStringGenome &)g;
   unsigned int intval[genome.height()];
   for(int i=0; i<genome.height(); i++){
-     intval = getIntFrom2DBinaryString(genome, i);
+     intval[i] = getIntFrom2DBinaryString(genome, i);
   }
 vector <Rect> bins;
 for(
