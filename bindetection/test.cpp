@@ -1,40 +1,16 @@
-#include "opencv2/objdetect/objdetect.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
+#include "opencv2/objdetect/objdetect.hpp"
 
 #include <iostream>
 #include <stdio.h>
 
+#include "imagedetect.hpp"
+
 using namespace std;
 using namespace cv;
 
-const double DETECT_ASPECT_RATIO = 1.0;
-/** Function Headers */
-void detectAndDisplay(Mat frame, const vector<Rect> &rect, vector<Mat> &images );
-void generateThreshold(const Mat &ImageIn, Mat &ImageOut);
-
-/** Global variables */
-String face_cascade_name = "../cascade_training/classifier_bin_5/cascade_16.xml";
-//String face_cascade_name = "classifier_bin_6/cascade_11.xml";
-CascadeClassifier face_cascade;
 string window_name = "Capture - Face detection";
-
-int scale     = 3;
-int neighbors = 2;
-int minDetectSize   = 20;
-int maxDetectSize   = 200 * 4;
-//int r_min     = 65;
-//int r_max     = 90;
-//int b_min     = 100;
-//int b_max     = 170;
-int hist_divider = 1;
-
-int H_MIN =  53;
-int H_MAX =  97;
-int S_MIN =  30;
-int S_MAX = 185;
-int V_MIN =  57;
-int V_MAX = 184;
 
 // Convert type value to a human readable string. Useful for debug
 string type2str(int type) {
@@ -95,6 +71,10 @@ int main( int argc, const char** argv )
 {
    string capPath;
    VideoCapture cap;
+String face_cascade_name = "../cascade_training/classifier_bin_5/cascade.xml";
+//String detectCascade_name = "classifier_bin_6/cascade_11.xml";
+CascadeClassifier detectCascade;
+const size_t detectMax = 10;
    if (argc < 2)
    {
       cap = VideoCapture(0);
@@ -140,7 +120,7 @@ int main( int argc, const char** argv )
    createTrackbar( "V_MAX", trackbarWindowName, &V_MAX, 255, NULL);
 
    //-- 1. Load the cascades
-   if( !face_cascade.load( face_cascade_name ) )
+   if( !detectCascade.load( face_cascade_name ) )
    {
       cerr << "--(!)Error loading " << face_cascade_name << endl; 
       return -1; 
@@ -170,38 +150,55 @@ int main( int argc, const char** argv )
 
       // Threshold the image using supplied HSV value
       Mat frameThresh;
-      vector<Mat> splitFrame;
-      vector < vector <Point> > contours;
-      vector < Rect > rects;
-
-      generateThreshold(frame, frameThresh);
+      vector<Rect> threshRects;
+      thresholdImage(frame, frameThresh, threshRects);
       imshow("Threshold", frameThresh);
-      findContours(frameThresh, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
 
-      // Find contours in the thresholded image.  Grab bounding
-      // rectangles around those. Ideally, if the HSV values are 
-      // set correctly, these rectangles will be the only
-      // places that green-enough objects are found
-      for (size_t i = 0; i < contours.size(); i++)
+      vector<Rect> detectRects;
+      cascadeDetect ( frame, detectCascade, detectRects); 
+
+      // Mark and save up to detectMax detected images
+      for( size_t i = 0; i < min(detectRects.size(), detectMax); i++ )  
       {
-	 Rect rect = boundingRect(contours[i]);
-	 // Scale up rectangle a bit so that the
-	 // bounds are larger than each green blob detected
-	 const double RECT_SCALE_UP = 0.33
-	 rect.x -= rect.height / (1/(RECT_SCALE_UP/2));
-	 rect.y -= rect.width / (1/(RECT_SCALE_UP/2));
-	 rect.height *= (1.0 + RECT_SCALE_UP);
-	 rect.width *= (1.0 + RECT_SCALE_UP);
-	 // Save bounding rects which are large enough
-	 // to actually contain the smallest image 
-	 // searched for
-	 if ((rect.width > (minDetectSize * DETECT_ASPECT_RATIO))&&(rect.height > minDetectSize))
+	 // Copy detected image into images[i]
+	 images.push_back(Mat());
+	 frame(Rect(detectRects[i].x, detectRects[i].y, detectRects[i].width, detectRects[i].height)).copyTo(images[i]);
+      }
+      
+      vector <Rect> filteredRects;
+      filterUsingThreshold(detectRects, threshRects, filteredRects);
+
+      int filterIdx = 0;
+      for( size_t i = 0; i < min(detectRects.size(), detectMax); i++ )  
+      {
+	 // Hightlight detected images which are fully contained in 
+	 // green contour bounding rectangles
+	 bool inRect = false;
+	 if (filteredRects.size() && (filteredRects[filterIdx] == detectRects[i]))
 	 {
-	    rects.push_back(rect);
+	    inRect = true;
+	    filterIdx += 1;
 	 }
+	 rectangle( frame, detectRects[i], inRect ? Scalar( 0, 0, 255 ) : Scalar(255, 0, 255) ,3);
+
+	 // Label each outlined image with a digit.  Top-level code allows
+	 // users to save these small images by hitting the key they're labeled with
+	 // This should be a quick way to grab lots of falsly detected images
+	 // which need to be added to the negative list for the next
+	 // pass of classifier training.
+	 stringstream label;
+	 label << i;
+	 putText( frame, label.str(), Point(detectRects[i].x, detectRects[i].y), FONT_HERSHEY_PLAIN, 1.0, Scalar(255, 255, 0));
       }
 
-      detectAndDisplay( frame, rects, images ); 
+      for (size_t i = 0; i < threshRects.size(); i++)
+      {
+	 Rect rect = threshRects[i];
+	 rectangle (frame, rect, Scalar(255,255,0), 3);
+      }
+
+      //-- Show what you got
+      imshow( window_name, frame );
 
       char c = waitKey(5);
       if( c == 'c' ) { break; } // exit
@@ -234,34 +231,14 @@ int main( int argc, const char** argv )
    return 0;
 }
 
-float range[] = { 0, 256 } ;
-const float* histRange = { range };
-bool uniform = true; bool accumulate = false;
-/** @function detectAndDisplay */
-void detectAndDisplay( Mat frame, const vector<Rect> &rects, vector<Mat> &images )
-{
-  std::vector<Rect> faces;
-  Mat frame_gray;
-  Mat frame_copy;
-
-  frame_copy = frame.clone();
-  images.clear();
+// Histogram code
+#if 0
   int histSize = 256 / (hist_divider ? hist_divider : 1);
+static float range[] = { 0, 256 } ;
+static const float* histRange = { range };
+static bool uniform = true, accumulate = false;
 
-  cvtColor( frame, frame_gray, CV_BGR2GRAY );
-  equalizeHist( frame_gray, frame_gray );
-
-  //-- Detect faces
-  face_cascade.detectMultiScale( frame_gray, faces, 1.05 + scale/100., neighbors, 0|CV_HAAR_SCALE_IMAGE, Size(minDetectSize * DETECT_ASPECT_RATIO, minDetectSize), Size(maxDetectSize * DETECT_ASPECT_RATIO, maxDetectSize) );
-
-  // Mark and save up to 10 detected images
-  for( size_t i = 0; i < min(faces.size(), (size_t)10); i++ )
-  {
-     // Copy detected image into images[i]
-     // Copy from frame_copy so that ID rectangles written onto frame are excluded
-     images.push_back(Mat());
-     frame_copy(Rect(faces[i].x, faces[i].y, faces[i].width, faces[i].height)).copyTo(images[i]);
-
+  for( size_t i = 0; i < min(faces.size(), detectMax); i++ )  {
      // Split into individual B,G,R channels so we can run a histogram on each
      vector<Mat> bgr_planes;
      split (images[i], bgr_planes);
@@ -289,65 +266,8 @@ void detectAndDisplay( Mat frame, const vector<Rect> &rects, vector<Mat> &images
 	//min_idx[j] = min.y;
 	max_idx[j] = max.y;
      }
-
-     //cerr << i << " " << max_idx[0] << " " << max_idx[1] << " " <<max_idx[2] << " " << images[i].cols <<  " " << images[i].rows << " " << type2str(images[i].type()) << endl;
-#if 0
-     if ((max_idx[0] + max_idx[1]) < max_idx[2])
-     {
-	cout << "R hit " ;
-	for (size_t j = 0; j < 3; j++)
-	   cout << " " << max_idx[j];
-	cout << endl;
-	rectangle( frame, faces[i], Scalar( 0, 0, 255 ),3);
-     }
-     else if ((max_idx[1] + max_idx[2]) < max_idx[0])
-     {
-	cout << "B hit " ;
-	for (size_t j = 0; j < 3; j++)
-	   cout << " " << max_idx[j];
-	cout << endl;
-	rectangle( frame, faces[i], Scalar( 255, 0, 0 ),3);
-     }
-     else if ((std::min(max_idx[0], max_idx[1]) * 1.5) < max_idx[2])    
-     {
-	cout << "R2 hit " ;
-	for (size_t j = 0; j < 3; j++)
-	   cout << " " << max_idx[j];
-	cout << endl;
-	rectangle( frame, faces[i], Scalar( 0, 128, 255 ),3);
-     }
-     else if ((std::min(max_idx[1], max_idx[2]) * 1.5) < max_idx[0])    
-     {
-	cout << "B2 hit " ;
-	for (size_t j = 0; j < 3; j++)
-	   cout << " " << max_idx[j];
-	cout << endl;
-	rectangle( frame, faces[i], Scalar( 255, 128, 0 ),3);
-     }
-     else
+      //cerr << i << " " << max_idx[0] << " " << max_idx[1] << " " <<max_idx[2] << " " << images[i].cols <<  " " << images[i].rows << " " << type2str(images[i].type()) << endl;
 #endif
-	// Hightlight detected images which are fully contained in 
-	// green contour bounding rectangles
-	bool inRect = false;
-	for (size_t j = 0 ; !inRect && (j < rects.size()); j++)
-	{
-	   Rect intersect = faces[i] & rects[j];
-	   if (intersect == faces[i])
-	      inRect = true;
-	}
-	if (inRect)
-	   rectangle( frame, faces[i], Scalar( 0, 0, 255 ),3);
-	else
-	   rectangle( frame, faces[i], Scalar( 255, 0, 255 ),3);
-
-     // Label each outlined image with a digit.  Top-level code allows
-     // users to save these small images by hitting the key they're labeled with
-     // This should be a quick way to grab lots of falsly detected images
-     // which need to be added to the negative list for the next
-     // pass of classifier training.
-     stringstream label;
-     label << i;
-     putText( frame, label.str(), Point(faces[i].x, faces[i].y), FONT_HERSHEY_PLAIN, 1.0, Scalar(255, 255, 0));
 #if 0
      // Draw the histograms for B, G and R
      int hist_w = 512; int hist_h = 400;
@@ -379,51 +299,3 @@ void detectAndDisplay( Mat frame, const vector<Rect> &rects, vector<Mat> &images
      winName << " Hist";
      imshow (winName.str(), histImage);
 #endif
-  }
-#if 0
-  for( size_t i = 0; i < faces.size(); i++ )
-  {
-     //Point center( faces[i].x + faces[i].width*0.5, faces[i].y + faces[i].height*0.5 );
-     rectangle( frame, faces[i], Scalar( 255, 0, 255 ),3);
-  }
-#endif
-  for (size_t i = 0; i < rects.size(); i++)
-  {
-     Rect rect = rects[i];
-     rectangle (frame, rect, Scalar(255,255,0), 3);
-  }
-
-  //-- Show what you got
-  imshow( window_name, frame );
-}
-
-// Take an input image. Threshold it so that pixels within
-// the HSV range specified by [HSV]_[MIN,MAX] are set to non-zero
-// and the rest of the image is set to zero. Apply a morph
-// open to the resulting image
-void generateThreshold(const Mat &ImageIn, Mat &ImageOut)
-{
-   Mat ThresholdLocalImage;
-   vector<Mat> SplitImage;
-   Mat SplitImageLE;
-   Mat SplitImageGE;
-
-   cvtColor(ImageIn, ThresholdLocalImage, CV_BGR2HSV, 0);
-   split(ThresholdLocalImage, SplitImage);
-   int max[3] = {H_MAX, S_MAX, V_MAX};
-   int min[3] = {H_MIN, S_MIN, V_MIN};
-   for (size_t i = 0; i < SplitImage.size(); i++)
-   {
-      compare(SplitImage[i], min[i], SplitImageGE, cv::CMP_GE);
-      compare(SplitImage[i], max[i], SplitImageLE, cv::CMP_LE);
-      bitwise_and(SplitImageGE, SplitImageLE, SplitImage[i]);
-   }
-   bitwise_and(SplitImage[0], SplitImage[1], ImageOut);
-   bitwise_and(SplitImage[2], ImageOut, ImageOut);
-
-   Mat erodeElement (getStructuringElement( MORPH_RECT,Size(3,3)));
-   //dilate with larger element to make sure object is nicely visible
-   Mat dilateElement(getStructuringElement( MORPH_ELLIPSE,Size(11,11)));
-   erode(ImageOut, ImageOut, erodeElement, Point(-1,-1), 2);
-   dilate(ImageOut, ImageOut, dilateElement, Point(-1,-1), 2);
-}
