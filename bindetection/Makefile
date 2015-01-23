@@ -39,10 +39,10 @@ RM = /usr/bin/cmake -E remove -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/ubuntu/Desktop/gitfolder/bindetection
+CMAKE_SOURCE_DIR = /home/alon/FRC900_Vision/bindetection
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/ubuntu/Desktop/gitfolder/bindetection
+CMAKE_BINARY_DIR = /home/alon/FRC900_Vision/bindetection
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -69,9 +69,9 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/ubuntu/Desktop/gitfolder/bindetection/CMakeFiles /home/ubuntu/Desktop/gitfolder/bindetection/CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/alon/FRC900_Vision/bindetection/CMakeFiles /home/alon/FRC900_Vision/bindetection/CMakeFiles/progress.marks
 	$(MAKE) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/ubuntu/Desktop/gitfolder/bindetection/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/alon/FRC900_Vision/bindetection/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -99,6 +99,19 @@ depend:
 .PHONY : depend
 
 #=============================================================================
+# Target rules for targets named gaTesting
+
+# Build rule for target.
+gaTesting: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 gaTesting
+.PHONY : gaTesting
+
+# fast build rule for target.
+gaTesting/fast:
+	$(MAKE) -f CMakeFiles/gaTesting.dir/build.make CMakeFiles/gaTesting.dir/build
+.PHONY : gaTesting/fast
+
+#=============================================================================
 # Target rules for targets named test
 
 # Build rule for target.
@@ -110,6 +123,57 @@ test: cmake_check_build_system
 test/fast:
 	$(MAKE) -f CMakeFiles/test.dir/build.make CMakeFiles/test.dir/build
 .PHONY : test/fast
+
+gaTesting.o: gaTesting.cpp.o
+.PHONY : gaTesting.o
+
+# target to build an object file
+gaTesting.cpp.o:
+	$(MAKE) -f CMakeFiles/gaTesting.dir/build.make CMakeFiles/gaTesting.dir/gaTesting.cpp.o
+.PHONY : gaTesting.cpp.o
+
+gaTesting.i: gaTesting.cpp.i
+.PHONY : gaTesting.i
+
+# target to preprocess a source file
+gaTesting.cpp.i:
+	$(MAKE) -f CMakeFiles/gaTesting.dir/build.make CMakeFiles/gaTesting.dir/gaTesting.cpp.i
+.PHONY : gaTesting.cpp.i
+
+gaTesting.s: gaTesting.cpp.s
+.PHONY : gaTesting.s
+
+# target to generate assembly for a file
+gaTesting.cpp.s:
+	$(MAKE) -f CMakeFiles/gaTesting.dir/build.make CMakeFiles/gaTesting.dir/gaTesting.cpp.s
+.PHONY : gaTesting.cpp.s
+
+imagedetect.o: imagedetect.cpp.o
+.PHONY : imagedetect.o
+
+# target to build an object file
+imagedetect.cpp.o:
+	$(MAKE) -f CMakeFiles/gaTesting.dir/build.make CMakeFiles/gaTesting.dir/imagedetect.cpp.o
+	$(MAKE) -f CMakeFiles/test.dir/build.make CMakeFiles/test.dir/imagedetect.cpp.o
+.PHONY : imagedetect.cpp.o
+
+imagedetect.i: imagedetect.cpp.i
+.PHONY : imagedetect.i
+
+# target to preprocess a source file
+imagedetect.cpp.i:
+	$(MAKE) -f CMakeFiles/gaTesting.dir/build.make CMakeFiles/gaTesting.dir/imagedetect.cpp.i
+	$(MAKE) -f CMakeFiles/test.dir/build.make CMakeFiles/test.dir/imagedetect.cpp.i
+.PHONY : imagedetect.cpp.i
+
+imagedetect.s: imagedetect.cpp.s
+.PHONY : imagedetect.s
+
+# target to generate assembly for a file
+imagedetect.cpp.s:
+	$(MAKE) -f CMakeFiles/gaTesting.dir/build.make CMakeFiles/gaTesting.dir/imagedetect.cpp.s
+	$(MAKE) -f CMakeFiles/test.dir/build.make CMakeFiles/test.dir/imagedetect.cpp.s
+.PHONY : imagedetect.cpp.s
 
 test.o: test.cpp.o
 .PHONY : test.o
@@ -142,8 +206,15 @@ help:
 	@echo "... clean"
 	@echo "... depend"
 	@echo "... edit_cache"
+	@echo "... gaTesting"
 	@echo "... rebuild_cache"
 	@echo "... test"
+	@echo "... gaTesting.o"
+	@echo "... gaTesting.i"
+	@echo "... gaTesting.s"
+	@echo "... imagedetect.o"
+	@echo "... imagedetect.i"
+	@echo "... imagedetect.s"
 	@echo "... test.o"
 	@echo "... test.i"
 	@echo "... test.s"
