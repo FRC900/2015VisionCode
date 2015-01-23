@@ -16,22 +16,17 @@ int maxDetectSize   = 200 * 4;
 //int b_max     = 170;
 int hist_divider = 1;
 
-int H_MIN =  53;
-int H_MAX =  97;
-int S_MIN =  30;
-int S_MAX = 185;
-int V_MIN =  57;
-int V_MAX = 184;
-
 const double DETECT_ASPECT_RATIO = 1.0;
 
 using namespace std;
 using namespace cv;
+
 // Take an input image. Threshold it so that pixels within
 // the HSV range specified by [HSV]_[MIN,MAX] are set to non-zero
 // and the rest of the image is set to zero. Apply a morph
 // open to the resulting image
-static void generateThreshold(const Mat &ImageIn, Mat &ImageOut)
+static void generateThreshold(const Mat &ImageIn, Mat &ImageOut,
+	      int H_MIN, int H_MAX, int S_MIN, int S_MAX, int V_MIN, int V_MAX)
 {
    Mat ThresholdLocalImage;
    vector<Mat> SplitImage;
@@ -58,13 +53,14 @@ static void generateThreshold(const Mat &ImageIn, Mat &ImageOut)
    dilate(ImageOut, ImageOut, dilateElement, Point(-1,-1), 2);
 }
 
-void thresholdImage(const Mat &frame, Mat &outFrame, vector <Rect> &rects)
+void thresholdImage(const Mat &frame, Mat &outFrame, vector <Rect> &rects,
+	      int H_MIN, int H_MAX, int S_MIN, int S_MAX, int V_MIN, int V_MAX)
 {
    // Threshold the image using supplied HSV value
    vector < vector <Point> > contours;
    rects.clear();
 
-   generateThreshold(frame, outFrame);
+   generateThreshold(frame, outFrame, H_MIN, H_MAX, S_MIN, S_MAX, V_MIN, V_MAX);
    Mat tempFrame = outFrame.clone();
 
    findContours(tempFrame, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);

@@ -10,6 +10,13 @@
 using namespace std;
 using namespace cv;
 
+int H_MIN =  53;
+int H_MAX =  97;
+int S_MIN =  30;
+int S_MAX = 185;
+int V_MIN =  57;
+int V_MAX = 184;
+
 string window_name = "Capture - Face detection";
 
 // Convert type value to a human readable string. Useful for debug
@@ -151,7 +158,8 @@ int main( int argc, const char** argv )
       // Threshold the image using supplied HSV value
       Mat frameThresh;
       vector<Rect> threshRects;
-      thresholdImage(frame, frameThresh, threshRects);
+      thresholdImage(frame, frameThresh, threshRects,
+		H_MIN, H_MAX, S_MIN, S_MAX, V_MIN, V_MAX);
       imshow("Threshold", frameThresh);
 
       vector<Rect> detectRects;
