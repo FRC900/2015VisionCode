@@ -7,6 +7,7 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include "imagedetect.hpp"
+#include <stdlib.h> 
 
 using namespace std;
 using namespace cv;
@@ -31,7 +32,7 @@ bool rectangleCompare(Rect rect1, Rect rect2) {
 Point center1 = Point(rect1.width/2,rect1.height/2);
 Point center2 = Point(rect2.width/2,rect2.height/2);
 Rect centerRect = Rect(center1,center2);
-bool centerOkay = (centerRect.width * centerRect.height) < centerArea);
+bool centerOkay = ((centerRect.width * centerRect.height) < centerArea);
 bool areaOkay = (abs((rect1.width * rect1.height) - (rect2.width * rect2.height)) < rectArea);
 return (centerOkay && areaOkay);
 }
@@ -63,25 +64,30 @@ GA2DBinaryStringGenome & genome = (GA2DBinaryStringGenome &)g;
   for(int i=0; i<genome.height(); i++){
      intval[i] = getIntFrom2DBinaryString(genome, i);
   }
+String face_cascade_name = "../cascade_training/classifier_bin_5/cascade_25.xml";
+   CascadeClassifier detectCascade;
+if( !detectCascade.load( face_cascade_name ) )
+   {
+      cerr << "--(!)Error loading " << face_cascade_name << endl; 
+      return -1; 
+   }
 vector <Rect> binsThreshold;
 vector <Rect> binsClassifier;
 vector <Rect> filteredBins;
 Mat threshHoldImage;
 int foundImage = 0;
-for(i = 0; i < allBinImages.size(); i++) {
+for(int i = 0; i < allBinImages.size(); i++) {
 	thresholdImage(allBinImages[i].image,threshHoldImage,binsThreshold,intval[0],intval[1],intval[2],intval[3],intval[4],intval[5]);
 	cascadeDetect(allBinImages[i].image,detectCascade,binsClassifier);
 	filterUsingThreshold(binsClassifier,binsThreshold,filteredBins);
 	if (allBinImages.size() == 1)
-	if (rectangleCompare(filteredBins,allBinImages[i].binLoc))
+	if (rectangleCompare(filteredBins[0],allBinImages[i].binLoc))
 	foundImage++;
 	}
-return foundImage(float) / allBinImages.size()(float);
+
+return (float)foundImage / (float)allBinImages.size();
 }
 
-
-
-}
 int main(int argc, char **argv) {
 
 for(int ii=1; ii<argc; ii++) {
@@ -89,7 +95,7 @@ for(int ii=1; ii<argc; ii++) {
     GARandomSeed((unsigned int)atoi(argv[ii]));
   }
 }
-ofstream inputFile;
+ifstream inputFile;
 string line;
 inputFile.open("input.txt", ios::in);
 if (!inputFile.is_open()) {
@@ -100,11 +106,15 @@ int lineNum = 1;
 int position;
 string imageName;
 vector<string> parameters;
-while ( getline (inputFile,line) )
+while ( getline(inputFile,line) )
     {
-	parameters = split(line," ");
+	parameters = split(line,' ');
+	if(parameters.size() != 5) {
+		cout << "file parameters error" << endl;
+		return -1;
+		}
 	allBinImages[lineNum].image = imread(parameters[0]);
-	allBinImages[lineNum].binLoc = Rect(Point(parameters[1],parameters[2]),Point(parameters[3],parameters[4]));
+	allBinImages[lineNum].binLoc = Rect(Point(atoi(parameters[1].c_str()),atoi(parameters[2].c_str())),Point(atoi(parameters[3].c_str()),atoi(parameters[4].c_str())));
 	lineNum++;
     }
 int width    = 8; //number of bits per number
@@ -113,14 +123,6 @@ int popsize  = 30; //how many pairs of numbers it creates per gen
 int ngen     = 400; //number of generations to run
 float pmut   = 0.001; //chance of mutation
 float pcross = 0.9; //chance of crossover
-
-String face_cascade_name = "../cascade_training/classifier_bin_5/cascade_25.xml";
-   CascadeClassifier detectCascade;
-if( !detectCascade.load( face_cascade_name ) )
-   {
-      cerr << "--(!)Error loading " << face_cascade_name << endl; 
-      return -1; 
-   }
 
 
 //create the genome
@@ -132,7 +134,6 @@ ga.pMutation(pmut);
 ga.pCrossover(pcross);
 ga.scoreFilename("iteration_data.dat"); //write stuff to this file
 ga.flushFrequency(20); //frequency of writing to data
-ga.terminator(terminator); // Set up terminator to stop on an exact match
 ga.evolve(); //RUN!
 //now we print out the best values that it found
 genome = ga.statistics().bestIndividual();
