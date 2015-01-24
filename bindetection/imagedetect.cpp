@@ -14,7 +14,7 @@ int maxDetectSize   = 200 * 4;
 //int r_max     = 90;
 //int b_min     = 100;
 //int b_max     = 170;
-int hist_divider = 1;
+int histDivider = 1;
 
 const double DETECT_ASPECT_RATIO = 1.0;
 

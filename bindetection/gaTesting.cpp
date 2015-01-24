@@ -31,9 +31,9 @@ bool rectangleCompare(Rect rect1, Rect rect2) {
 Point center1 = Point(rect1.width/2,rect1.height/2);
 Point center2 = Point(rect2.width/2,rect2.height/2);
 Rect centerRect = Rect(center1,center2);
-bool centerOkay = if( (centerRect.width * centerRect.height) < centerArea);
-bool areaOkay = if( abs((rect1.width * rect1.height) - (rect2.width * rect2.height)) < rectArea);
-return if(centerOkay && areaOkay);
+bool centerOkay = (centerRect.width * centerRect.height) < centerArea);
+bool areaOkay = (abs((rect1.width * rect1.height) - (rect2.width * rect2.height)) < rectArea);
+return (centerOkay && areaOkay);
 }
 
 

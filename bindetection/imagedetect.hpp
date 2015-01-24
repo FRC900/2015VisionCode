@@ -11,11 +11,7 @@ extern int scale;
 extern int neighbors;
 extern int minDetectSize;
 extern int maxDetectSize;
-//int r_min     = 65;
-//int r_max     = 90;
-//int b_min     = 100;
-//int b_max     = 170;
-extern int hist_divider;
+extern int histDivider;
 
 void thresholdImage(const cv::Mat &frame, cv::Mat &outFrame, std::vector <cv::Rect> &rects,
 			  int H_MIN, int H_MAX, int S_MIN, int S_MAX, int V_MIN, int V_MAX);

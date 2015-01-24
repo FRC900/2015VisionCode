@@ -6,6 +6,7 @@
 #include <stdio.h>
 
 #include "imagedetect.hpp"
+#include "videoin.hpp"
 
 // Define this to threshold image by color in addition to 
 // checking for cascade classifier detection
@@ -53,14 +54,14 @@ string type2str(int type) {
 // the highest intensities
 void generateHistogram(const Mat &frame, double *minIdx, double *maxIdx)
 {
-   int histSize = 256 / (hist_divider ? hist_divider : 1);
-   static float range[] = { 0, 256 } ;
-   static const float* histRange = { range };
-   static bool uniform = true, accumulate = false;
+   int histSize = 256 / (histDivider ? histDivider : 1);
+   float range[] = { 0, 256 } ;
+   const float* histRange = { range };
+   bool uniform = true, accumulate = false;
 
    // Split into individual B,G,R channels so we can run a histogram on each
-   vector<Mat> bgr_planes;
-   split (frame, bgr_planes);
+   vector<Mat> bgrPlanes;
+   split (frame, bgrPlanes);
 
    //cvtColor(images[i], images[i], COLOR_BGR2HSV);
    Mat hist[3];
@@ -70,7 +71,7 @@ void generateHistogram(const Mat &frame, double *minIdx, double *maxIdx)
    for (size_t i = 0; i < 3; i++)
    {
       /// Compute the histograms:
-      calcHist(&bgr_planes[i], 1, 0, Mat(), 
+      calcHist(&bgrPlanes[i], 1, 0, Mat(), 
 	    hist[i], 1, &histSize, &histRange, uniform, accumulate );
 
       // Remove 0 & 255 intensities since these seem to confuse things later
@@ -85,7 +86,7 @@ void generateHistogram(const Mat &frame, double *minIdx, double *maxIdx)
    }
 }
 
-void writeImage(const vector<Mat> &images, size_t index, const char *path, int frameCount)
+void writeImage(const vector<Mat> &images, size_t index, const char *path, int frameCounter)
 {
    if (index < images.size())
    {
@@ -93,7 +94,7 @@ void writeImage(const vector<Mat> &images, size_t index, const char *path, int f
       stringstream fn;
       fn << path;
       fn << "_";
-      fn << frameCount;
+      fn << frameCounter;
       fn << "_";
       fn << index;
       imwrite(fn.str().substr(fn.str().rfind('\\')+1) + ".png", images[index]);
@@ -119,32 +120,28 @@ void writeImage(const vector<Mat> &images, size_t index, const char *path, int f
 int main( int argc, const char** argv )
 {
    string capPath;
-   VideoCapture cap;
-   String face_cascade_name = "../cascade_training/classifier_bin_5/cascade_25.xml";
-   //String detectCascade_name = "classifier_bin_6/cascade_11.xml";
+   VideoIn *cap;
+   String face_cascade_name = "../cascade_training/classifier_bin_5/cascade_27.xml";
    CascadeClassifier detectCascade;
    const size_t detectMax = 10;
    if (argc < 2)
    {
-      cap = VideoCapture(0);
+      cap = new VideoIn(0);
       capPath = "negative/1-21";
    }
    else if (isdigit(*argv[1]))
    {
-      cap = VideoCapture(*argv[1] - '0');
+      cap = new VideoIn(*argv[1] - '0');
       capPath = "negative/1-21" + (*argv[1] - '0');
    }
    else
    {
-      cap = VideoCapture(argv[1]);
+      cap = new VideoIn(argv[1]);
       capPath = "negative/" + string(argv[1]).substr(string(argv[1]).rfind('/')+1);
    }
-   cerr << capPath << endl;
 
    Mat frame;
-   Mat frame_copy;
    vector <Mat> images;
-   int frameCount = 0;
    	
    bool pause = false;
    bool captureAll = false;
@@ -159,7 +156,8 @@ int main( int argc, const char** argv )
    //createTrackbar ("R Max", "Parameters", &r_max, 256, NULL);
    //createTrackbar ("B Min", "Parameters", &b_min, 256, NULL);
    //createTrackbar ("B Max", "Parameters", &b_max, 256, NULL);
-   //createTrackbar ("Hist Divider", "Parameters", &hist_divider, 16, NULL);
+
+#ifdef USE_THRESHOLD
    string trackbarWindowName = "HSV";
    namedWindow(trackbarWindowName, WINDOW_AUTOSIZE);
    createTrackbar( "H_MIN", trackbarWindowName, &H_MIN, 179, NULL);
@@ -168,6 +166,7 @@ int main( int argc, const char** argv )
    createTrackbar( "S_MAX", trackbarWindowName, &S_MAX, 255, NULL);
    createTrackbar( "V_MIN", trackbarWindowName, &V_MIN, 255, NULL);
    createTrackbar( "V_MAX", trackbarWindowName, &V_MAX, 255, NULL);
+#endif
 
    //-- 1. Load the cascades
    if( !detectCascade.load( face_cascade_name ) )
@@ -177,24 +176,8 @@ int main( int argc, const char** argv )
    }
 
    //-- 2. Read the video stream
-   while( true )
+   while( cap->getNextFrame(pause, frame))
    {
-      if (!pause)
-      {
-	 cap >> frame;
-	 if( frame.empty() )
-	 { 
-	    printf(" --(!) No captured frame -- Break!\n");
-	    exit(0); 
-	 }
-	 if (frame.cols > 800)
-	    pyrDown(frame, frame);
-	 frame_copy = frame.clone();
-	 frameCount += 1;
-      }
-      else
-	 frame = frame_copy.clone();
-         
       minDetectSize = frame.cols * 0.057;
 
       //-- 3. Apply the classifier to the frame
@@ -218,11 +201,10 @@ int main( int argc, const char** argv )
       {
 	 // ignore really dim images - ones where the peak intensity of each
 	 // channel is below histIgnoreMin
-
 	 double minIdx[3];
 	 double maxIdx[3];
 	 generateHistogram(frame(Rect(detectRects[i].x, detectRects[i].y, detectRects[i].width, detectRects[i].height)), minIdx, maxIdx);
-	 cerr << i << " " << maxIdx[0] << " " << maxIdx[1] << " " << maxIdx[2] << endl;
+	 //cerr << i << " " << maxIdx[0] << " " << maxIdx[1] << " " << maxIdx[2] << endl;
 	 if ((maxIdx[0] > histIgnoreMin) || 
 	     (maxIdx[1] > histIgnoreMin) || 
 	     (maxIdx[2] > histIgnoreMin))
@@ -250,7 +232,7 @@ int main( int argc, const char** argv )
 	    filterIdx += 1;
 	 }
 	 rectangle( frame, passedHistFilterRects[i], 
-	       inRect ? Scalar( 0, 0, 255 ) : Scalar(255, 0, 255) ,3);
+	       inRect ? Scalar( 0, 0, 255 ) : Scalar(255, 0, 255), 3);
 
 	 // Label each outlined image with a digit.  Top-level code allows
 	 // users to save these small images by hitting the key they're labeled with
@@ -275,13 +257,7 @@ int main( int argc, const char** argv )
       else if( c == ' ') { pause = !pause; }
       else if( c == 'f')  // advance to next frame
       {
-	 cap >> frame;
-	 if( frame.empty() )
-	 { printf(" --(!) No captured frame -- Break!\n"); exit(0); }
-	 if (frame.cols> 800)
-	    pyrDown(frame, frame);
-	 frame_copy = frame.clone();
-	 frameCount += 1;
+	 cap->getNextFrame(false, frame);
       }
       else if (c == 'A') // toggle capture-all
       {
@@ -290,14 +266,14 @@ int main( int argc, const char** argv )
       else if (c == 'a') // save all detected images
       {
 	 for (size_t index = 0; index < images.size(); index++)
-	    writeImage(images, index, capPath.c_str(), frameCount);
+	    writeImage(images, index, capPath.c_str(), cap->frameCounter());
       }
       else if (isdigit(c)) // save a single detected image
       {
-	 writeImage(images, c - '0', capPath.c_str(), frameCount);
+	 writeImage(images, c - '0', capPath.c_str(), cap->frameCounter());
       }
       for (size_t index = 0; captureAll && (index < images.size()); index++)
-	 writeImage(images, index, capPath.c_str(), frameCount);
+	 writeImage(images, index, capPath.c_str(), cap->frameCounter());
    }
    return 0;
 }
