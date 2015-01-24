@@ -75,8 +75,8 @@ void generateHistogram(const Mat &frame, double *minIdx, double *maxIdx)
 	    hist[i], 1, &histSize, &histRange, uniform, accumulate );
 
       // Remove 0 & 255 intensities since these seem to confuse things later
+      hist[i].at<float>(0)   = 0.;
       hist[i].at<float>(255) = 0.;
-      hist[i].at<float>(0) = 0.;
 
       // Grab the color intensity peak
       Point min, max;
@@ -121,8 +121,6 @@ int main( int argc, const char** argv )
 {
    string capPath;
    VideoIn *cap;
-   String face_cascade_name = "../cascade_training/classifier_bin_5/cascade_27.xml";
-   CascadeClassifier detectCascade;
    const size_t detectMax = 10;
    if (argc < 2)
    {
@@ -168,10 +166,17 @@ int main( int argc, const char** argv )
    createTrackbar( "V_MAX", trackbarWindowName, &V_MAX, 255, NULL);
 #endif
 
+   const char *cascadeName = "../cascade_training/classifier_bin_5/cascade_27.xml";
+   BaseCascadeDetect *detectCascade;
+   if (gpu::getCudaEnabledDeviceCount() > 0)
+      detectCascade = new GPU_CascadeDetect(cascadeName);
+   else
+      detectCascade = new CPU_CascadeDetect(cascadeName);
+
    //-- 1. Load the cascades
-   if( !detectCascade.load( face_cascade_name ) )
+   if( !detectCascade->loaded() )
    {
-      cerr << "--(!)Error loading " << face_cascade_name << endl; 
+      cerr << "--(!)Error loading " << cascadeName << endl; 
       return -1; 
    }
 
@@ -192,7 +197,7 @@ int main( int argc, const char** argv )
 #endif
 
       vector<Rect> detectRects;
-      cascadeDetect(frame, detectCascade, detectRects); 
+      detectCascade->cascadeDetect(frame, detectRects); 
 
       vector<Rect> passedHistFilterRects;
       images.clear();
