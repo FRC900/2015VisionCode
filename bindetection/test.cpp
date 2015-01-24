@@ -7,6 +7,10 @@
 
 #include "imagedetect.hpp"
 
+// Define this to threshold image by color in addition to 
+// checking for cascade classifier detection
+//#define USE_THRESHOLD
+
 using namespace std;
 using namespace cv;
 
@@ -17,7 +21,9 @@ int S_MAX = 185;
 int V_MIN =  57;
 int V_MAX = 184;
 
-string window_name = "Capture - Face detection";
+string windowName = "Capture - Face detection";
+
+int histIgnoreMin = 14;
 
 // Convert type value to a human readable string. Useful for debug
 string type2str(int type) {
@@ -41,6 +47,42 @@ string type2str(int type) {
   r += (chans+'0');
 
   return r;
+}
+
+// For a given frame, find the pixels values for each channel with 
+// the highest intensities
+void generateHistogram(const Mat &frame, double *minIdx, double *maxIdx)
+{
+   int histSize = 256 / (hist_divider ? hist_divider : 1);
+   static float range[] = { 0, 256 } ;
+   static const float* histRange = { range };
+   static bool uniform = true, accumulate = false;
+
+   // Split into individual B,G,R channels so we can run a histogram on each
+   vector<Mat> bgr_planes;
+   split (frame, bgr_planes);
+
+   //cvtColor(images[i], images[i], COLOR_BGR2HSV);
+   Mat hist[3];
+   double minVal[3];
+   double maxVal[3];
+
+   for (size_t i = 0; i < 3; i++)
+   {
+      /// Compute the histograms:
+      calcHist(&bgr_planes[i], 1, 0, Mat(), 
+	    hist[i], 1, &histSize, &histRange, uniform, accumulate );
+
+      // Remove 0 & 255 intensities since these seem to confuse things later
+      hist[i].at<float>(255) = 0.;
+      hist[i].at<float>(0) = 0.;
+
+      // Grab the color intensity peak
+      Point min, max;
+      minMaxLoc(hist[i], minVal + i, maxVal + i, &min, &max);
+      minIdx[i] = min.y;
+      maxIdx[i] = max.y;
+   }
 }
 
 void writeImage(const vector<Mat> &images, size_t index, const char *path, int frameCount)
@@ -78,7 +120,7 @@ int main( int argc, const char** argv )
 {
    string capPath;
    VideoCapture cap;
-   String face_cascade_name = "../cascade_training/classifier_bin_5/cascade.xml";
+   String face_cascade_name = "../cascade_training/classifier_bin_5/cascade_25.xml";
    //String detectCascade_name = "classifier_bin_6/cascade_11.xml";
    CascadeClassifier detectCascade;
    const size_t detectMax = 10;
@@ -110,6 +152,7 @@ int main( int argc, const char** argv )
    namedWindow("Parameters", WINDOW_AUTOSIZE);
    createTrackbar ("Scale", "Parameters", &scale, 50, NULL);
    createTrackbar ("Neighbors", "Parameters", &neighbors, 50, NULL);
+   createTrackbar ("Hist Thresh", "Parameters", &histIgnoreMin, 40, NULL);
    createTrackbar ("Min Detect", "Parameters", &minDetectSize, 1000, NULL);
    createTrackbar ("Max Detect", "Parameters", &maxDetectSize, 1000, NULL);
    //createTrackbar ("R Min", "Parameters", &r_min, 256, NULL);
@@ -144,7 +187,8 @@ int main( int argc, const char** argv )
 	    printf(" --(!) No captured frame -- Break!\n");
 	    exit(0); 
 	 }
-	 pyrDown(frame, frame);
+	 if (frame.cols > 800)
+	    pyrDown(frame, frame);
 	 frame_copy = frame.clone();
 	 frameCount += 1;
       }
@@ -155,39 +199,58 @@ int main( int argc, const char** argv )
 
       //-- 3. Apply the classifier to the frame
 
+#ifdef USE_THRESHOLD
       // Threshold the image using supplied HSV value
       Mat frameThresh;
       vector<Rect> threshRects;
       thresholdImage(frame, frameThresh, threshRects,
 		H_MIN, H_MAX, S_MIN, S_MAX, V_MIN, V_MAX);
       imshow("Threshold", frameThresh);
+#endif
 
       vector<Rect> detectRects;
-      cascadeDetect ( frame, detectCascade, detectRects); 
+      cascadeDetect(frame, detectCascade, detectRects); 
 
+      vector<Rect> passedHistFilterRects;
+      images.clear();
       // Mark and save up to detectMax detected images
       for( size_t i = 0; i < min(detectRects.size(), detectMax); i++ )  
       {
-	 // Copy detected image into images[i]
-	 images.push_back(Mat());
-	 frame(Rect(detectRects[i].x, detectRects[i].y, detectRects[i].width, detectRects[i].height)).copyTo(images[i]);
+	 // ignore really dim images - ones where the peak intensity of each
+	 // channel is below histIgnoreMin
+
+	 double minIdx[3];
+	 double maxIdx[3];
+	 generateHistogram(frame(Rect(detectRects[i].x, detectRects[i].y, detectRects[i].width, detectRects[i].height)), minIdx, maxIdx);
+	 cerr << i << " " << maxIdx[0] << " " << maxIdx[1] << " " << maxIdx[2] << endl;
+	 if ((maxIdx[0] > histIgnoreMin) || 
+	     (maxIdx[1] > histIgnoreMin) || 
+	     (maxIdx[2] > histIgnoreMin))
+	 {
+	    // Copy detected image into images[i]
+	    passedHistFilterRects.push_back(detectRects[i]);
+	    images.push_back(frame(detectRects[i]).clone());
+	 }
       }
       
       vector <Rect> filteredRects;
-      filterUsingThreshold(detectRects, threshRects, filteredRects);
+#ifdef USE_THRESHOLD
+      filterUsingThreshold(passedHistFilterRects, threshRects, filteredRects);
+#endif
 
       int filterIdx = 0;
-      for( size_t i = 0; i < min(detectRects.size(), detectMax); i++ )  
+      for( size_t i = 0; i < min(passedHistFilterRects.size(), detectMax); i++ )  
       {
 	 // Hightlight detected images which are fully contained in 
 	 // green contour bounding rectangles
 	 bool inRect = false;
-	 if (filteredRects.size() && (filteredRects[filterIdx] == detectRects[i]))
+	 if (filteredRects.size() && (filteredRects[filterIdx] == passedHistFilterRects[i]))
 	 {
 	    inRect = true;
 	    filterIdx += 1;
 	 }
-	 rectangle( frame, detectRects[i], inRect ? Scalar( 0, 0, 255 ) : Scalar(255, 0, 255) ,3);
+	 rectangle( frame, passedHistFilterRects[i], 
+	       inRect ? Scalar( 0, 0, 255 ) : Scalar(255, 0, 255) ,3);
 
 	 // Label each outlined image with a digit.  Top-level code allows
 	 // users to save these small images by hitting the key they're labeled with
@@ -196,14 +259,16 @@ int main( int argc, const char** argv )
 	 // pass of classifier training.
 	 stringstream label;
 	 label << i;
-	 putText( frame, label.str(), Point(detectRects[i].x, detectRects[i].y), FONT_HERSHEY_PLAIN, 1.0, Scalar(255, 255, 0));
+	 putText( frame, label.str(), 
+	       Point(passedHistFilterRects[i].x, passedHistFilterRects[i].y), 
+	       FONT_HERSHEY_PLAIN, 1.0, Scalar(255, 255, 0));
       }
 
-      for (size_t i = 0; i < threshRects.size(); i++)
-	 rectangle (frame, threshRects[i], Scalar(255,255,0), 3);
+      //for (size_t i = 0; i < threshRects.size(); i++)
+	 //rectangle (frame, threshRects[i], Scalar(255,255,0), 3);
 
       //-- Show what you got
-      imshow( window_name, frame );
+      imshow( windowName, frame );
 
       char c = waitKey(5);
       if( c == 'c' ) { break; } // exit
@@ -213,7 +278,8 @@ int main( int argc, const char** argv )
 	 cap >> frame;
 	 if( frame.empty() )
 	 { printf(" --(!) No captured frame -- Break!\n"); exit(0); }
-	 pyrDown(frame, frame);
+	 if (frame.cols> 800)
+	    pyrDown(frame, frame);
 	 frame_copy = frame.clone();
 	 frameCount += 1;
       }
@@ -236,71 +302,35 @@ int main( int argc, const char** argv )
    return 0;
 }
 
-// Histogram code
+//cerr << i << " " << max_idx[0] << " " << max_idx[1] << " " <<max_idx[2] << " " << images[i].cols <<  " " << images[i].rows << " " << type2str(images[i].type()) << endl;
 #if 0
-  int histSize = 256 / (hist_divider ? hist_divider : 1);
-static float range[] = { 0, 256 } ;
-static const float* histRange = { range };
-static bool uniform = true, accumulate = false;
+// Draw the histograms for B, G and R
+int hist_w = 512; int hist_h = 400;
+int bin_w = cvRound( (double) hist_w/histSize );
 
-  for( size_t i = 0; i < min(faces.size(), detectMax); i++ )  {
-     // Split into individual B,G,R channels so we can run a histogram on each
-     vector<Mat> bgr_planes;
-     split (images[i], bgr_planes);
-     bool uniform = true; bool accumulate = false;
+Mat histImage( hist_h, hist_w, CV_8UC3, Scalar( 0,0,0) );
+/// Normalize the result to [ 0, histImage.rows ]
+for (size_t j = 0; j < 3; j++)
+normalize(hist[j], hist[j], 0, histImage.rows, NORM_MINMAX, -1, Mat() );
 
-     //cvtColor(images[i], images[i], COLOR_BGR2HSV);
-     Mat hist[3];
-     double min_val[3];
-     double max_val[3];
-     //int min_idx[3];
-     int max_idx[3];
+const Scalar colors[3] = {Scalar(255,0,0), Scalar(0,255,0), Scalar(0,0,255)};
+// For each point in the histogram
+for( int ii = 1; ii < histSize; ii++ )
+{
+   // Draw for each channel
+   for (size_t jj = 0; jj < 3; jj++)
+      line( histImage, Point( bin_w*(ii-1), hist_h - cvRound(hist[jj].at<float>(ii-1)) ) ,
+	    Point( bin_w*(ii), hist_h - cvRound(hist[jj].at<float>(ii)) ),
+	    colors[jj], 2, 8, 0  );
+}
 
-     for (size_t j = 0; j < 3; j++)
-     {
-	/// Compute the histograms:
-	calcHist( &bgr_planes[j], 1, 0, Mat(), hist[j], 1, &histSize, &histRange, uniform, accumulate );
-
-	// Remove 0 & 255 intensities since these seem to confuse things later
-	hist[j].at<float>(255) = 0.;
-	hist[j].at<float>(0) = 0.;
-
-	// Grab the color intensity peak
-	Point min, max;
-	minMaxLoc(hist[j], min_val, max_val + j, &min, &max);
-	//min_idx[j] = min.y;
-	max_idx[j] = max.y;
-     }
-      //cerr << i << " " << max_idx[0] << " " << max_idx[1] << " " <<max_idx[2] << " " << images[i].cols <<  " " << images[i].rows << " " << type2str(images[i].type()) << endl;
-#endif
-#if 0
-     // Draw the histograms for B, G and R
-     int hist_w = 512; int hist_h = 400;
-     int bin_w = cvRound( (double) hist_w/histSize );
-
-     Mat histImage( hist_h, hist_w, CV_8UC3, Scalar( 0,0,0) );
-     /// Normalize the result to [ 0, histImage.rows ]
-     for (size_t j = 0; j < 3; j++)
-	normalize(hist[j], hist[j], 0, histImage.rows, NORM_MINMAX, -1, Mat() );
-
-     const Scalar colors[3] = {Scalar(255,0,0), Scalar(0,255,0), Scalar(0,0,255)};
-     // For each point in the histogram
-     for( int ii = 1; ii < histSize; ii++ )
-     {
-	// Draw for each channel
-	for (size_t jj = 0; jj < 3; jj++)
-	   line( histImage, Point( bin_w*(ii-1), hist_h - cvRound(hist[jj].at<float>(ii-1)) ) ,
-		 Point( bin_w*(ii), hist_h - cvRound(hist[jj].at<float>(ii)) ),
-		 colors[jj], 2, 8, 0  );
-     }
-
-     // Display detected images and histograms of those images
-     stringstream winName;
-     winName << "Face "; 
-     winName << i;
-     namedWindow(winName.str(), CV_WINDOW_AUTOSIZE);
-     imshow (winName.str(), images[i]);
-     resizeWindow(winName.str(), images[i].cols, images[i].rows);
-     winName << " Hist";
-     imshow (winName.str(), histImage);
+// Display detected images and histograms of those images
+stringstream winName;
+winName << "Face "; 
+winName << i;
+namedWindow(winName.str(), CV_WINDOW_AUTOSIZE);
+imshow (winName.str(), images[i]);
+resizeWindow(winName.str(), images[i].cols, images[i].rows);
+winName << " Hist";
+imshow (winName.str(), histImage);
 #endif

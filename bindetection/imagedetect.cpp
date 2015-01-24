@@ -6,8 +6,8 @@
 
 #include "iostream"
 
-int scale     = 3;
-int neighbors = 2;
+int scale     = 10;
+int neighbors = 5;
 int minDetectSize   = 20;
 int maxDetectSize   = 200 * 4;
 //int r_min     = 65;
@@ -85,7 +85,6 @@ void thresholdImage(const Mat &frame, Mat &outFrame, vector <Rect> &rects,
       if ((rect.width > (minDetectSize * DETECT_ASPECT_RATIO))&&(rect.height > minDetectSize))
 	 rects.push_back(rect);
    }
-   cout << "ThreshRect " << rects.size() << endl;
 }
 
 /** @function detectAndDisplay */
