@@ -15,8 +15,9 @@ using namespace cv;
 BaseCascadeDetect *detectCascade;
 struct binImage {Mat image; Rect binLoc;};
 vector <binImage> allBinImages;
-int centerArea = 100;
-int rectArea = 200;
+int centerArea = 4000;
+int rectArea = 100;
+Mat drawCopy;
 
 vector<string> &split(const string &s, char delim, vector<string> &elems) {
     stringstream ss(s);
@@ -33,9 +34,10 @@ bool rectangleCompare(Rect rect1, Rect rect2) {
 Point center1 = Point(rect1.width/2,rect1.height/2);
 Point center2 = Point(rect2.width/2,rect2.height/2);
 Rect centerRect = Rect(center1,center2);
-bool centerOkay = ((centerRect.width * centerRect.height) < centerArea);
-bool areaOkay = (abs((rect1.width * rect1.height) - (rect2.width * rect2.height)) < rectArea);
-return (centerOkay && areaOkay);
+bool matched = ((abs((rect1.width * rect1.height) - (rect2.width * rect2.height)) < rectArea) && ((centerRect.width * centerRect.height) < centerArea));
+if(matched) 
+cout << "rectangles matched" << endl;
+return matched;
 }
 
 
@@ -74,16 +76,22 @@ int foundImage = 0;
 cout << "trying values: ";
 for(int i = 0; i < genome.height(); i++)
 cout << intval[i] << ",";
-scale = intval[0];
-neighbors = intval[1];
+/* scale = intval[0];
+neighbors = intval[1]; */
 for(int i = 0; i < allBinImages.size(); i++) {
+
 	detectCascade->cascadeDetect(allBinImages[i].image,binsClassifier);
-	if (allBinImages.size() == 1)
+	if (binsClassifier.size() == 1)
 	if (rectangleCompare(binsClassifier[0],allBinImages[i].binLoc))
 	foundImage++;
 	}
+drawCopy = allBinImages[allBinImages.size() - 1].image.clone();
+rectangle(drawCopy,allBinImages[allBinImages.size() - 1].binLoc,Scalar(0,255,0),4);
+rectangle(drawCopy,binsClassifier[allBinImages.size() - 1],Scalar(0,0,255),4);
+imshow("Image",drawCopy);
+waitKey(5);
 float successRate = (float)foundImage / (float)allBinImages.size();
-cout << " Success Percentage: " << successRate * 100 << endl;
+cout << " Successful Images " << foundImage << endl;
 return successRate;
 }
 
@@ -135,8 +143,8 @@ while ((dp = readdir(dirp)) != NULL) {
 	for(int i = 1; i < parameters.size(); i++)
 	cout << parameters[i] << " ";
 	cout << endl;
-	Point rectPoint1 = Point(atoi(parameters[2].c_str()),atoi(parameters[3].c_str()));
-	Point rectPoint2 = Point((atoi(parameters[2].c_str()) + atoi(parameters[4].c_str())),(atoi(parameters[3].c_str()) + atoi(parameters[5].c_str())));
+	Point rectPoint1 = Point(atoi(parameters[3].c_str()),atoi(parameters[4].c_str())); //top left
+	Point rectPoint2 = Point((atoi(parameters[3].c_str()) + atoi(parameters[5].c_str())),(atoi(parameters[4].c_str()) + atoi(parameters[6].c_str())));
 	allBinImages[imageNum].binLoc = Rect(rectPoint1,rectPoint2);
 	if(allBinImages[imageNum].image.empty()) {
 		cout << "image loading error" << endl;
