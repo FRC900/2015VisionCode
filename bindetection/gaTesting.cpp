@@ -8,7 +8,8 @@
 #include "opencv2/imgproc/imgproc.hpp"
 #include "imagedetect.hpp"
 #include <stdlib.h> 
-
+#include <sys/types.h>
+#include <dirent.h>
 using namespace std;
 using namespace cv;
 
@@ -76,6 +77,9 @@ vector <Rect> binsClassifier;
 vector <Rect> filteredBins;
 Mat threshHoldImage;
 int foundImage = 0;
+cout << "trying values: ";
+for(int i = 0; i < genome.height(); i++)
+cout << intval[i] << ",";
 for(int i = 0; i < allBinImages.size(); i++) {
 	thresholdImage(allBinImages[i].image,threshHoldImage,binsThreshold,intval[0],intval[1],intval[2],intval[3],intval[4],intval[5]);
 	cascadeDetect(allBinImages[i].image,detectCascade,binsClassifier);
@@ -84,8 +88,9 @@ for(int i = 0; i < allBinImages.size(); i++) {
 	if (rectangleCompare(filteredBins[0],allBinImages[i].binLoc))
 	foundImage++;
 	}
-
-return (float)foundImage / (float)allBinImages.size();
+float successRate = (float)foundImage / (float)allBinImages.size();
+cout << " Success Percentage: " << successRate * 100 << endl;
+return successRate;
 }
 
 int main(int argc, char **argv) {
@@ -95,27 +100,43 @@ for(int ii=1; ii<argc; ii++) {
     GARandomSeed((unsigned int)atoi(argv[ii]));
   }
 }
-ifstream inputFile;
-string line;
-inputFile.open("input.txt", ios::in);
-if (!inputFile.is_open()) {
-	cout << "no input file!";
-	return -1;
-	}
-int lineNum = 1;
+int imageNum = 0;
 int position;
-string imageName;
+vector<string> image_names;
 vector<string> parameters;
-while ( getline(inputFile,line) )
-    {
-	parameters = split(line,' ');
-	if(parameters.size() != 5) {
+DIR *dirp = opendir("./gaSource/");
+struct dirent *dp;
+if (!dirp)
+return -1;
+while ((dp = readdir(dirp)) != NULL) {
+   if (strstr(dp->d_name, ".png") && !strstr(dp->d_name, "_r.png"))
+	 image_names.push_back(dp->d_name);
+   }
+   closedir(dirp);
+   cout << "Read " << image_names.size() << " image names" << endl;
+   for (vector<string>::iterator it = image_names.begin(); it != image_names.end(); ++it)
+   {
+	allBinImages.push_back(binImage());
+	string imagePath = "./gaSource/" + *it;
+	allBinImages[imageNum].image = imread(imagePath);
+	*it = it->substr(0, it->rfind('.'));
+	parameters = split(*it,'_');
+	if(parameters.size() != 7) {
 		cout << "file parameters error" << endl;
 		return -1;
 		}
-	allBinImages[lineNum].image = imread(parameters[0]);
-	allBinImages[lineNum].binLoc = Rect(Point(atoi(parameters[1].c_str()),atoi(parameters[2].c_str())),Point(atoi(parameters[3].c_str()),atoi(parameters[4].c_str())));
-	lineNum++;
+	cout << "Image " << it - image_names.begin() << " parameters: ";
+	for(int i = 1; i < parameters.size(); i++)
+	cout << parameters[i] << " ";
+	cout << endl;
+	Point rectPoint1 = Point(atoi(parameters[2].c_str()),atoi(parameters[3].c_str()));
+	Point rectPoint2 = Point((atoi(parameters[2].c_str()) + atoi(parameters[4].c_str())),(atoi(parameters[3].c_str()) + atoi(parameters[5].c_str())));
+	allBinImages[imageNum].binLoc = Rect(rectPoint1,rectPoint2);
+	if(allBinImages[imageNum].image.empty()) {
+		cout << "image loading error" << endl;
+		return -1;
+		}
+	imageNum++;
     }
 int width    = 8; //number of bits per number
 int height   = 6; //number of values to change
@@ -134,6 +155,7 @@ ga.pMutation(pmut);
 ga.pCrossover(pcross);
 ga.scoreFilename("iteration_data.dat"); //write stuff to this file
 ga.flushFrequency(20); //frequency of writing to data
+cout << "created GA, starting now..." << endl;
 ga.evolve(); //RUN!
 //now we print out the best values that it found
 genome = ga.statistics().bestIndividual();

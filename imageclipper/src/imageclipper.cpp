@@ -266,10 +266,11 @@ void key_callback( const ArgParam* arg, CvCallbackParam* param )
         cout << "Key pressed: " << (int)key << endl;
 
         // 32 is SPACE
-        if( key == 's' || key == 'S' || key == 32 ) // Save
+	
+        if( key == 's' || key == 'S' || key == 32 || key == 'a' ) // Save
 	{
 	   CvCallbackParam thisParam = *param;
-	   if (key == 'S')
+	   if (key == 'S' || key == 'a')
 	   {
 	      thisParam.rect.x = 0;
 	      thisParam.rect.y = 0;
@@ -280,11 +281,20 @@ void key_callback( const ArgParam* arg, CvCallbackParam* param )
 	   }
 	   if( thisParam.rect.width > 0 && thisParam.rect.height > 0 )
 	   {
-	      string output_path = icFormat( 
+		string output_path;
+	   if( key == 'a' ) {
+		output_path = icFormat( 
+		    thisParam.output_format, fs::dirname( filename ), 
+		    fs::filename( filename ), fs::extension( filename ),
+		    param->rect.x, param->rect.y, param->rect.width, param->rect.height, 
+		    thisParam.frame, thisParam.rotate );
+		}
+	   else {output_path = icFormat( 
 		    thisParam.output_format, fs::dirname( filename ), 
 		    fs::filename( filename ), fs::extension( filename ),
 		    thisParam.rect.x, thisParam.rect.y, thisParam.rect.width, thisParam.rect.height, 
 		    thisParam.frame, thisParam.rotate );
+		}
 
 	      if( !fs::match_extensions( output_path, thisParam.imtypes ) )
 	      {
