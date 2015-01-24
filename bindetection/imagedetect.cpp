@@ -1,6 +1,7 @@
 #include "opencv2/objdetect/objdetect.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
+#include <opencv2/gpu/gpu.hpp>
 
 #include "imagedetect.hpp"
 
@@ -20,6 +21,7 @@ const double DETECT_ASPECT_RATIO = 1.0;
 
 using namespace std;
 using namespace cv;
+using namespace cv::gpu;
 
 // Take an input image. Threshold it so that pixels within
 // the HSV range specified by [HSV]_[MIN,MAX] are set to non-zero
@@ -87,17 +89,14 @@ void thresholdImage(const Mat &frame, Mat &outFrame, vector <Rect> &rects,
    }
 }
 
-/** @function detectAndDisplay */
-void cascadeDetect ( const Mat &frame, 
-      CascadeClassifier &cascade, 
-      vector<Rect> &imageRects )
+void CPU_CascadeDetect::cascadeDetect(const Mat &frame, vector<Rect> &imageRects)
 {
   Mat frameGray;
   cvtColor( frame, frameGray, CV_BGR2GRAY );
   equalizeHist( frameGray, frameGray );
 
   //-- Detect faces
-  cascade.detectMultiScale( frameGray, 
+  _classifier.detectMultiScale( frameGray, 
 	imageRects, 
 	1.05 + scale/100., 
 	neighbors, 
@@ -105,6 +104,31 @@ void cascadeDetect ( const Mat &frame,
 	Size(minDetectSize * DETECT_ASPECT_RATIO, minDetectSize), 
 	Size(maxDetectSize * DETECT_ASPECT_RATIO, maxDetectSize) );
 }
+
+void GPU_CascadeDetect::cascadeDetect (const Mat &frame, vector<Rect> &imageRects)
+{
+  GpuMat detectResultGPU;
+  frameGPU.upload(frame);
+  cvtColor( frameGPU, frameGray, CV_BGR2GRAY );
+  equalizeHist( frameGray, frameEqualizeHist);
+
+  //-- Detect objects
+  int detectCount = _classifier.detectMultiScale( frameEqualizeHist, 
+	detectResultGPU, 
+	1.05 + scale/100., 
+	neighbors, 
+	Size(minDetectSize * DETECT_ASPECT_RATIO, minDetectSize) );
+
+  // download only detected number of rectangles
+  Mat detectResult;
+  detectResultGPU.colRange(0, detectCount).download(detectResult);
+
+  imageRects.clear();
+  Rect* faces = detectResult.ptr<Rect>();
+  for(int i = 0; i < detectCount; ++i)
+     imageRects.push_back(faces[i]);
+}
+
 
 // For each detected rectange, check if each rect is in
 // any of the thresholded rectangles. If so, push the detected

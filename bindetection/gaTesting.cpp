@@ -65,13 +65,20 @@ GA2DBinaryStringGenome & genome = (GA2DBinaryStringGenome &)g;
   for(int i=0; i<genome.height(); i++){
      intval[i] = getIntFrom2DBinaryString(genome, i);
   }
-String face_cascade_name = "../cascade_training/classifier_bin_5/cascade_25.xml";
-   CascadeClassifier detectCascade;
-if( !detectCascade.load( face_cascade_name ) )
+   const char *cascadeName = "../cascade_training/classifier_bin_5/cascade_27.xml";
+   BaseCascadeDetect *detectCascade;
+   if (gpu::getCudaEnabledDeviceCount() > 0)
+      detectCascade = new GPU_CascadeDetect(cascadeName);
+   else
+      detectCascade = new CPU_CascadeDetect(cascadeName);
+
+   //-- 1. Load the cascades
+   if( !detectCascade->loaded() )
    {
-      cerr << "--(!)Error loading " << face_cascade_name << endl; 
+      cerr << "--(!)Error loading " << cascadeName << endl; 
       return -1; 
    }
+
 vector <Rect> binsThreshold;
 vector <Rect> binsClassifier;
 vector <Rect> filteredBins;
@@ -82,7 +89,7 @@ for(int i = 0; i < genome.height(); i++)
 cout << intval[i] << ",";
 for(int i = 0; i < allBinImages.size(); i++) {
 	thresholdImage(allBinImages[i].image,threshHoldImage,binsThreshold,intval[0],intval[1],intval[2],intval[3],intval[4],intval[5]);
-	cascadeDetect(allBinImages[i].image,detectCascade,binsClassifier);
+	detectCascade->cascadeDetect(allBinImages[i].image,binsClassifier);
 	filterUsingThreshold(binsClassifier,binsThreshold,filteredBins);
 	if (allBinImages.size() == 1)
 	if (rectangleCompare(filteredBins[0],allBinImages[i].binLoc))
