@@ -21,6 +21,8 @@ createsamples
 haartraining
 performance
 vec2img
+gaTesting
+C920VideoCap
 
 # Metadata
 *.aliases
