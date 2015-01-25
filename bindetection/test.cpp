@@ -125,12 +125,12 @@ int main( int argc, const char** argv )
    if (argc < 2)
    {
       cap = new VideoIn(0);
-      capPath = "negative/1-21";
+      capPath = "negative/1-24";
    }
    else if (isdigit(*argv[1]))
    {
       cap = new VideoIn(*argv[1] - '0');
-      capPath = "negative/1-21" + (*argv[1] - '0');
+      capPath = "negative/1-24_" + (*argv[1] - '0');
    }
    else
    {

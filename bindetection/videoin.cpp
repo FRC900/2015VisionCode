@@ -5,18 +5,28 @@ using namespace std;
 
 VideoIn::VideoIn(const char *path)
 {
-   _cap = VideoCapture(path);
+   if (strstr(path, ".png") || strstr(path, ".jpg"))
+   {
+      _frame = imread(path);
+      _video = false;
+   }
+   else
+   {
+      _cap = VideoCapture(path);
+      _video = true;
+   }
    _frameCounter = 0;
 }
 VideoIn::VideoIn(int stream)
 {
    _cap = VideoCapture(stream);
+   _video = true;
    _frameCounter = 0;
 }
 
 bool VideoIn::getNextFrame(bool pause, Mat &frame)
 {
-   if (!pause)
+   if (!pause && _video)
    {
       _cap >> _frame;
       if( _frame.empty() )
