@@ -18,6 +18,7 @@ class VideoIn
       cv::VideoCapture _cap;
       cv::Mat          _frame;
       int              _frameCounter;
+      bool             _video;
 };
 #endif
 

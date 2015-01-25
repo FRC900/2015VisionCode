@@ -23,6 +23,7 @@ performance
 vec2img
 gaTesting
 C920VideoCap
+iteration_data.dat
 
 # Metadata
 *.aliases
