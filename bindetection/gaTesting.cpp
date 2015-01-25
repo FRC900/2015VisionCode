@@ -86,12 +86,13 @@ for(int i = 0; i < allBinImages.size(); i++) {
 	foundImage++;
 	}
 drawCopy = allBinImages[allBinImages.size() - 1].image.clone();
-rectangle(drawCopy,allBinImages[allBinImages.size() - 1].binLoc,Scalar(0,255,0),4);
-rectangle(drawCopy,binsClassifier[allBinImages.size() - 1],Scalar(0,0,255),4);
+/*rectangle(drawCopy,allBinImages[allBinImages.size() - 1].binLoc,Scalar(0,255,0),4);
+for (int j = 0; j < binsClassifier.size(); j++)
+rectangle(drawCopy,binsClassifier[j],Scalar(0,0,255),4);
 imshow("Image",drawCopy);
-waitKey(5);
+waitKey(5); */
 float successRate = (float)foundImage / (float)allBinImages.size();
-cout << " Successful Images " << foundImage << endl;
+cout << " Successful Images: " << foundImage << endl;
 return successRate;
 }
 
