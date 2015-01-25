@@ -105,28 +105,107 @@ void CPU_CascadeDetect::cascadeDetect(const Mat &frame, vector<Rect> &imageRects
 	Size(maxDetectSize * DETECT_ASPECT_RATIO, maxDetectSize) );
 }
 
+void DrawRects(string windowName, const GpuMat &frameGPU, Rect *faces, size_t facesCount)
+{
+   Mat frame;
+
+   frameGPU.download(frame);
+   cvtColor(frame, frame, CV_GRAY2BGR);
+   for (size_t i = 0; i < facesCount; i++)
+   {
+      cout << windowName << " " << faces[i].x << " " << faces[i].y << " " << faces[i].width << " " << faces[i]. height << endl;
+      rectangle(frame, faces[i], Scalar(0,255,255), 3);
+   }
+   imshow(windowName, frame);
+}
+
 void GPU_CascadeDetect::cascadeDetect (const Mat &frame, vector<Rect> &imageRects)
 {
   GpuMat detectResultGPU;
-  frameGPU.upload(frame);
-  cvtColor( frameGPU, frameGray, CV_BGR2GRAY );
-  equalizeHist( frameGray, frameEqualizeHist);
+  frameGPU[0].upload(frame);
+  cvtColor(frameGPU[0], frameGray, CV_BGR2GRAY);
+  equalizeHist(frameGray, frameGPU[0]);
+
+  // rotate 90 degress into frameGPU[1] and 180 into frameGPU[2]
+  rotate(frameGPU[0], frameGPU[1], Size(frame.rows, frame.cols), -90.0, frame.rows, 0);
+  rotate(frameGPU[0], frameGPU[2], Size(frame.cols, frame.rows), 180.0, frame.cols, frame.rows);
+  rotate(frameGPU[0], frameGPU[3], Size(frame.rows, frame.cols),  90.0, 0, frame.cols);
 
   //-- Detect objects
-  int detectCount = _classifier.detectMultiScale( frameEqualizeHist, 
+  int detectCount;
+  detectCount = _classifier.detectMultiScale(frameGPU[0], 
 	detectResultGPU, 
 	1.05 + scale/100., 
 	neighbors, 
-	Size(minDetectSize * DETECT_ASPECT_RATIO, minDetectSize) );
+	Size(minDetectSize * DETECT_ASPECT_RATIO, minDetectSize));
 
   // download only detected number of rectangles
   Mat detectResult;
+  Rect* faces;
   detectResultGPU.colRange(0, detectCount).download(detectResult);
 
   imageRects.clear();
-  Rect* faces = detectResult.ptr<Rect>();
+  faces = detectResult.ptr<Rect>();
   for(int i = 0; i < detectCount; ++i)
      imageRects.push_back(faces[i]);
+
+  //-- Detect objects at 90 degree rotation
+  detectCount = _classifier.detectMultiScale(frameGPU[1], 
+	detectResultGPU, 
+	1.05 + scale/100., 
+	neighbors, 
+	Size(minDetectSize * DETECT_ASPECT_RATIO, minDetectSize));
+
+  // download only detected number of rectangles
+  detectResultGPU.colRange(0, detectCount).download(detectResult);
+
+  faces = detectResult.ptr<Rect>();
+  //DrawRects("90", frameGPU[1], faces, detectCount);
+  for(int i = 0; i < detectCount; ++i)
+  {
+     //cout << "90 x " << faces[i].x << " -> " << faces[i].y << endl;
+     //cout << "90 y " << faces[i].y << " -> " << frame.rows - 1 - (faces[i].x + faces[i].width) << endl;
+     imageRects.push_back(Rect(faces[i].y, frame.rows - 1 - (faces[i].x + faces[i].width), faces[i].height, faces[i].width));
+  }
+
+  //-- Detect objects at 180 degree rotation
+  detectCount = _classifier.detectMultiScale(frameGPU[2], 
+	detectResultGPU, 
+	1.05 + scale/100., 
+	neighbors, 
+	Size(minDetectSize * DETECT_ASPECT_RATIO, minDetectSize));
+
+  // download only detected number of rectangles
+  detectResultGPU.colRange(0, detectCount).download(detectResult);
+
+  faces = detectResult.ptr<Rect>();
+  //DrawRects("180", frameGPU[2], faces, detectCount);
+  for(int i = 0; i < detectCount; ++i)
+  {
+     //cout << "180 x " << faces[i].x << " -> " << frame.cols - 1 - (faces[i].x + faces[i].height) << endl;
+     //cout << "180 y " << faces[i].y << " -> " << frame.rows - 1 - (faces[i].y + faces[i].width) << endl;
+     imageRects.push_back(Rect(frame.cols - 1 - (faces[i].x + faces[i].height), frame.rows - 1 - (faces[i].y + faces[i].height), faces[i].width, faces[i].height));
+  }
+
+  //-- Detect objects at -90 degree rotation
+  detectCount = _classifier.detectMultiScale(frameGPU[3], 
+	detectResultGPU, 
+	1.05 + scale/100., 
+	neighbors, 
+	Size(minDetectSize * DETECT_ASPECT_RATIO, minDetectSize));
+
+  // download only detected number of rectangles
+  detectResultGPU.colRange(0, detectCount).download(detectResult);
+
+  faces = detectResult.ptr<Rect>();
+  //DrawRects("-90", frameGPU[3], faces, detectCount);
+  for(int i = 0; i < detectCount; ++i)
+  {
+     //cout << "-90 x " << faces[i].x << " -> " << frame.cols - 1 - (faces[i].y + faces[i].height) << endl;
+     //cout << "-90 y " << faces[i].y << " -> " << faces[i].x  << endl;
+     imageRects.push_back(Rect(frame.cols - 1 - (faces[i].y + faces[i].height), faces[i].x, faces[i].height, faces[i].width));
+  }
+
 }
 
 

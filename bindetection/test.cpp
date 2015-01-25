@@ -6,7 +6,7 @@
 #include <stdio.h>
 
 #include "imagedetect.hpp"
-#include "videoin.hpp"
+#include "videoin_c920.hpp"
 
 // Define this to threshold image by color in addition to 
 // checking for cascade classifier detection

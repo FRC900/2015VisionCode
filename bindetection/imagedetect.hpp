@@ -47,9 +47,8 @@ class GPU_CascadeDetect : public BaseCascadeDetect
 
    private :
       cv::gpu::CascadeClassifier_GPU _classifier;
-      cv::gpu::GpuMat frameGPU;
+      cv::gpu::GpuMat frameGPU[4];
       cv::gpu::GpuMat frameGray;
-      cv::gpu::GpuMat frameEqualizeHist;
 };
 
 extern int scale;
