@@ -166,7 +166,7 @@ int main( int argc, const char** argv )
    createTrackbar( "V_MAX", trackbarWindowName, &V_MAX, 255, NULL);
 #endif
 
-   const char *cascadeName = "../cascade_training/classifier_bin_5/cascade_27.xml";
+   const char *cascadeName = "../cascade_training/classifier_bin_5/cascade_oldformat_27.xml";
    BaseCascadeDetect *detectCascade;
    if (gpu::getCudaEnabledDeviceCount() > 0)
       detectCascade = new GPU_CascadeDetect(cascadeName);
