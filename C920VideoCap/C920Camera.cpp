@@ -1,3 +1,4 @@
+#ifdef __linux__
 /*
  * C920Camera.cpp
  *
@@ -522,3 +523,4 @@ try_again: capture->V4L2RequestBuffers.count = buffer_number;
       return true;
    }
 } /* namespace v4l2 */
+#endif

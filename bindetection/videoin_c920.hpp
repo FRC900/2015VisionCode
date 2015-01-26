@@ -1,5 +1,11 @@
-#ifndef VIDEOIN_HPP__
-#define VIDEOIN_HPP__
+#ifndef VIDEOIN_C920_HPP__
+#define VIDEOIN_C920_HPP__
+
+// video 4 linux code doesn't work on cygwin,
+// so fall back to normal OpenCV videocapture code
+#ifndef __linux
+#include "videoin.hpp"
+#else
 
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
@@ -31,5 +37,6 @@ class VideoIn
       int              _backlightCompensation;
       int              _whiteBalanceTemperature;
 };
+#endif
 #endif
 

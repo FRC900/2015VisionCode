@@ -1,3 +1,6 @@
+#ifndef __linux__
+#include "videoin.cpp"
+#else
 #include "videoin_c920.hpp"
 
 using namespace cv;
@@ -99,3 +102,4 @@ int VideoIn::frameCounter(void)
 {
    return _frameCounter;
 }
+#endif
