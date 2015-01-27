@@ -90,8 +90,8 @@ bool VideoIn::getNextFrame(bool pause, Mat &frame)
 	  _cap >> _frame;
       if( _frame.empty() )
 	 return false;
-      //if (frame.cols > 800)
-	 //pyrDown(_frame, _frame);
+      if (_frame.cols > 800)
+	 pyrDown(_frame, _frame);
       _frameCounter += 1;
    }
    frame = _frame.clone();
