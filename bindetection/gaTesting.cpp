@@ -72,27 +72,36 @@ vector <Rect> binsThreshold;
 vector <Rect> binsClassifier;
 vector <Rect> filteredBins;
 Mat threshHoldImage;
-int foundImage = 0;
+float foundRect = 0.0;
+int totalRect = 0;
 cout << "trying values: ";
 for(int i = 0; i < genome.height(); i++)
 cout << intval[i] << ",";
-/* scale = intval[0];
-neighbors = intval[1]; */
-for(int i = 0; i < allBinImages.size(); i++) {
-
-	detectCascade->cascadeDetect(allBinImages[i].image,binsClassifier);
-	if (binsClassifier.size() == 1)
-	if (rectangleCompare(binsClassifier[0],allBinImages[i].binLoc))
-	foundImage++;
+scale = intval[0];
+neighbors = intval[1];
+for(int i = 0; i < allBinImages.size(); i++) { //run for each image
+	detectCascade->cascadeDetect(allBinImages[i].image,binsClassifier); //detect stuff
+	foundRect = 0;
+	for( int j = 0; binsClassifier.size() < j; j++) { //run for each detected bin
+		if (rectangleCompare(binsClassifier[j],allBinImages[i].binLoc)) //if the detection was real
+		foundRect++;
+		else
+		foundRect = foundRect - 0.2;
+		totalRect++;
 	}
+}
 drawCopy = allBinImages[allBinImages.size() - 1].image.clone();
 /*rectangle(drawCopy,allBinImages[allBinImages.size() - 1].binLoc,Scalar(0,255,0),4);
 for (int j = 0; j < binsClassifier.size(); j++)
 rectangle(drawCopy,binsClassifier[j],Scalar(0,0,255),4);
 imshow("Image",drawCopy);
 waitKey(5); */
-float successRate = (float)foundImage / (float)allBinImages.size();
-cout << " Successful Images: " << foundImage << endl;
+float successRate = 0;
+if (totalRect != 0)
+   successRate = foundRect / (float)totalRect;
+if (successRate < 0)
+   float successRate = 0;
+cout << "Returning: " << successRate << endl;
 return successRate;
 }
 
