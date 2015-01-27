@@ -4,3 +4,7 @@ find_package( OpenCV REQUIRED )
 include_directories( ${OpenCV_INCLUDE_DIRS} )
 add_executable( convert_gray main.cpp )
 target_link_libraries( convert_gray ${OpenCV_LIBS} )
+
+include_directories ( ../imageclipper/src )
+add_executable( regrab regrabImage.cpp )
+target_link_libraries( regrab ${OpenCV_LIBS} )
