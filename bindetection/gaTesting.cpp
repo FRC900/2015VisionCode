@@ -14,7 +14,9 @@ using namespace std;
 using namespace cv;
 BaseCascadeDetect *detectCascade;
 struct binImage {Mat image; Rect binLoc;};
+struct binImageGPU {gpu::GpuMat image; Rect binLoc;}
 vector <binImage> allBinImages;
+vector <binImageGPU> allBinImagesGPU;
 int centerArea = 4000;
 int rectArea = 100;
 Mat drawCopy;
@@ -80,7 +82,10 @@ cout << intval[i] << ",";
 scale = intval[0];
 neighbors = intval[1];
 for(int i = 0; i < allBinImages.size(); i++) { //run for each image
-	detectCascade->cascadeDetect(allBinImages[i].image,binsClassifier); //detect stuff
+	if (gpu::getCudaEnabledDeviceCount() > 0)
+	   detectCascade->cascadeDetect(allBinImagesGPU[i].image,binsClassifier); //detect stuff using gpu
+	else
+	   detectCascade->cascadeDetect(allBinImages[i].image,binsClassifier); //detect stuff
 	foundRect = 0;
 	for( int j = 0; binsClassifier.size() < j; j++) { //run for each detected bin
 		if (rectangleCompare(binsClassifier[j],allBinImages[i].binLoc)) //if the detection was real
@@ -138,11 +143,15 @@ while ((dp = readdir(dirp)) != NULL) {
    }
    closedir(dirp);
    cout << "Read " << image_names.size() << " image names" << endl;
-   for (vector<string>::iterator it = image_names.begin(); it != image_names.end(); ++it)
+   for (vector<string>::iterator it = image_names.begin(); it != image_names.end(); ++it) //run for each image
    {
 	allBinImages.push_back(binImage());
+	if (gpu::getCudaEnabledDeviceCount() > 0) //run if gpu
+	   allBinImagesGPU.push_back(binImage()) //allocate memory for GpuMats
 	string imagePath = "./gaSource/" + *it;
 	allBinImages[imageNum].image = imread(imagePath);
+	if (gpu::getCudaEnabledDeviceCount() > 0) //run if gpu
+	   allBinImagesGPU[imageNum].image.upload(allBinImage[imageNum].image); //upload image
 	*it = it->substr(0, it->rfind('.'));
 	parameters = split(*it,'_');
 	if(parameters.size() != 7) {
@@ -156,6 +165,8 @@ while ((dp = readdir(dirp)) != NULL) {
 	Point rectPoint1 = Point(atoi(parameters[3].c_str()),atoi(parameters[4].c_str())); //top left
 	Point rectPoint2 = Point((atoi(parameters[3].c_str()) + atoi(parameters[5].c_str())),(atoi(parameters[4].c_str()) + atoi(parameters[6].c_str())));
 	allBinImages[imageNum].binLoc = Rect(rectPoint1,rectPoint2);
+	if (gpu::getCudaEnabledDeviceCount() > 0) //run if gpu
+	   allBinImagesGPU[imageNum].binLoc = Rect(rectPoint1,rectPoint2); //copy bin locations
 	if(allBinImages[imageNum].image.empty()) {
 		cout << "image loading error" << endl;
 		return -1;
