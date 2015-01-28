@@ -1,3 +1,6 @@
+#ifndef __linux__
+#include "videoin.cpp"
+#else
 #include "videoin_c920.hpp"
 
 using namespace cv;
@@ -87,8 +90,8 @@ bool VideoIn::getNextFrame(bool pause, Mat &frame)
 	  _cap >> _frame;
       if( _frame.empty() )
 	 return false;
-      //if (frame.cols > 800)
-	 //pyrDown(_frame, _frame);
+      if (_frame.cols > 800)
+	 pyrDown(_frame, _frame);
       _frameCounter += 1;
    }
    frame = _frame.clone();
@@ -99,3 +102,4 @@ int VideoIn::frameCounter(void)
 {
    return _frameCounter;
 }
+#endif

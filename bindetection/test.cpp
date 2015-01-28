@@ -122,20 +122,37 @@ int main( int argc, const char** argv )
    string capPath;
    VideoIn *cap;
    const size_t detectMax = 10;
+   const string frameOpt = "--frame=";
+   double frameStart = 0.0;
    if (argc < 2)
    {
       cap = new VideoIn(0);
-      capPath = "negative/1-24";
+      capPath = "negative/1-26";
    }
-   else if (isdigit(*argv[1]))
+   else 
    {
-      cap = new VideoIn(*argv[1] - '0');
-      capPath = "negative/1-24_" + (*argv[1] - '0');
-   }
-   else
-   {
-      cap = new VideoIn(argv[1]);
-      capPath = "negative/" + string(argv[1]).substr(string(argv[1]).rfind('/')+1);
+      int fileArgc;
+      for (fileArgc = 1; fileArgc < argc; fileArgc++)
+      {
+	 if (frameOpt.compare(0, frameOpt.length(), argv[fileArgc], frameOpt.length()) == 0)
+	 {
+	    frameStart = (double)atoi(argv[fileArgc] + frameOpt.length());
+	 }
+	 else
+	    break;
+      }
+      if (isdigit(*argv[fileArgc]))
+      {
+	 cap = new VideoIn(*argv[fileArgc] - '0');
+	 capPath = "negative/1-26_" + (*argv[fileArgc] - '0');
+      }
+      else
+      {
+	 cap = new VideoIn(argv[fileArgc]);
+	 if (cap->VideoCap())
+	    cap->VideoCap()->set(CV_CAP_PROP_POS_FRAMES, frameStart);
+	 capPath = "negative/" + string(argv[fileArgc]).substr(string(argv[fileArgc]).rfind('/')+1);
+      }
    }
 
    Mat frame;
@@ -166,7 +183,7 @@ int main( int argc, const char** argv )
    createTrackbar( "V_MAX", trackbarWindowName, &V_MAX, 255, NULL);
 #endif
 
-   const char *cascadeName = "../cascade_training/classifier_bin_5/cascade_oldformat_27.xml";
+   const char *cascadeName = "../cascade_training/classifier_bin_5/cascade_oldformat_31.xml";
    BaseCascadeDetect *detectCascade;
    if (gpu::getCudaEnabledDeviceCount() > 0)
       detectCascade = new GPU_CascadeDetect(cascadeName);
@@ -253,6 +270,13 @@ int main( int argc, const char** argv )
 
       //for (size_t i = 0; i < threshRects.size(); i++)
 	 //rectangle (frame, threshRects[i], Scalar(255,255,0), 3);
+	 //
+
+      if (captureAll)
+      {
+	 putText( frame, "A", Point(25,25),
+	       FONT_HERSHEY_PLAIN, 2.5, Scalar(0, 255, 255));
+      }
 
       //-- Show what you got
       imshow( windowName, frame );

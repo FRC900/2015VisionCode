@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <opencv_storage>
-<cascade>
+<output type_id="opencv-haar-classifier">
   <size>
     20 20</size>
   <stages>
@@ -24378,5 +24378,5 @@
             <right_val>1.4799878001213074e-01</right_val></_></_></trees>
       <stage_threshold>-1.2891510725021362e+00</stage_threshold>
       <parent>19</parent>
-      <next>-1</next></_></stages></cascade>
+      <next>-1</next></_></stages></output>
 </opencv_storage>
