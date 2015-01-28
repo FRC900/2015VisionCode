@@ -13,10 +13,12 @@
 using namespace std;
 using namespace cv;
 BaseCascadeDetect *detectCascade;
+
 struct binImage {Mat image; Rect binLoc;};
-struct binImageGPU {gpu::GpuMat image; Rect binLoc;}
+struct binImageGPU {gpu::GpuMat image; Rect binLoc;};
 vector <binImage> allBinImages;
 vector <binImageGPU> allBinImagesGPU;
+
 int centerArea = 4000;
 int rectArea = 100;
 Mat drawCopy;
@@ -110,11 +112,16 @@ cout << "Returning: " << successRate << endl;
 return successRate;
 }
 
+
+
+
 int main(int argc, char **argv) {
 
-   const char *cascadeName = "../cascade_training/classifier_bin_5/cascade_27.xml";
-   if (gpu::getCudaEnabledDeviceCount() > 0)
+   const char *cascadeName = "../cascade_training/classifier_bin_5/cascade_oldformat_32.xml";
+   if (gpu::getCudaEnabledDeviceCount() > 0) {
       detectCascade = new GPU_CascadeDetect(cascadeName);
+      cout << "GPU Detected, running GPU detection" << endl;
+	}
    else
       detectCascade = new CPU_CascadeDetect(cascadeName);
 
@@ -147,11 +154,11 @@ while ((dp = readdir(dirp)) != NULL) {
    {
 	allBinImages.push_back(binImage());
 	if (gpu::getCudaEnabledDeviceCount() > 0) //run if gpu
-	   allBinImagesGPU.push_back(binImage()) //allocate memory for GpuMats
+	   allBinImagesGPU.push_back(binImageGPU()); //allocate memory for GpuMats
 	string imagePath = "./gaSource/" + *it;
 	allBinImages[imageNum].image = imread(imagePath);
 	if (gpu::getCudaEnabledDeviceCount() > 0) //run if gpu
-	   allBinImagesGPU[imageNum].image.upload(allBinImage[imageNum].image); //upload image
+	   allBinImagesGPU[imageNum].image.upload(allBinImages[imageNum].image); //upload image
 	*it = it->substr(0, it->rfind('.'));
 	parameters = split(*it,'_');
 	if(parameters.size() != 7) {

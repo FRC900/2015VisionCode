@@ -14,6 +14,7 @@ class BaseCascadeDetect
       BaseCascadeDetect() : cascadeLoaded(false) {}
       virtual ~BaseCascadeDetect() {}
       virtual void cascadeDetect(const cv::Mat &frame, std::vector<cv::Rect> &imageRects ) =0;
+      virtual void cascadeDetect(const cv::gpu::GpuMat &frameGPUInput, std::vector<cv::Rect> &imageRects) {}
       bool loaded(void)
       {
 	 return cascadeLoaded;
