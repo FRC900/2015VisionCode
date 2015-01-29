@@ -14,8 +14,7 @@ use strict;
 # Date  : 06/02/2007
 # Date  : 03/12/2006
 #########################################################################
-# increase z-axis rotation to get sideways and upside-down images
-my $cmd = '/bin/opencv_createsamples -bgcolor 0 -bgthresh 0 -maxxangle 1.1 -maxyangle 1.1 maxzangle 3.14 -maxidev 40 -w 20 -h 20';
+my $cmd = '/bin/opencv_createsamples -bgcolor 0 -bgthresh 0 -maxxangle 1.1 -maxyangle 1.1 -maxzangle 3.14 -maxidev 40 -w 20 -h 20';
 my $totalnum = 7000;
 my $tmpfile  = 'tmp';
 
