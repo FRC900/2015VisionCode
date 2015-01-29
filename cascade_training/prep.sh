@@ -13,7 +13,7 @@ mv temp.dat negatives.dat
 perl createtrainsamples.pl positives.dat negatives.dat . 4500 | tee foo.txt
 
 # Merge each set of randomized versions of the images into one big .vec file
-rm positives.vec
+rm positives.vec ordered_positives.vec
 /bin/find . -name \*.vec > vectors.dat
 mergevec/src/mergevec.exe vectors.dat ordered_positives.vec
 
@@ -22,7 +22,6 @@ mergevec/src/vec2img ordered_positives.vec samples%04d.png -w 20 -h 20 | shuf > 
 sed 's/$/ 1 0 0 20 20/' info.dat > random_info.dat
 rm info.dat
 mergevec/src/createsamples -info random_info.dat -vec positives.vec -num `wc -l random_info.dat` -w 20 -h 20
-rm ordered_positives.vec
-rm random_info.dat
+rm info.dat random_info.dat
 
 rm samples????.png
