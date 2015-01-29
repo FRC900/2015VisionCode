@@ -24,6 +24,7 @@ vec2img
 gaTesting
 C920VideoCap
 iteration_data.dat
+*.stackdump
 
 # Metadata
 *.aliases
