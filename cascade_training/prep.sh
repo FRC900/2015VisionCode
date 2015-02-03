@@ -21,6 +21,6 @@ mergevec/src/mergevec.exe vectors.dat ordered_positives.vec
 mergevec/src/vec2img ordered_positives.vec samples%04d.png -w 20 -h 20 | shuf > info.dat
 sed 's/$/ 1 0 0 20 20/' info.dat > random_info.dat
 mergevec/src/createsamples -info random_info.dat -vec positives.vec -num `wc -l random_info.dat` -w 20 -h 20
-rm info.dat random_info.dat
+rm info.dat random_info.dat positives.dat vectors.dat ordered_positives.vec *.png.vec *.jpg.vec
 
 rm samples????.png
