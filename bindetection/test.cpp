@@ -1,6 +1,7 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/objdetect/objdetect.hpp"
+#include <opencv2/opencv.hpp>
 
 #include <iostream>
 #include <stdio.h>
@@ -25,7 +26,8 @@ int V_MAX = 184;
 string windowName = "Capture - Face detection";
 
 int histIgnoreMin = 14;
-
+float distanceVal;
+float distanceList[60] = {0};
 // Convert type value to a human readable string. Useful for debug
 string type2str(int type) {
   string r;
@@ -197,8 +199,16 @@ int main( int argc, const char** argv )
       return -1; 
    }
 
+
+
+
+
+
+
+
    //-- 2. Read the video stream
-   while( cap->getNextFrame(pause, frame))
+   int frameNum = 1;
+   while(cap->getNextFrame(pause, frame))
    {
       minDetectSize = frame.cols * 0.057;
 
@@ -255,7 +265,9 @@ int main( int argc, const char** argv )
 	 }
 	 rectangle( frame, passedHistFilterRects[i], 
 	       inRect ? Scalar( 0, 0, 255 ) : Scalar(255, 0, 255), 3);
-
+	 float FOVFrac = (float)passedHistFilterRects[i].width / (float)frame.cols;
+	 float totalFOV = 12.0 / FOVFrac;
+	 distanceVal = totalFOV / tan(0.59);
 	 // Label each outlined image with a digit.  Top-level code allows
 	 // users to save these small images by hitting the key they're labeled with
 	 // This should be a quick way to grab lots of falsly detected images
@@ -267,7 +279,24 @@ int main( int argc, const char** argv )
 	       Point(passedHistFilterRects[i].x, passedHistFilterRects[i].y), 
 	       FONT_HERSHEY_PLAIN, 1.0, Scalar(255, 255, 0));
       }
-
+	distanceList[frameNum % 60] = distanceVal;
+	bool display = true;
+	for(int i = 0; i < 60; i++)
+	 if ( distanceList[i] == 0) {
+	  display = false;
+	  break;
+	  }
+	if(display) {
+	float sum = 0;
+	float sumSquare = 0;
+	 for (int i = 0; i < 60; i++)
+	  sum = sum + distanceList[i];
+	float average = sum / 60;
+	for (int i = 0; i < 60; i++)
+	  sumSquare = (distanceList[i] - average) * (distanceList[i] - average) + sumSquare;
+	float stdev = (float)sumSquare / (float)60.0;
+	cout << "Average: " << average << " Standard Deviation: " << stdev << endl;
+	}
       //for (size_t i = 0; i < threshRects.size(); i++)
 	 //rectangle (frame, threshRects[i], Scalar(255,255,0), 3);
 	 //
@@ -303,10 +332,10 @@ int main( int argc, const char** argv )
       }
       for (size_t index = 0; captureAll && (index < images.size()); index++)
 	 writeImage(images, index, capPath.c_str(), cap->frameCounter());
+   frameNum++;
    }
    return 0;
 }
-
 //cerr << i << " " << max_idx[0] << " " << max_idx[1] << " " <<max_idx[2] << " " << images[i].cols <<  " " << images[i].rows << " " << type2str(images[i].type()) << endl;
 #if 0
 // Draw the histograms for B, G and R
