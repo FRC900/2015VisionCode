@@ -42,28 +42,17 @@ my @negatives = <NEGATIVE>;
 close(NEGATIVE);
 
 # number of generated images from one image so that total will be $totalnum
-my $numfloor  = int($totalnum / $#positives);
-my $numremain = $totalnum - $numfloor * $#positives;
+my $numfloor  = int($totalnum / ($#positives+1));
+my $numremain = $totalnum - $numfloor * ($#positives+1);
 
-# Get the directory name of positives
-my $first = $positives[0];
-my $last  = $positives[$#positives];
-while ($first ne $last) {
-    $first = dirname($first);
-    $last  = dirname($last);
-    if ( $first eq "" ) { last; }
-}
-my $imgdir = $first;
-my $imgdirlen = length($first);
-
-for (my $k = 0; $k < $#positives; $k++ ) {
+for (my $k = 0; $k <= $#positives; $k++ ) {
     my $img = $positives[$k];
     my $num = ($k < $numremain) ? $numfloor + 1 : $numfloor;
 
     # Pick up negative images randomly
     my @localnegatives = ();
     for (my $i = 0; $i < $num; $i++) {
-        my $ind = int(rand($#negatives));
+        my $ind = int(rand($#negatives+1));
         push(@localnegatives, $negatives[$ind]);
     }
     open(TMP, "> $tmpfile");
@@ -72,6 +61,7 @@ for (my $k = 0; $k < $#positives; $k++ ) {
     #system("cat $tmpfile");
 
     !chomp($img);
+    my $imgdirlen = length(dirname($img));
     my $vec = $outputdir . substr($img, $imgdirlen) . ".vec" ;
     print "$cmd -img \"$img\" -bg $tmpfile -vec \"$vec\" -num $num" . "\n";
     system("$cmd -img \"$img\" -bg $tmpfile -vec \"$vec\" -num $num");
