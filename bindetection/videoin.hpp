@@ -19,6 +19,10 @@ class VideoIn
       }
       bool getNextFrame(bool pause, cv::Mat &frame);
       int frameCounter(void);
+      void frameCounter(int frameCount)
+      {
+	 _frameCounter = frameCount;
+      }
 
    private:
       cv::VideoCapture _cap;

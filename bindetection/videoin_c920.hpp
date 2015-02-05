@@ -26,6 +26,10 @@ class VideoIn
       }
       bool getNextFrame(bool pause, cv::Mat &frame);
       int frameCounter(void);
+      void frameCounter(int frameCount)
+      {
+	 _frameCounter = frameCount;
+      }
 
    private:
       v4l2::C920Camera _camera;

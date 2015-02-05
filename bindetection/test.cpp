@@ -126,31 +126,38 @@ int main( int argc, const char** argv )
    double frameStart = 0.0;
    if (argc < 2)
    {
+      // No arguments? Open default camera
+      // and hope for the best
       cap = new VideoIn(0);
-      capPath = "negative/1-26";
+      capPath = "negative/2-03";
    }
    else 
    {
+      // Read through command line args, extract
+      // cmd line parameters and input filename
       int fileArgc;
       for (fileArgc = 1; fileArgc < argc; fileArgc++)
       {
 	 if (frameOpt.compare(0, frameOpt.length(), argv[fileArgc], frameOpt.length()) == 0)
-	 {
 	    frameStart = (double)atoi(argv[fileArgc] + frameOpt.length());
-	 }
 	 else
 	    break;
       }
+      // Digit? Open camera
       if (isdigit(*argv[fileArgc]))
       {
 	 cap = new VideoIn(*argv[fileArgc] - '0');
-	 capPath = "negative/1-26_" + (*argv[fileArgc] - '0');
+	 capPath = "negative/2-03_" + (*argv[fileArgc] - '0');
       }
       else
       {
+	 // Open file name
 	 cap = new VideoIn(argv[fileArgc]);
 	 if (cap->VideoCap())
+	 {
 	    cap->VideoCap()->set(CV_CAP_PROP_POS_FRAMES, frameStart);
+	    cap->frameCounter(frameStart);
+	 }
 	 capPath = "negative/" + string(argv[fileArgc]).substr(string(argv[fileArgc]).rfind('/')+1);
       }
    }
@@ -183,26 +190,29 @@ int main( int argc, const char** argv )
    createTrackbar( "V_MAX", trackbarWindowName, &V_MAX, 255, NULL);
 #endif
 
-   const char *cascadeName = "../cascade_training/classifier_bin_5/cascade_oldformat_31.xml";
+   const char *cascadeName = "../cascade_training/classifier_bin_5/cascade_oldformat_33.xml";
+   // Use GPU code if hardware is detected, otherwise
+   // fall back to CPU code
    BaseCascadeDetect *detectCascade;
    if (gpu::getCudaEnabledDeviceCount() > 0)
       detectCascade = new GPU_CascadeDetect(cascadeName);
    else
       detectCascade = new CPU_CascadeDetect(cascadeName);
 
-   //-- 1. Load the cascades
+   // Load the cascades
    if( !detectCascade->loaded() )
    {
       cerr << "--(!)Error loading " << cascadeName << endl; 
       return -1; 
    }
 
-   //-- 2. Read the video stream
+   // Read the video stream
    while( cap->getNextFrame(pause, frame))
    {
-      minDetectSize = frame.cols * 0.057;
+      // Minimum size of a bin at ~30 feet distance
+      //minDetectSize = frame.cols * 0.057;
+      minDetectSize = 10;
 
-      //-- 3. Apply the classifier to the frame
 
 #ifdef USE_THRESHOLD
       // Threshold the image using supplied HSV value
@@ -213,6 +223,7 @@ int main( int argc, const char** argv )
       imshow("Threshold", frameThresh);
 #endif
 
+      // Apply the classifier to the frame
       vector<Rect> detectRects;
       detectCascade->cascadeDetect(frame, detectRects); 
 
@@ -237,6 +248,9 @@ int main( int argc, const char** argv )
 	 }
       }
       
+      // Filter out images using threshold values - 
+      // since bins are green this could be used as a second pass
+      // to get rid of false positives which aren't green enough
       vector <Rect> filteredRects;
 #ifdef USE_THRESHOLD
       filterUsingThreshold(passedHistFilterRects, threshRects, filteredRects);
@@ -265,12 +279,8 @@ int main( int argc, const char** argv )
 	 label << i;
 	 putText( frame, label.str(), 
 	       Point(passedHistFilterRects[i].x, passedHistFilterRects[i].y), 
-	       FONT_HERSHEY_PLAIN, 1.0, Scalar(255, 255, 0));
+	       FONT_HERSHEY_PLAIN, 2.0, Scalar(255, 0, 255));
       }
-
-      //for (size_t i = 0; i < threshRects.size(); i++)
-	 //rectangle (frame, threshRects[i], Scalar(255,255,0), 3);
-	 //
 
       if (captureAll)
       {
@@ -296,6 +306,10 @@ int main( int argc, const char** argv )
       {
 	 for (size_t index = 0; index < images.size(); index++)
 	    writeImage(images, index, capPath.c_str(), cap->frameCounter());
+      }
+      else if (c == 'p')
+      {
+	 cout << cap->frameCounter() << endl;
       }
       else if (isdigit(c)) // save a single detected image
       {
