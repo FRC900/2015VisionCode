@@ -1,6 +1,7 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/objdetect/objdetect.hpp"
+#include <opencv2/opencv.hpp>
 
 #include <iostream>
 #include <stdio.h>
@@ -25,7 +26,6 @@ int V_MAX = 184;
 string windowName = "Capture - Face detection";
 
 int histIgnoreMin = 14;
-
 // Convert type value to a human readable string. Useful for debug
 string type2str(int type) {
   string r;
@@ -124,6 +124,9 @@ int main( int argc, const char** argv )
    const size_t detectMax = 10;
    const string frameOpt = "--frame=";
    double frameStart = 0.0;
+   const size_t distanceListLength = 10;
+   float distanceVal;
+   float distanceList[distanceListLength] = {0};
    if (argc < 2)
    {
       // No arguments? Open default camera
@@ -207,12 +210,11 @@ int main( int argc, const char** argv )
    }
 
    // Read the video stream
-   while( cap->getNextFrame(pause, frame))
+   int startFrame = cap->frameCounter() + 1;
+   while(cap->getNextFrame(pause, frame))
    {
       // Minimum size of a bin at ~30 feet distance
-      //minDetectSize = frame.cols * 0.057;
-      minDetectSize = 10;
-
+      minDetectSize = frame.cols * 0.057;
 
 #ifdef USE_THRESHOLD
       // Threshold the image using supplied HSV value
@@ -269,7 +271,9 @@ int main( int argc, const char** argv )
 	 }
 	 rectangle( frame, passedHistFilterRects[i], 
 	       inRect ? Scalar( 0, 0, 255 ) : Scalar(255, 0, 255), 3);
-
+	 float FOVFrac = (float)passedHistFilterRects[i].width / (float)frame.cols;
+	 float totalFOV = 12.0 / FOVFrac;
+	 distanceVal = totalFOV / tan(0.59);
 	 // Label each outlined image with a digit.  Top-level code allows
 	 // users to save these small images by hitting the key they're labeled with
 	 // This should be a quick way to grab lots of falsly detected images
@@ -281,12 +285,24 @@ int main( int argc, const char** argv )
 	       Point(passedHistFilterRects[i].x, passedHistFilterRects[i].y), 
 	       FONT_HERSHEY_PLAIN, 2.0, Scalar(255, 0, 255));
       }
+      distanceList[(cap->frameCounter() - startFrame) % distanceListLength] = distanceVal;
+      if ((cap->frameCounter() - startFrame) >= distanceListLength) {
+	 float sum = 0.0;
+	 float sumSquare = 0.0;
+	 for (size_t i = 0; i < distanceListLength; i++)
+	    sum = sum + distanceList[i];
+	 float average = sum / distanceListLength;
+	 for (size_t i = 0; i < distanceListLength; i++)
+	    sumSquare = (distanceList[i] - average) * (distanceList[i] - average) + sumSquare;
+	 float stdev = (float)sumSquare / (float)distanceListLength;
+	 cout << "Average: " << average << " Standard Deviation: " << stdev << endl;
+      }
+      //for (size_t i = 0; i < threshRects.size(); i++)
+      //rectangle (frame, threshRects[i], Scalar(255,255,0), 3);
 
       if (captureAll)
-      {
 	 putText( frame, "A", Point(25,25),
 	       FONT_HERSHEY_PLAIN, 2.5, Scalar(0, 255, 255));
-      }
 
       //-- Show what you got
       imshow( windowName, frame );
@@ -320,7 +336,6 @@ int main( int argc, const char** argv )
    }
    return 0;
 }
-
 //cerr << i << " " << max_idx[0] << " " << max_idx[1] << " " <<max_idx[2] << " " << images[i].cols <<  " " << images[i].rows << " " << type2str(images[i].type()) << endl;
 #if 0
 // Draw the histograms for B, G and R
