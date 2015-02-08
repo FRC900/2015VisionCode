@@ -22,9 +22,17 @@ VideoIn::VideoIn(const char *path)
    _c920 = false;
 }
 
-VideoIn::VideoIn(int stream)
+VideoIn::VideoIn(int _stream)
 {
-   _camera.Open("/dev/video0");
+   
+   if (_stream < 0)
+      _stream = 0;
+   stringstream videoStream;
+
+   videoStream << "/dev/video";
+   videoStream << _stream;
+   _camera.Open(videoStream.str().c_str());
+
    _brightness = 128;
    _contrast = 128;
    _saturation = 128;

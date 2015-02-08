@@ -16,7 +16,7 @@ class VideoIn
 {
    public:
       VideoIn(const char *path);
-      VideoIn(int stream = -1);
+      VideoIn(int _stream = -1);
 
       cv::VideoCapture *VideoCap(void) 
       {
