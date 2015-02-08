@@ -88,24 +88,62 @@ void thresholdImage(const Mat &frame, Mat &outFrame, vector <Rect> &rects,
 	 rects.push_back(rect);
    }
 }
+/**
+ * Rotate an image
+ */
+static void rotate(const Mat& src, double angle, Mat& dst)
+{
+    int len = std::max(src.cols, src.rows);
+    Point2f pt(len/2., len/2.);
+    Mat r = getRotationMatrix2D(pt, angle, 1.0);
 
-void CPU_CascadeDetect::cascadeDetect(const Mat &frame, vector<Rect> &imageRects)
+    warpAffine(src, dst, r, Size(len, len));
+}
+
+static void DrawRects(string windowName, const Mat &frame, Rect *faces, size_t facesCount)
+{
+   Mat frameBGR;
+   cvtColor(frame, frameBGR, CV_GRAY2BGR);
+   for (size_t i = 0; i < facesCount; i++)
+   {
+      cout << windowName << " " << faces[i].x << " " << faces[i].y << " " << faces[i].width << " " << faces[i]. height << endl;
+      rectangle(frameBGR, faces[i], Scalar(0,255,255), 3);
+   }
+   imshow(windowName, frameBGR);
+}
+
+const int detectRotations = 4;
+void CPU_CascadeDetect::cascadeDetect(const Mat &frame, vector<Rect> &imageRects, vector<unsigned> &direction)
 {
   Mat frameGray;
+  Mat frameRotated[detectRotations];
   cvtColor( frame, frameGray, CV_BGR2GRAY );
-  equalizeHist( frameGray, frameGray );
+  equalizeHist( frameGray, frameRotated[0]);
+  frameGray.release();
+  for (int i = 1; i < detectRotations; i++)
+  {
+     rotate(frameRotated[0], (360.0 / detectRotations) * i, frameRotated[i]);
+     stringstream ss;
+     ss << (360/detectRotations) * i;
+     DrawRects(ss.str(), frameRotated[i], NULL, 0);
+  }
 
   //-- Detect faces
-  _classifier.detectMultiScale( frameGray, 
+  _classifier.detectMultiScale(frameRotated[0], 
 	imageRects, 
 	1.05 + scale/100., 
 	neighbors, 
 	0|CV_HAAR_SCALE_IMAGE, 
 	Size(minDetectSize * DETECT_ASPECT_RATIO, minDetectSize), 
 	Size(maxDetectSize * DETECT_ASPECT_RATIO, maxDetectSize) );
+  direction.clear();
+  for (size_t i = 0; i < imageRects.size(); i++)
+  {
+     direction.push_back(1);
+  }
 }
 
-void DrawRects(string windowName, const GpuMat &frameGPU, Rect *faces, size_t facesCount)
+static void DrawRects(string windowName, const GpuMat &frameGPU, Rect *faces, size_t facesCount)
 {
    Mat frame;
 
@@ -119,19 +157,13 @@ void DrawRects(string windowName, const GpuMat &frameGPU, Rect *faces, size_t fa
    imshow(windowName, frame);
 }
 
-
-
-void GPU_CascadeDetect::cascadeDetect (const GpuMat &frameGPUInput, vector<Rect> &imageRects) //gpu version
+void GPU_CascadeDetect::cascadeDetect (const GpuMat &frameGPUInput, vector<Rect> &imageRects, vector<unsigned> &direction) //gpu version
 {
   GpuMat detectResultGPU;
   cvtColor(frameGPUInput, frameGray, CV_BGR2GRAY);
   equalizeHist(frameGray, frameGPU[0]);
 
-  // rotate 90 degress into frameGPU[1] and 180 into frameGPU[2]
-  /*rotate(frameGPU[0], frameGPU[1], Size(frame.rows, frame.cols), -90.0, frame.rows, 0);
-  rotate(frameGPU[0], frameGPU[2], Size(frame.cols, frame.rows), 180.0, frame.cols, frame.rows); //commented these out because they're slow
-  rotate(frameGPU[0], frameGPU[3], Size(frame.rows, frame.cols),  90.0, 0, frame.cols); */
-
+  direction.clear();
   //-- Detect objects
   int detectCount;
   detectCount = _classifier.detectMultiScale(frameGPU[0], 
@@ -148,14 +180,23 @@ void GPU_CascadeDetect::cascadeDetect (const GpuMat &frameGPUInput, vector<Rect>
   imageRects.clear();
   faces = detectResult.ptr<Rect>();
   for(int i = 0; i < detectCount; ++i)
+  {
      imageRects.push_back(faces[i]);
+     direction.push_back(1);
+  }
+
+#if 1
+  // rotate 90 degress into frameGPU[1] and 180 into frameGPU[2]
+  rotate(frameGPU[0], frameGPU[1], Size(frameGPUInput.rows, frameGPUInput.cols), -90.0, frameGPUInput.rows, 0);
+  rotate(frameGPU[0], frameGPU[2], Size(frameGPUInput.cols, frameGPUInput.rows), 180.0, frameGPUInput.cols, frameGPUInput.rows);
+  rotate(frameGPU[0], frameGPU[3], Size(frameGPUInput.rows, frameGPUInput.cols),  90.0, 0, frameGPUInput.cols);
 
   //-- Detect objects at 90 degree rotation
-  /*detectCount = _classifier.detectMultiScale(frameGPU[1],
+  detectCount = _classifier.detectMultiScale(frameGPU[1],
 	detectResultGPU, 
 	1.05 + scale/100., 
 	neighbors, 
-	Size(minDetectSize * DETECT_ASPECT_RATIO, minDetectSize)); */
+	Size(minDetectSize * DETECT_ASPECT_RATIO, minDetectSize)); 
 
   // download only detected number of rectangles
   detectResultGPU.colRange(0, detectCount).download(detectResult);
@@ -167,14 +208,16 @@ void GPU_CascadeDetect::cascadeDetect (const GpuMat &frameGPUInput, vector<Rect>
      //cout << "90 x " << faces[i].x << " -> " << faces[i].y << endl;
      //cout << "90 y " << faces[i].y << " -> " << frame.rows - 1 - (faces[i].x + faces[i].width) << endl;
      imageRects.push_back(Rect(faces[i].y, frameGPUInput.rows - 1 - (faces[i].x + faces[i].width), faces[i].height, faces[i].width));
+     direction.push_back(2);
   }
 
+#if 0
   //-- Detect objects at 180 degree rotation
-  /*detectCount = _classifier.detectMultiScale(frameGPU[2], 
+  detectCount = _classifier.detectMultiScale(frameGPU[2], 
 	detectResultGPU, 
 	1.05 + scale/100., 
 	neighbors, 
-	Size(minDetectSize * DETECT_ASPECT_RATIO, minDetectSize)); */
+	Size(minDetectSize * DETECT_ASPECT_RATIO, minDetectSize)); 
 
   // download only detected number of rectangles
   detectResultGPU.colRange(0, detectCount).download(detectResult);
@@ -186,14 +229,16 @@ void GPU_CascadeDetect::cascadeDetect (const GpuMat &frameGPUInput, vector<Rect>
      //cout << "180 x " << faces[i].x << " -> " << frame.cols - 1 - (faces[i].x + faces[i].height) << endl;
      //cout << "180 y " << faces[i].y << " -> " << frame.rows - 1 - (faces[i].y + faces[i].width) << endl;
      imageRects.push_back(Rect(frameGPUInput.cols - 1 - (faces[i].x + faces[i].height), frameGPUInput.rows - 1 - (faces[i].y + faces[i].height), faces[i].width, faces[i].height));
+     direction.push_back(4);
   }
+#endif
 
   //-- Detect objects at -90 degree rotation
-  /* detectCount = _classifier.detectMultiScale(frameGPU[3], 
+  detectCount = _classifier.detectMultiScale(frameGPU[3], 
 	detectResultGPU, 
 	1.05 + scale/100., 
 	neighbors, 
-	Size(minDetectSize * DETECT_ASPECT_RATIO, minDetectSize)); */
+	Size(minDetectSize * DETECT_ASPECT_RATIO, minDetectSize));
 
   // download only detected number of rectangles
   detectResultGPU.colRange(0, detectCount).download(detectResult);
@@ -205,18 +250,16 @@ void GPU_CascadeDetect::cascadeDetect (const GpuMat &frameGPUInput, vector<Rect>
      //cout << "-90 x " << faces[i].x << " -> " << frame.cols - 1 - (faces[i].y + faces[i].height) << endl;
      //cout << "-90 y " << faces[i].y << " -> " << faces[i].x  << endl;
      imageRects.push_back(Rect(frameGPUInput.cols - 1 - (faces[i].y + faces[i].height), faces[i].x, faces[i].height, faces[i].width));
+     direction.push_back(8);
   }
-
+#endif
 }
 
-void GPU_CascadeDetect::cascadeDetect (const Mat &frame, vector<Rect> &imageRects) { //gpu version with wrapper
-
-GpuMat uploadFrame;
-uploadFrame.upload(frame);
-cascadeDetect ( uploadFrame, imageRects);
-
+void GPU_CascadeDetect::cascadeDetect (const Mat &frame, vector<Rect> &imageRects, vector<unsigned> &direction) { //gpu version with wrapper
+   GpuMat uploadFrame;
+   uploadFrame.upload(frame);
+   cascadeDetect ( uploadFrame, imageRects, direction);
 }
-
 
 // For each detected rectange, check if each rect is in
 // any of the thresholded rectangles. If so, push the detected

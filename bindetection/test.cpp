@@ -13,6 +13,9 @@
 // checking for cascade classifier detection
 //#define USE_THRESHOLD
 
+// Define this to threshold image by histogram intensity
+// #define USE_HISTOGRAM
+
 using namespace std;
 using namespace cv;
 
@@ -174,8 +177,10 @@ int main( int argc, const char** argv )
    namedWindow("Parameters", WINDOW_AUTOSIZE);
    createTrackbar ("Scale", "Parameters", &scale, 50, NULL);
    createTrackbar ("Neighbors", "Parameters", &neighbors, 50, NULL);
+#ifdef USE_HISTOGRAM
    createTrackbar ("Hist Thresh", "Parameters", &histIgnoreMin, 40, NULL);
-   createTrackbar ("Min Detect", "Parameters", &minDetectSize, 1000, NULL);
+#endif
+   //createTrackbar ("Min Detect", "Parameters", &minDetectSize, 1000, NULL);
    createTrackbar ("Max Detect", "Parameters", &maxDetectSize, 1000, NULL);
    //createTrackbar ("R Min", "Parameters", &r_min, 256, NULL);
    //createTrackbar ("R Max", "Parameters", &r_max, 256, NULL);
@@ -227,13 +232,16 @@ int main( int argc, const char** argv )
 
       // Apply the classifier to the frame
       vector<Rect> detectRects;
-      detectCascade->cascadeDetect(frame, detectRects); 
+      vector<unsigned> detectDirections;
+      detectCascade->cascadeDetect(frame, detectRects, detectDirections); 
 
       vector<Rect> passedHistFilterRects;
+      vector<unsigned> passedHistFilterDirections;
       images.clear();
       // Mark and save up to detectMax detected images
       for( size_t i = 0; i < min(detectRects.size(), detectMax); i++ )  
       {
+#ifdef USE_HISTOGRAM
 	 // ignore really dim images - ones where the peak intensity of each
 	 // channel is below histIgnoreMin
 	 double minIdx[3];
@@ -243,9 +251,11 @@ int main( int argc, const char** argv )
 	 if ((maxIdx[0] > histIgnoreMin) || 
 	     (maxIdx[1] > histIgnoreMin) || 
 	     (maxIdx[2] > histIgnoreMin))
+#endif
 	 {
 	    // Copy detected image into images[i]
 	    passedHistFilterRects.push_back(detectRects[i]);
+	    passedHistFilterDirections.push_back(detectDirections[i]);
 	    images.push_back(frame(detectRects[i]).clone());
 	 }
       }
@@ -264,13 +274,33 @@ int main( int argc, const char** argv )
 	 // Hightlight detected images which are fully contained in 
 	 // green contour bounding rectangles
 	 bool inRect = false;
-	 if (filteredRects.size() && (filteredRects[filterIdx] == passedHistFilterRects[i]))
+	 if (filteredRects.size() && 
+	     (filteredRects[filterIdx] == passedHistFilterRects[i]))
 	 {
 	    inRect = true;
 	    filterIdx += 1;
 	 }
-	 rectangle( frame, passedHistFilterRects[i], 
-	       inRect ? Scalar( 0, 0, 255 ) : Scalar(255, 0, 255), 3);
+	 Scalar rectColor;
+	 switch (passedHistFilterDirections[i])
+	 {
+	    case 1:
+	       rectColor = Scalar(0,0,255);
+	       break;
+	    case 2:
+	       rectColor = Scalar(0,255,0);
+	       break;
+	    case 4:
+	       rectColor = Scalar(255,0,0);
+	       break;
+	    case 8:
+	       rectColor = Scalar(255,255,0);
+	       break;
+	    default:
+	       rectColor = Scalar(255,0,255);
+	       break;
+	 }
+
+	 rectangle( frame, passedHistFilterRects[i], rectColor, 3);
 	 float FOVFrac = (float)passedHistFilterRects[i].width / (float)frame.cols;
 	 float totalFOV = 12.0 / FOVFrac;
 	 distanceVal = totalFOV / tan(0.59);

@@ -13,8 +13,8 @@ class BaseCascadeDetect
    public :
       BaseCascadeDetect() : cascadeLoaded(false) {}
       virtual ~BaseCascadeDetect() {}
-      virtual void cascadeDetect(const cv::Mat &frame, std::vector<cv::Rect> &imageRects ) =0;
-      virtual void cascadeDetect(const cv::gpu::GpuMat &frameGPUInput, std::vector<cv::Rect> &imageRects) {}
+      virtual void cascadeDetect(const cv::Mat &frame, std::vector<cv::Rect> &imageRects, std::vector<unsigned> &direction ) =0;
+      virtual void cascadeDetect(const cv::gpu::GpuMat &frameGPUInput, std::vector<cv::Rect> &imageRects, std::vector<unsigned> &direction) {}
       bool loaded(void)
       {
 	 return cascadeLoaded;
@@ -31,7 +31,7 @@ class CPU_CascadeDetect : public BaseCascadeDetect
       {
 	 cascadeLoaded = _classifier.load(cascadeName);
       }
-      void cascadeDetect(const cv::Mat &frame, std::vector<cv::Rect> &imageRects );
+      void cascadeDetect(const cv::Mat &frame, std::vector<cv::Rect> &imageRects, std::vector<unsigned> &direction);
 
    private :
       cv::CascadeClassifier _classifier;
@@ -44,8 +44,8 @@ class GPU_CascadeDetect : public BaseCascadeDetect
       {
 	 cascadeLoaded = _classifier.load(cascadeName);
       }
-      void cascadeDetect(const cv::Mat &frame, std::vector<cv::Rect> &imageRects );
-      void cascadeDetect(const cv::gpu::GpuMat &frameGPUInput, std::vector<cv::Rect> &imageRects);
+      void cascadeDetect(const cv::Mat &frame, std::vector<cv::Rect> &imageRects, std::vector<unsigned> &direction);
+      void cascadeDetect(const cv::gpu::GpuMat &frameGPUInput, std::vector<cv::Rect> &imageRects, std::vector<unsigned> &direction);
 
    private :
       cv::gpu::CascadeClassifier_GPU _classifier;

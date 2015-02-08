@@ -83,11 +83,12 @@ for(int i = 0; i < genome.height(); i++)
 cout << intval[i] << ",";
 scale = intval[0];
 neighbors = intval[1];
+vector<unsigned> directions;
 for(int i = 0; i < allBinImages.size(); i++) { //run for each image
 	if (gpu::getCudaEnabledDeviceCount() > 0)
-	   detectCascade->cascadeDetect(allBinImagesGPU[i].image,binsClassifier); //detect stuff using gpu
+	   detectCascade->cascadeDetect(allBinImagesGPU[i].image,binsClassifier, directions); //detect stuff using gpu
 	else
-	   detectCascade->cascadeDetect(allBinImages[i].image,binsClassifier); //detect stuff
+	   detectCascade->cascadeDetect(allBinImages[i].image,binsClassifier, directions); //detect stuff
 	foundRect = 0;
 	for( int j = 0; binsClassifier.size() < j; j++) { //run for each detected bin
 		if (rectangleCompare(binsClassifier[j],allBinImages[i].binLoc)) //if the detection was real
