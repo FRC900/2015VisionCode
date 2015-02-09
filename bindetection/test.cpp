@@ -198,7 +198,7 @@ int main( int argc, const char** argv )
    createTrackbar( "V_MAX", trackbarWindowName, &V_MAX, 255, NULL);
 #endif
 
-   const char *cascadeName = "../cascade_training/classifier_bin_6/cascade_oldformat_30.xml";
+   const char *cascadeName = "../cascade_training/classifier_bin_6/cascade_oldformat_34.xml";
    // Use GPU code if hardware is detected, otherwise
    // fall back to CPU code
    BaseCascadeDetect *detectCascade;
