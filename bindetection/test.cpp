@@ -304,6 +304,10 @@ int main( int argc, const char** argv )
 	 float FOVFrac = (float)passedHistFilterRects[i].width / (float)frame.cols;
 	 float totalFOV = 12.0 / FOVFrac;
 	 distanceVal = totalFOV / tan(0.59);
+	 float degreesPerPixel = 67.0 / frame.cols;
+	 int rectCenterX = passedHistFilterRects[i].x + (passedHistFilterRects[i].width / 2);
+	 int rectLocX = rectCenterX - (frame.cols / 2);
+	 float degreesToTurn = (float)rectLocX * degreesPerPixel;
 	 // Label each outlined image with a digit.  Top-level code allows
 	 // users to save these small images by hitting the key they're labeled with
 	 // This should be a quick way to grab lots of falsly detected images
@@ -314,7 +318,9 @@ int main( int argc, const char** argv )
 	 putText( frame, label.str(), 
 	       Point(passedHistFilterRects[i].x, passedHistFilterRects[i].y), 
 	       FONT_HERSHEY_PLAIN, 2.0, Scalar(255, 0, 255));
+      cout << "turn: " << degreesToTurn << endl;
       }
+      #if 0
       distanceList[(cap->frameCounter() - startFrame) % distanceListLength] = distanceVal;
       if ((cap->frameCounter() - startFrame) >= distanceListLength) {
 	 float sum = 0.0;
@@ -327,6 +333,7 @@ int main( int argc, const char** argv )
 	 float stdev = (float)sumSquare / (float)distanceListLength;
 	 cout << "Average: " << average << " Standard Deviation: " << stdev << endl;
       }
+      #endif
       //for (size_t i = 0; i < threshRects.size(); i++)
       //rectangle (frame, threshRects[i], Scalar(255,255,0), 3);
 
