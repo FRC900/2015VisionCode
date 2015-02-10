@@ -274,8 +274,8 @@ int main( int argc, const char** argv )
 	for (int j = 0; j < passedHistFilterRects.size(); j++) {
 		if (i != j) {
 			Rect intersection = passedHistFilterRects[i] & passedHistFilterRects[j];
-			if (intersection.width / intersection.height < 2.5 &&  intersection.width / intersection.height > 2.0)
-			if (intersection.width * intersection.height > 2500) {
+			if (intersection.width * intersection.height > 2500)
+			if (intersection.width / intersection.height < 3 &&  intersection.width / intersection.height > 1.5) {
 				if(passedHistFilterRects[i].y < passedHistFilterRects[j].y) {
 					lowestYVal = passedHistFilterRects[i]; //higher rectangle
 					indexHighest = j;
@@ -285,7 +285,10 @@ int main( int argc, const char** argv )
 					indexHighest = i;
 					}
 				if(intersection.y > lowestYVal.y) {
+					cout << "found intersection" << endl;
 					passedHistFilterRects.erase(passedHistFilterRects.begin()+indexHighest);
+					passedHistFilterDirections.erase(passedHistFilterDirections.begin()+indexHighest);
+					images.erase(images.begin()+indexHighest);
 					}				
 				}
 			}
