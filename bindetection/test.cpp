@@ -25,7 +25,8 @@ int S_MIN =  30;
 int S_MAX = 185;
 int V_MIN =  57;
 int V_MAX = 184;
-
+Rect lowestYVal;
+int indexHighest;
 string windowName = "Capture - Face detection";
 
 int histIgnoreMin = 14;
@@ -259,7 +260,6 @@ int main( int argc, const char** argv )
 	    images.push_back(frame(detectRects[i]).clone());
 	 }
       }
-      
       // Filter out images using threshold values - 
       // since bins are green this could be used as a second pass
       // to get rid of false positives which aren't green enough
@@ -269,8 +269,27 @@ int main( int argc, const char** argv )
 #endif
 
       int filterIdx = 0;
-      for( size_t i = 0; i < min(passedHistFilterRects.size(), detectMax); i++ )  
+      for( size_t i = 0; i < min(passedHistFilterRects.size(), detectMax); i++ ) 
       {
+	for (int j = 0; j < passedHistFilterRects.size(); j++) {
+		if (i != j) {
+			Rect intersection = passedHistFilterRects[i] & passedHistFilterRects[j];
+			if (intersection.width / intersection.height < 2.5 &&  intersection.width / intersection.height > 2.0)
+			if (intersection.width * intersection.height > 2500) {
+				if(passedHistFilterRects[i].y < passedHistFilterRects[j].y) {
+					lowestYVal = passedHistFilterRects[i]; //higher rectangle
+					indexHighest = j;
+					}
+				else {	
+					lowestYVal = passedHistFilterRects[j]; //higher rectangle
+					indexHighest = i;
+					}
+				if(intersection.y > lowestYVal.y) {
+					passedHistFilterRects.erase(passedHistFilterRects.begin()+indexHighest);
+					}				
+				}
+			}
+		}
 	 // Hightlight detected images which are fully contained in 
 	 // green contour bounding rectangles
 	 bool inRect = false;
@@ -318,7 +337,8 @@ int main( int argc, const char** argv )
 	 putText( frame, label.str(), 
 	       Point(passedHistFilterRects[i].x, passedHistFilterRects[i].y), 
 	       FONT_HERSHEY_PLAIN, 2.0, Scalar(255, 0, 255));
-      cout << "turn: " << degreesToTurn << endl;
+	 cout << "turn: " << degreesToTurn << endl;
+        
       }
       #if 0
       distanceList[(cap->frameCounter() - startFrame) % distanceListLength] = distanceVal;
