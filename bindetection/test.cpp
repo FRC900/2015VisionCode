@@ -27,6 +27,7 @@ int V_MIN =  57;
 int V_MAX = 184;
 Rect lowestYVal;
 int indexHighest;
+int FOV = 67;
 string windowName = "Capture - Face detection";
 
 int histIgnoreMin = 14;
@@ -325,7 +326,8 @@ int main( int argc, const char** argv )
 	 rectangle( frame, passedHistFilterRects[i], rectColor, 3);
 	 float FOVFrac = (float)passedHistFilterRects[i].width / (float)frame.cols;
 	 float totalFOV = 12.0 / FOVFrac;
-	 distanceVal = totalFOV / tan(0.59);
+    float FOVRad =  (M_PI / 180.0) * (float)FOV;
+	 distanceVal = totalFOV / tan(FOVRad);
 	 float degreesPerPixel = 67.0 / frame.cols;
 	 int rectCenterX = passedHistFilterRects[i].x + (passedHistFilterRects[i].width / 2);
 	 int rectLocX = rectCenterX - (frame.cols / 2);
