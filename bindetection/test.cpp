@@ -27,7 +27,7 @@ int V_MIN =  57;
 int V_MAX = 184;
 Rect lowestYVal;
 int indexHighest;
-int FOV = 67;
+const double FOV = 70.42; // horizontal field of view of C920 camera
 string windowName = "Capture - Face detection";
 
 int histIgnoreMin = 14;
@@ -324,14 +324,21 @@ int main( int argc, const char** argv )
 	 }
 
 	 rectangle( frame, passedHistFilterRects[i], rectColor, 3);
-	 float FOVFrac = (float)passedHistFilterRects[i].width / (float)frame.cols;
+	 float FOVFrac = (float)(passedHistFilterRects[i].width) / (float)frame.cols;
 	 float totalFOV = 12.0 / FOVFrac;
-    float FOVRad =  (M_PI / 180.0) * (float)FOV;
+	 float FOVRad =  (M_PI / 180.0) * (FOV / 2.0);
 	 distanceVal = totalFOV / tan(FOVRad);
-	 float degreesPerPixel = 67.0 / frame.cols;
+
+	 float degreesPerPixel = FOV / frame.cols;
 	 int rectCenterX = passedHistFilterRects[i].x + (passedHistFilterRects[i].width / 2);
 	 int rectLocX = rectCenterX - (frame.cols / 2);
 	 float degreesToTurn = (float)rectLocX * degreesPerPixel;
+
+	 double halfImageWidthInDegrees = degreesPerPixel * (passedHistFilterRects[i].width / 2.0);
+	 double halfImageWidthInRadians = halfImageWidthInDegrees * (M_PI / 180.0);
+	 double distanceValKJ = 12.0 / tan(halfImageWidthInRadians);
+
+	 cout << "distance : " << distanceVal << " " << distanceValKJ << " turn: " << degreesToTurn << endl;
 	 // Label each outlined image with a digit.  Top-level code allows
 	 // users to save these small images by hitting the key they're labeled with
 	 // This should be a quick way to grab lots of falsly detected images
@@ -342,7 +349,6 @@ int main( int argc, const char** argv )
 	 putText( frame, label.str(), 
 	       Point(passedHistFilterRects[i].x, passedHistFilterRects[i].y), 
 	       FONT_HERSHEY_PLAIN, 2.0, Scalar(255, 0, 255));
-	 cout << "turn: " << degreesToTurn << endl;
         
       }
       #if 0
