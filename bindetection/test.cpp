@@ -80,7 +80,7 @@ int main( int argc, const char** argv )
    createTrackbar ("Neighbors", "Parameters", &neighbors, 50, NULL);
    createTrackbar ("Max Detect", "Parameters", &maxDetectSize, 1000, NULL);
 
-   const char *cascadeName = "../cascade_training/classifier_bin_6/cascade_oldformat_38.xml";
+   const char *cascadeName = "../cascade_training/classifier_bin_6/cascade_oldformat_39.xml";
    // Use GPU code if hardware is detected, otherwise
    // fall back to CPU code
    BaseCascadeDetect *detectCascade;
@@ -170,7 +170,7 @@ int main( int argc, const char** argv )
 	 // pass of classifier training.
 	 stringstream label;
 	 label << i;
-	 putText(frame, label.str(), Point(detectRects[i].x+15, detectRects[i].y+15), 
+	 putText(frame, label.str(), Point(detectRects[i].x+10, detectRects[i].y+30), 
 	       FONT_HERSHEY_PLAIN, 2.0, Scalar(0, 0, 255));
 
 	 // Code to determine image distance and angle offset
@@ -252,7 +252,7 @@ int main( int argc, const char** argv )
 	 cap->getNextFrame(true, frameCopy);
 	 writeImage(frameCopy, detectRects, c - '0', capPath.c_str(), cap->frameCounter());
       }
-      if (captureAll)
+      if (captureAll && detectRects.size())
       {
 	 Mat frameCopy;
 	 cap->getNextFrame(true, frameCopy);
