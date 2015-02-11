@@ -7,16 +7,14 @@
 
 #include "iostream"
 
-int scale     = 10;
-int neighbors = 5;
-int minDetectSize   = 20;
-int maxDetectSize   = 200 * 4;
-//int r_min     = 65;
-//int r_max     = 90;
-//int b_min     = 100;
-//int b_max     = 170;
-int histDivider = 1;
+int scale         = 10;
+int neighbors     = 5;
+int minDetectSize = 20;
+int maxDetectSize = 200 * 4;
 
+
+// TODO : make this a parameter to the detect code
+// so that we can detect objects with different aspect ratios
 const double DETECT_ASPECT_RATIO = 1.0;
 
 using namespace std;

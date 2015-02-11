@@ -92,13 +92,13 @@ bool VideoIn::getNextFrame(bool pause, Mat &frame)
        if (_c920)
        {
 	  if (_camera.GrabFrame())
-	  _camera.RetrieveMat(_frame);
+	     _camera.RetrieveMat(_frame);
        }
        else
 	  _cap >> _frame;
       if( _frame.empty() )
 	 return false;
-      if (_frame.cols > 800)
+      if (_frame.rows > 800)
 	 pyrDown(_frame, _frame);
       _frameCounter += 1;
    }
