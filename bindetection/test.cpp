@@ -119,8 +119,9 @@ int main( int argc, const char** argv )
       {
 	 for (int j = 0; j < detectRects.size(); j++) {
 	    if (i != j) {
-	       Rect intersection = detectRects[i] & detectRects[j];
-	       if (intersection.width * intersection.height > 0)
+	      Rect intersection = detectRects[i] & detectRects[j];
+	      if (intersection.width * intersection.height > 0)
+	      if (abs((detectRects[i].width * detectRects[i].height) - (detectRects[j].width * detectRects[j].height)) < 2000)
 		  if (intersection.width / intersection.height < 5 &&  intersection.width / intersection.height > 0) {
 		     Rect lowestYVal;
 		     int indexHighest;
