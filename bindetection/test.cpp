@@ -46,7 +46,7 @@ int main( int argc, const char** argv )
 	    break;
       }
       // Digit? Open camera
-      if (isdigit(*argv[fileArgc]))
+      if (isdigit(*argv[fileArgc]) && !strstr(argv[fileArgc],".jpg"))
       {
 	 cap = new VideoIn(*argv[fileArgc] - '0');
 	 capPath = "negative/2-11_" + (*argv[fileArgc] - '0');
@@ -84,9 +84,9 @@ int main( int argc, const char** argv )
    // Use GPU code if hardware is detected, otherwise
    // fall back to CPU code
    BaseCascadeDetect *detectCascade;
-   if (gpu::getCudaEnabledDeviceCount() > 0)
-      detectCascade = new GPU_CascadeDetect(cascadeName);
-   else
+  // if (gpu::getCudaEnabledDeviceCount() > 0)
+  //    detectCascade = new GPU_CascadeDetect(cascadeName);
+  // else
       detectCascade = new CPU_CascadeDetect(cascadeName);
 
    // Load the cascades
@@ -102,7 +102,7 @@ int main( int argc, const char** argv )
    {
       // Minimum size of a bin at ~30 feet distance
       // TODO : Verify this once camera is calibrated
-      minDetectSize = frame.cols * 0.057;
+      minDetectSize = frame.cols * 0.04;
 
       // Apply the classifier to the frame
       vector<Rect> detectRects;
@@ -133,7 +133,7 @@ int main( int argc, const char** argv )
 			indexHighest = i;
 		     }
 		     if(intersection.y > lowestYVal.y) {
-			cout << "found intersection" << endl;
+			//cout << "found intersection" << endl;
 			rectangle(frame, detectRects[indexHighest], Scalar(0,255,255), 3);
 			detectRects.erase(detectRects.begin()+indexHighest);
 			detectDirections.erase(detectDirections.begin()+indexHighest);
@@ -174,28 +174,20 @@ int main( int argc, const char** argv )
 	       FONT_HERSHEY_PLAIN, 2.0, Scalar(0, 0, 255));
 
 	 // Code to determine image distance and angle offset
-	 const double FOV = 70.42; // horizontal field of view of C920 camera
+	 const double FOV = 69; // horizontal field of view of C920 camera
 	 float FOVFrac = (float)(detectRects[i].width) / (float)frame.cols;
 	 float totalFOV = 12.0 / FOVFrac;
 	 float FOVRad =  (M_PI / 180.0) * (FOV / 2.0);
-	 cout << frame.cols << " " << FOVFrac << " " << totalFOV << " " << FOVRad << endl;
-	 distanceVal = totalFOV / tan(FOVRad);
+	 //cout << frame.cols << " " << FOVFrac << " " << totalFOV << " " << FOVRad << endl;
+	 distanceVal = (totalFOV / tan(FOVRad)) + 2.89;
 
 	 float degreesPerPixel = FOV / frame.cols;
 	 int rectCenterX = detectRects[i].x + (detectRects[i].width / 2);
 	 int rectLocX = rectCenterX - (frame.cols / 2);
 	 float degreesToTurn = (float)rectLocX * degreesPerPixel;
 	 
-	 double radiansToTurn = (M_PI / 180.0) * degreesToTurn;
-	 double distanceToTurn = distanceVal * tan(radiansToTurn);
-	 double slantDistance = sqrt(distanceVal * distanceVal + distanceToTurn * distanceToTurn);
 
-	 double halfImageWidthInDegrees = degreesPerPixel * (detectRects[i].width / 2.0);
-	 double halfImageWidthInRadians = halfImageWidthInDegrees * (M_PI / 180.0);
-	 cout << degreesPerPixel << " " << detectRects[i].x << " " << detectRects[i].width << " " << halfImageWidthInDegrees << " " << halfImageWidthInRadians << endl;
-	 double distanceValKJ = 12.0 / tan(halfImageWidthInRadians);
-
-	 cout << "distance : " << distanceVal << " " << slantDistance << " " << distanceValKJ << " turn: " << degreesToTurn << endl;
+	 cout << "distance of " << i << ": " << distanceVal << " turn: " << degreesToTurn << endl;
         
       }
       #if 0
