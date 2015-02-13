@@ -75,6 +75,7 @@ int main( int argc, const char** argv )
    	
    bool pause = false;
    bool captureAll = false;
+   bool tracking = true;
    
    
    string detectWindowName = "Detection Parameters";
@@ -83,7 +84,7 @@ int main( int argc, const char** argv )
    createTrackbar ("Neighbors", detectWindowName, &neighbors, 50, NULL);
    createTrackbar ("Max Detect", detectWindowName, &maxDetectSize, 1000, NULL);
 
-   const char *cascadeName = "../cascade_training/classifier_bin_6/cascade_oldformat_41.xml";
+   const char *cascadeName = "../cascade_training/classifier_bin_6/cascade_oldformat_43.xml";
    // Use GPU code if hardware is detected, otherwise
    // fall back to CPU code
    BaseCascadeDetect *detectCascade;
@@ -203,31 +204,34 @@ int main( int argc, const char** argv )
       // Print detect status of live objects
       binTrackingList.print();
 
-      // Grab info from detected objects, print it ou
-      vector<TrackedObjectDisplay> displayList;
-      binTrackingList.getDisplay(displayList);
-      for (size_t i = 0; i < displayList.size(); i++)
+      if (tracking)
       {
-	 if (displayList[i].ratio < 0.15)
-	    continue;
+	 // Grab info from detected objects, print it ou
+	 vector<TrackedObjectDisplay> displayList;
+	 binTrackingList.getDisplay(displayList);
+	 for (size_t i = 0; i < displayList.size(); i++)
+	 {
+	    if (displayList[i].ratio < 0.15)
+	       continue;
 
-	 // Color moves from red to green (via brown, yuck) 
-	 // as the detected ratio goes up
-	 Scalar rectColor(0, 255 * displayList[i].ratio, 255 * (1.0 - displayList[i].ratio));
+	    // Color moves from red to green (via brown, yuck) 
+	    // as the detected ratio goes up
+	    Scalar rectColor(0, 255 * displayList[i].ratio, 255 * (1.0 - displayList[i].ratio));
 
-	 // Highlight detected target
-	 rectangle(frame, displayList[i].rect, rectColor, 3);
+	    // Highlight detected target
+	    rectangle(frame, displayList[i].rect, rectColor, 3);
 
-	 // Write detect ID, distance and angle data
-	 putText(frame, displayList[i].id, Point(displayList[i].rect.x+25, displayList[i].rect.y+30), FONT_HERSHEY_PLAIN, 2.0, rectColor);
-	 stringstream distLabel;
-	 distLabel << "D=";
-	 distLabel << displayList[i].distance;
-	 putText(frame, distLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+50), FONT_HERSHEY_PLAIN, 1.5, rectColor);
-	 stringstream angleLabel;
-	 angleLabel << "A=";
-	 angleLabel << displayList[i].angle;
-	 putText(frame, angleLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+70), FONT_HERSHEY_PLAIN, 1.5, rectColor);
+	    // Write detect ID, distance and angle data
+	    putText(frame, displayList[i].id, Point(displayList[i].rect.x+25, displayList[i].rect.y+30), FONT_HERSHEY_PLAIN, 2.0, rectColor);
+	    stringstream distLabel;
+	    distLabel << "D=";
+	    distLabel << displayList[i].distance;
+	    putText(frame, distLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+50), FONT_HERSHEY_PLAIN, 1.5, rectColor);
+	    stringstream angleLabel;
+	    angleLabel << "A=";
+	    angleLabel << displayList[i].angle;
+	    putText(frame, angleLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+70), FONT_HERSHEY_PLAIN, 1.5, rectColor);
+	 }
       }
 
       // Put an A on the screen if capture-all is enabled so
@@ -249,6 +253,10 @@ int main( int argc, const char** argv )
 	 cap->getNextFrame(false, frame);
       }
       else if (c == 'A') // toggle capture-all
+      {
+	 captureAll = !captureAll;
+      }
+      else if (c == 'A') // toggle tracking info display
       {
 	 captureAll = !captureAll;
       }
