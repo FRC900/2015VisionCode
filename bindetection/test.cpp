@@ -197,10 +197,6 @@ int main( int argc, const char** argv )
 	 // object or add it as a new one
 	 binTrackingList.processDetect(detectRects[i]);
       }
-      // Don't update to next frame if paused to prevent
-      // objects missing from this frame to be aged out
-      if (!pause)
-	 binTrackingList.nextFrame();
       // Print detect status of live objects
       binTrackingList.print();
 
@@ -233,6 +229,10 @@ int main( int argc, const char** argv )
 	    putText(frame, angleLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+70), FONT_HERSHEY_PLAIN, 1.5, rectColor);
 	 }
       }
+      // Don't update to next frame if paused to prevent
+      // objects missing from this frame to be aged out
+      if (!pause)
+	 binTrackingList.nextFrame();
 
       // Put an A on the screen if capture-all is enabled so
       // users can keep track of that toggle's mode
@@ -258,7 +258,7 @@ int main( int argc, const char** argv )
       }
       else if (c == 't') // toggle tracking info display
       {
-	 captureAll = !captureAll;
+	 tracking = !tracking;
       }
       else if (c == 'a') // save all detected images
       {
