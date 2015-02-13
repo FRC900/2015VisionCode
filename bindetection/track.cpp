@@ -144,7 +144,7 @@ void TrackedObject::nextFrame(void)
 // tracked object's position and a point
 double TrackedObject::distanceFromPoint(cv::Point point) const
 {
-   std::cout <<"position " << _position.x << "," << _position.y << " point " << point.x<<"," << point.y << std::endl;
+   //std::cout <<"position " << _position.x << "," << _position.y << " point " << point.x<<"," << point.y << std::endl;
    return (_position.x - point.x) * (_position.x - point.x) +
       (_position.y - point.y) * (_position.y - point.y);
 }
