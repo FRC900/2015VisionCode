@@ -8,6 +8,7 @@
 
 #include "imagedetect.hpp"
 #include "videoin_c920.hpp"
+#include "track.hpp"
 
 using namespace std;
 using namespace cv;
@@ -75,18 +76,20 @@ int main( int argc, const char** argv )
    bool pause = false;
    bool captureAll = false;
    
-   namedWindow("Parameters", WINDOW_AUTOSIZE);
-   createTrackbar ("Scale", "Parameters", &scale, 50, NULL);
-   createTrackbar ("Neighbors", "Parameters", &neighbors, 50, NULL);
-   createTrackbar ("Max Detect", "Parameters", &maxDetectSize, 1000, NULL);
+   
+   string detectWindowName = "Detection Parameters";
+   namedWindow(detectWindowName);
+   createTrackbar ("Scale", detectWindowName, &scale, 50, NULL);
+   createTrackbar ("Neighbors", detectWindowName, &neighbors, 50, NULL);
+   createTrackbar ("Max Detect", detectWindowName, &maxDetectSize, 1000, NULL);
 
-   const char *cascadeName = "../cascade_training/classifier_bin_6/cascade_oldformat_39.xml";
+   const char *cascadeName = "../cascade_training/classifier_bin_6/cascade_oldformat_41.xml";
    // Use GPU code if hardware is detected, otherwise
    // fall back to CPU code
    BaseCascadeDetect *detectCascade;
-  // if (gpu::getCudaEnabledDeviceCount() > 0)
-  //    detectCascade = new GPU_CascadeDetect(cascadeName);
-  // else
+   if (gpu::getCudaEnabledDeviceCount() > 0)
+      detectCascade = new GPU_CascadeDetect(cascadeName);
+   else
       detectCascade = new CPU_CascadeDetect(cascadeName);
 
    // Load the cascades
@@ -95,14 +98,29 @@ int main( int argc, const char** argv )
       cerr << "--(!)Error loading " << cascadeName << endl; 
       return -1; 
    }
+   
+   if (!cap->getNextFrame(false, frame))
+   {
+      cerr << "Can not read frame from input" << endl;
+      return 0;
+   }
+     
+   // Minimum size of a bin at ~30 feet distance
+   // TODO : Verify this once camera is calibrated
+   minDetectSize = frame.cols * 0.04;
+
+   // Create list of tracked objects
+   TrackedObjectList binTrackingList(24.0, frame.cols);
 
    // Read the video stream
    int startFrame = cap->frameCounter() + 1;
    while(cap->getNextFrame(pause, frame))
    {
-      // Minimum size of a bin at ~30 feet distance
-      // TODO : Verify this once camera is calibrated
-      minDetectSize = frame.cols * 0.04;
+      //TODO : grab angle delta from robot
+      // Adjust the position of all of the detected objects
+      // to account for movement of the robot between frames
+      double deltaAngle = 0.0;
+      binTrackingList.adjustAngle(deltaAngle);
 
       // Apply the classifier to the frame
       vector<Rect> detectRects;
@@ -174,37 +192,43 @@ int main( int argc, const char** argv )
 	 putText(frame, label.str(), Point(detectRects[i].x+10, detectRects[i].y+30), 
 	       FONT_HERSHEY_PLAIN, 2.0, Scalar(0, 0, 255));
 
-	 // Code to determine image distance and angle offset
-	 const double FOV = 69; // horizontal field of view of C920 camera
-	 float FOVFrac = (float)(detectRects[i].width) / (float)frame.cols;
-	 float totalFOV = 12.0 / FOVFrac;
-	 float FOVRad =  (M_PI / 180.0) * (FOV / 2.0);
-	 //cout << frame.cols << " " << FOVFrac << " " << totalFOV << " " << FOVRad << endl;
-	 distanceVal = (totalFOV / tan(FOVRad)) + 2.89;
-
-	 float degreesPerPixel = FOV / frame.cols;
-	 int rectCenterX = detectRects[i].x + (detectRects[i].width / 2);
-	 int rectLocX = rectCenterX - (frame.cols / 2);
-	 float degreesToTurn = (float)rectLocX * degreesPerPixel;
-	 
-
-	 cout << "distance of " << i << ": " << distanceVal << " turn: " << degreesToTurn << endl;
-        
+	 // Process this detected rectangle - either update the nearest
+	 // object or add it as a new one
+	 binTrackingList.processDetect(detectRects[i]);
       }
-      #if 0
-      distanceList[(cap->frameCounter() - startFrame) % distanceListLength] = distanceVal;
-      if ((cap->frameCounter() - startFrame) >= distanceListLength) {
-	 float sum = 0.0;
-	 float sumSquare = 0.0;
-	 for (size_t i = 0; i < distanceListLength; i++)
-	    sum = sum + distanceList[i];
-	 float average = sum / distanceListLength;
-	 for (size_t i = 0; i < distanceListLength; i++)
-	    sumSquare = (distanceList[i] - average) * (distanceList[i] - average) + sumSquare;
-	 float stdev = (float)sumSquare / (float)distanceListLength;
-	 cout << "Average: " << average << " Standard Deviation: " << stdev << endl;
+      // Don't update to next frame if paused to prevent
+      // objects missing from this frame to be aged out
+      if (!pause)
+	 binTrackingList.nextFrame();
+      // Print detect status of live objects
+      binTrackingList.print();
+
+      // Grab info from detected objects, print it ou
+      vector<TrackedObjectDisplay> displayList;
+      binTrackingList.getDisplay(displayList);
+      for (size_t i = 0; i < displayList.size(); i++)
+      {
+	 if (displayList[i].ratio < 0.15)
+	    continue;
+
+	 // Color moves from red to green (via brown, yuck) 
+	 // as the detected ratio goes up
+	 Scalar rectColor(0, 255 * displayList[i].ratio, 255 * (1.0 - displayList[i].ratio));
+
+	 // Highlight detected target
+	 rectangle(frame, displayList[i].rect, rectColor, 3);
+
+	 // Write detect ID, distance and angle data
+	 putText(frame, displayList[i].id, Point(displayList[i].rect.x+25, displayList[i].rect.y+30), FONT_HERSHEY_PLAIN, 2.0, rectColor);
+	 stringstream distLabel;
+	 distLabel << "D=";
+	 distLabel << displayList[i].distance;
+	 putText(frame, distLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+50), FONT_HERSHEY_PLAIN, 1.5, rectColor);
+	 stringstream angleLabel;
+	 angleLabel << "A=";
+	 angleLabel << displayList[i].angle;
+	 putText(frame, angleLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+70), FONT_HERSHEY_PLAIN, 1.5, rectColor);
       }
-      #endif
 
       // Put an A on the screen if capture-all is enabled so
       // users can keep track of that toggle's mode

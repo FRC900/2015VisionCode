@@ -1,97 +1,175 @@
-#ifndef TRACH_HPP_INC__
-#define TRACH_HPP_INC__
+#ifndef TRACK_HPP_INC__
+#define TRACK_HPP_INC__
 
-const size_t TrackedObjectHistoryDistance = 20;
-const double HFOV = 70.42;
+#include <algorithm>
+#include <string>
+#include <list>
+
+const size_t TrackedObjectArrayLength = 20;
+
+const double HFOV = 69; // horizontal field of view of C920 camera
+
+
+// Class to hold info on a tracked object
+// Keeps a history per previous <historyLength> frames
+// of whether the object was seen or not, and the 
+// calcualated distance and angle for each 
+// detection.
+// Keep track of position of last detection - used
+// to compare against new hits to see if this is the
+// same object.
+// Has method to rotate the position in the x direction
+// to account for robot movement 
 class TrackedObject
 {
    public :
-      TrackedObject(int imageWidth, size_t historyLength = TrackedObjectHistoryDistance)
-      {
-	 _historyLength        = historyLength;
-	 _detectHistory      = new bool[historyLength];
-	 _distanceHistory        = new double[historyLength];
-	 _angleHistory       = new double[historyLength];
-	 _historyIndex       = 0;
-	 _imageWidth         = imageWidth;
-      }
+      TrackedObject(const cv::Rect &position, 
+	    int id,
+	    size_t historyLength = TrackedObjectArrayLength);
 
-      void adjustAngle(double deltaAngle)
-      {
-	 for (size_t i = 0; i < _historyLength; i++)
-	    _angleHistory[i] += deltaAngle;
-	 _position.x += _imageWidth / HFOV;
-      }
+      // Copy constructor and assignement operators are needed to do a
+      // deep copy.  This makes new arrays for each object copied rather
+      TrackedObject(const TrackedObject &object);
+      TrackedObject &operator=(const TrackedObject &object);
+      ~TrackedObject();
 
-      void setDistance(double size)
-      {
-	 _distanceHistory[_historyIndex % _historyLength] = size;
-	 setDetected();
-      }
+      // Adjust the position and angle history by 
+      // the specified amount. Used to compensate for 
+      // the robot turning
+      void adjustAngle(double deltaAngle, int imageWidth);
 
-      void setDistance(Rect rect)
-      {
-	 double FOVFrac = (double)rect.width / _imageWidth;
-	 double totalFOV = 12.0 / FOVFrac;
-	 distanceVal = totalFOV / tan(0.59);
-	 setDistance(distanceVal);
-      }
+      // Set the distance to the bin for the current frame
+      void setDistance(double distance);
+      
+      // Set the distance to the target using the detected
+      // rectangle plus the known size of the object and frame size
+      void setDistance(const cv::Rect &rect, double objWidth, int imageWidth);
 
-      void setAngle(double angle)
-      {
-	 _angleHistory[_historyIndex % _historyLength] = angle;
-	 setDetected();
-      }
+      // Set the angle off center for the current frame
+      void setAngle(double angle);
 
-      void setAngle(Rect rect)
-      {
-	 double rectCenter = rect.x + rect.cols / 2.0;
-	 double deltaX = _imageWidth/2.0 - rectCenter;
-	 setAngle ();
-      }
+      // Set the angle off center for the current frame
+      // using the detected rectangle.
+      void setAngle(const cv::Rect &rect, int imageWidth);
 
-      void setDetected(void)
-      {
-	 _detectHistory[_historyIndex % _historyLength] = true;
-      }
+      // Mark the object as detected in this frame
+      void setDetected(void);
 
-      void clearDetected(void)
-      {
-	 _detectHistory[_historyIndex % _historyLength] = false;
-      }
+      // Clear the object detect flag for this frame.
+      // Probably should only happen when moving to a new
+      // frame, but may be useful in other cases
+      void clearDetected(void);
 
-      void nextFrame(void)
-      {
-	 _historyIndex += 1;
-	 clearDetected();
-      }
+      // Return the percent of last _listLength frames
+      // the object was seen 
+      double getDetectedRatio(void) const;
 
-      double distance(Rect point)
-      {
-	 return (_position.x - point.x) * (_position.x - point.x) +
-	        (_position.y - point.y) * (_position.y - point.y);
-      }
+      // Increment to the next frame
+      void nextFrame(void);
 
-      double area(void)
-      {
-	 return _position.width * _position.height;
-      }
+      // Return the distance in pixels between the 
+      // tracked object's position and a point
+      double distanceFromPoint(cv::Point point) const;
 
-      // get size, angle average and stddev
+      // Return the area of the tracked object
+      double area(void) const;
+      
+      // Return the position of the tracked object
+      cv::Rect getPosition(void) const;
+
+      // Update current object position
+      // Maybe maintain a range of previous positions seen +/- some margin instead?
+      cv::Rect setPosition(const cv::Rect &position);
+
+      double getAverageDistance(double &stdev) const;
+      double getAverageAngle(double &stdev) const;
+
+      std::string getId(void) const;
       
    private :
-      cv::Rect _position;
-      int      _imageWidth;
-      size_t   _historyLength;
-      size_t   _historyIndex;
-      bool    *_detectHistory;
-      double  *_distanceHistory;
-      double  *_angleHistory;
+      cv::Rect _position;    // last position of tracked object
+      size_t   _listLength;  // number of entries in history arrays
+      size_t   _listIndex;   // current entry being modified in history arrays
+      // whether or not the object was seen in a given frame - 
+      // used to flag entries in other history arrays as valid 
+      // and to figure out which tracked objects are persistent 
+      // enough to care about
+      bool    *_detectArray;  
+
+      // Arrays of data for distance and angle
+      double  *_distanceArray;
+      double  *_angleArray;
+      std::string _id; //unique target ID - use a string rather than numbers so it isn't confused
+                       // with individual frame detect indexes
+
+      // Helper function to average distance and angle
+      double getAverageAndStdev(double *list, double &stdev) const;
 };
 
+// Used to return info to display
+struct TrackedObjectDisplay
+{
+   std::string id;
+   cv::Rect rect;
+   double ratio;
+   double distance;
+   double angle;
+};
 
 // Tracked object array - 
-// operator 
+// 
+// Need to create array of tracked objects.
+// For each frame, 
+//   read the angle the robot has turned (adjustAngle)
+//   update each object's position with that angle :
+//   for each detected rectangle
+//      try to find a close match in the list of previously detected objects
+//      if found
+//         update that entry's distance and angle
+//      else
+//         add new entry
+//   find a way to clear out images "lost" - look at history, how far
+//   off the screen is has been rotated, etc.  Don't be too aggressive 
+//   since we could rotate back and "refind" an object which has disappeared
+//     
+class TrackedObjectList
+{
+   public :
+      // Create a tracked object list.  Set the object width in inches
+      // (feet, meters, parsecs, whatever) and imageWidth in pixels since
+      // those stay constant for the entire length of the run
+      TrackedObjectList(double objectWidth, int imageWidth);
+#if 0
+      void Add(const cv::Rect &position)
+      {
+	 _list.push_back(TrackedObject(position));
+      }
+#endif
+      // Go to the next frame.  First remove stale objects from the list
+      // and call nextFrame on the remaining ones
+      void nextFrame(void);
+      
+      // Adjust the angle of each tracked object based on
+      // the rotation of the robot
+      void adjustAngle(double deltaAngle);
+
+      // Simple printout of list into
+      void print(void) const;
+
+      // Return list of detect info for external processing
+      void getDisplay(std::vector<TrackedObjectDisplay> &displayList) const;
+
+      // Process a detected rectangle from the current frame.
+      // This will either match a previously detected object or
+      // if not, add a new object to the list
+      void processDetect(const cv::Rect &detectedRect);
+
+   private :
+      std::list<TrackedObject> _list;        // list of currently valid detected objects
+      int                      _imageWidth;  // width of captured frame
+      double                   _objectWidth; // width of the object tracked
+      int                      _detectCount; // ID of next objectcreated
+};
 
 #endif
 
