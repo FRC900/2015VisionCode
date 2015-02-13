@@ -256,7 +256,7 @@ int main( int argc, const char** argv )
       {
 	 captureAll = !captureAll;
       }
-      else if (c == 'A') // toggle tracking info display
+      else if (c == 't') // toggle tracking info display
       {
 	 captureAll = !captureAll;
       }
