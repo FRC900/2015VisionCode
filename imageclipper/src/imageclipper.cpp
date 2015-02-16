@@ -239,9 +239,11 @@ CvScalar getColorForAspectRatio(double width, double height)
       {0.80,  .96,  CV_RGB(255,255,0)},
       {0.96, 1.04,  CV_RGB(0,255,0)},
       {1.04, 1.20,  CV_RGB(255,255,0)},
-      {0,99999,     CV_RGB(255,0,0)}
+      {0,DBL_MAX,   CV_RGB(255,0,0)}
    };
    const AspectRatio *ar = aspectRatioList;
+   if (height == 0.0)
+      return ar->color;
    double ratio = width / height;
    while ((ratio < ar->min) || (ratio > ar->max))
       ar += 1;
