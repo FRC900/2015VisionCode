@@ -23,9 +23,26 @@ int main( int argc, const char** argv )
    const size_t detectMax = 10;
    const string frameOpt = "--frame=";
    double frameStart = 0.0;
-   const size_t distanceListLength = 10;
-   float distanceVal;
-   float distanceList[distanceListLength] = {0};
+   const string captureAllOpt = "--all";
+
+   // Flags for various UI features
+   bool pause = false;        // pause playback?
+   bool captureAll = false;   // capture all found targets to image files?
+   bool tracking = true;      // display tracking info?
+   bool printFrames = false;  // print frame number?
+   
+   enum GPU_MODE
+   {
+      GPU_MODE_UNINITIALIZED,
+      GPU_MODE_CPU,
+      GPU_MODE_GPU
+   };
+
+   GPU_MODE gpuModeCurrent = GPU_MODE_UNINITIALIZED;
+   GPU_MODE gpuModeNext    = GPU_MODE_CPU;
+   if (gpu::getCudaEnabledDeviceCount() > 0)
+      gpuModeNext = GPU_MODE_GPU;
+
    if (argc < 2)
    {
       // No arguments? Open default camera
@@ -43,6 +60,8 @@ int main( int argc, const char** argv )
       {
 	 if (frameOpt.compare(0, frameOpt.length(), argv[fileArgc], frameOpt.length()) == 0)
 	    frameStart = (double)atoi(argv[fileArgc] + frameOpt.length());
+	 else if (captureAllOpt.compare(0, captureAllOpt.length(), argv[fileArgc], captureAllOpt.length()) == 0)
+	    captureAll = true;
 	 else
 	    break;
       }
@@ -58,7 +77,7 @@ int main( int argc, const char** argv )
       }
       else
       {
-	 // Open file name
+	 // Open file name - will handle images or videos
 	 cap = new VideoIn(argv[fileArgc]);
 	 if (cap->VideoCap())
 	 {
@@ -73,10 +92,6 @@ int main( int argc, const char** argv )
    Mat frame;
    vector <Mat> images;
    	
-   bool pause = false;
-   bool captureAll = false;
-   bool tracking = true;
-   
    
    string detectWindowName = "Detection Parameters";
    namedWindow(detectWindowName);
@@ -87,18 +102,7 @@ int main( int argc, const char** argv )
    const char *cascadeName = "../cascade_training/classifier_bin_6/cascade_oldformat_49.xml";
    // Use GPU code if hardware is detected, otherwise
    // fall back to CPU code
-   BaseCascadeDetect *detectCascade;
-   if (gpu::getCudaEnabledDeviceCount() > 0)
-      detectCascade = new GPU_CascadeDetect(cascadeName);
-   else
-      detectCascade = new CPU_CascadeDetect(cascadeName);
-
-   // Load the cascades
-   if( !detectCascade->loaded() )
-   {
-      cerr << "--(!)Error loading " << cascadeName << endl; 
-      return -1; 
-   }
+   BaseCascadeDetect *detectCascade = NULL;;
    
    if (!cap->getNextFrame(false, frame))
    {
@@ -123,6 +127,23 @@ int main( int argc, const char** argv )
       double deltaAngle = 0.0;
       binTrackingList.adjustAngle(deltaAngle);
 
+      if ((gpuModeCurrent == GPU_MODE_UNINITIALIZED) || (gpuModeCurrent != gpuModeNext))
+      {
+	 if (detectCascade)
+	    delete detectCascade;
+	 if (gpuModeNext == GPU_MODE_GPU)
+	    detectCascade = new GPU_CascadeDetect(cascadeName);
+	 else
+	    detectCascade = new CPU_CascadeDetect(cascadeName);
+	 gpuModeCurrent = gpuModeNext;
+
+	 // Load the cascades
+	 if( !detectCascade->loaded() )
+	 {
+	    cerr << "--(!)Error loading " << cascadeName << endl; 
+	    return -1; 
+	 }
+      }
       // Apply the classifier to the frame
       vector<Rect> detectRects;
       vector<unsigned> detectDirections;
@@ -234,6 +255,15 @@ int main( int argc, const char** argv )
       if (!pause)
 	 binTrackingList.nextFrame();
 
+      if (printFrames && cap->VideoCap())
+      {
+	 int frames = cap->VideoCap()->get(CV_CAP_PROP_FRAME_COUNT);
+	 stringstream ss;
+	 ss << cap->frameCounter();
+	 ss << '/';
+	 ss << frames;
+	 putText(frame, ss.str(), Point(frame.cols - 16 * ss.str().length(), 20), FONT_HERSHEY_PLAIN, 1.5, Scalar(0,0,255));
+      }
       // Put an A on the screen if capture-all is enabled so
       // users can keep track of that toggle's mode
       if (captureAll)
@@ -270,6 +300,17 @@ int main( int argc, const char** argv )
       else if (c == 'p') // print frame number to screen
       {
 	 cout << cap->frameCounter() << endl;
+      }
+      else if (c == 'P')
+      {
+	 printFrames = !printFrames;
+      }
+      else if (c == 'G') // toggle CPU/GPU mode
+      {
+	 if (gpuModeNext == GPU_MODE_GPU)
+	    gpuModeNext = GPU_MODE_CPU;
+	 else
+	    gpuModeNext = GPU_MODE_GPU;
       }
       else if (isdigit(c)) // save a single detected image
       {
