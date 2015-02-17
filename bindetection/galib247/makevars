@@ -32,9 +32,9 @@ RM          = rm -rf
 #  verified 06mar07 on linux-x86 (ubuntu with gcc 4.0.3)
 #  verified 06mar07 on macosx-ppc (macosx 10.4.8 with gcc 4.0.1)
 CXX         = g++
-CXXFLAGS    = -g -Wall -O3
-LD          = g++ -w
-AR          = ar rv
+CXXFLAGS    = -g -Wall -O3 -flto
+LD          = g++ -w -flto
+AR          = gcc-ar rv
 INSTALL     = install -c
 RANLIB      = echo no ranlib
 

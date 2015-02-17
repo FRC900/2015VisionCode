@@ -117,10 +117,15 @@ int main( int argc, const char** argv )
    // Create list of tracked objects
    TrackedObjectList binTrackingList(24.0, frame.cols);
 
+#define frameTicksLength (sizeof(frameTicks) / sizeof(frameTicks[0]))
+   double frameTicks[20];
+   int64 startTick;
+   int64 endTick;
+   size_t frameTicksIndex = 0;
    // Read the video stream
-   int startFrame = cap->frameCounter() + 1;
    while(cap->getNextFrame(pause, frame))
    {
+      startTick = getTickCount();
       //TODO : grab angle delta from robot
       // Adjust the position of all of the detected objects
       // to account for movement of the robot between frames
@@ -157,7 +162,7 @@ int main( int argc, const char** argv )
 
       for( size_t i = 0; i < min(detectRects.size(), detectMax); i++ ) 
       {
-	 for (int j = 0; j < detectRects.size(); j++) {
+	 for (size_t j = 0; j < detectRects.size(); j++) {
 	    if (i != j) {
 	      Rect intersection = detectRects[i] & detectRects[j];
 	      if (intersection.width * intersection.height > 0)
@@ -262,7 +267,20 @@ int main( int argc, const char** argv )
 	 ss << cap->frameCounter();
 	 ss << '/';
 	 ss << frames;
-	 putText(frame, ss.str(), Point(frame.cols - 16 * ss.str().length(), 20), FONT_HERSHEY_PLAIN, 1.5, Scalar(0,0,255));
+	 putText(frame, ss.str(), Point(frame.cols - 15 * ss.str().length(), 20), FONT_HERSHEY_PLAIN, 1.5, Scalar(0,0,255));
+      }
+      if (frameTicksIndex >= frameTicksLength)
+      {
+	 double sum = 0;
+	 for (size_t i = 0; i < frameTicksLength; i++)
+	    sum += frameTicks[i];
+	 sum /= frameTicksLength;
+	 stringstream ss;
+	 ss.precision(3);
+	 ss << 1.0/sum;
+	 ss << " FPS";
+	 putText(frame, ss.str(), Point(frame.cols - 15 * ss.str().length(), 50), FONT_HERSHEY_PLAIN, 1.5, Scalar(0,0,255));
+
       }
       // Put an A on the screen if capture-all is enabled so
       // users can keep track of that toggle's mode
@@ -325,6 +343,8 @@ int main( int argc, const char** argv )
 	 for (size_t index = 0; index < detectRects.size(); index++)
 	    writeImage(frameCopy, detectRects, index, capPath.c_str(), cap->frameCounter());
       }
+      endTick = getTickCount();
+      frameTicks[frameTicksIndex++ % frameTicksLength] = (double)(endTick - startTick) / getTickFrequency();
    }
    return 0;
 }

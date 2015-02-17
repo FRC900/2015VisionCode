@@ -178,7 +178,7 @@ void CPU_CascadeDetect::cascadeDetect(const Mat &frame,
 
   _classifier.detectMultiScale(frameRotated[3], 
 	rects,
-	1.05 + scale/100., 
+	1.01 + scale/100., 
 	neighbors,
 	0|CV_HAAR_SCALE_IMAGE, 
 	Size(minDetectSize * DETECT_ASPECT_RATIO, minDetectSize), 
@@ -217,7 +217,7 @@ void GPU_CascadeDetect::cascadeDetect (const GpuMat &frameGPUInput, vector<Rect>
   int detectCount;
   detectCount = _classifier.detectMultiScale(frameGPU[0], 
 	detectResultGPU, 
-	1.05 + scale/100., 
+	1.01 + scale/100., 
 	neighbors, 
 	Size(minDetectSize * DETECT_ASPECT_RATIO, minDetectSize));
 

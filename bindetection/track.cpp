@@ -1,5 +1,7 @@
 #include <opencv2/opencv.hpp>
 #include "track.hpp"
+#define _USE_MATH_DEFINES
+#include <math.h>
 
 
 TrackedObject::TrackedObject(const cv::Rect &position, int id, size_t historyLength)
@@ -51,6 +53,7 @@ TrackedObject &TrackedObject::operator=(const TrackedObject &object)
    _listIndex  = object._listIndex;
    _position   = object._position;
    _id         = object._id;
+   return *this;
 }
 
 TrackedObject::~TrackedObject()
@@ -212,10 +215,10 @@ double TrackedObject::getAverageAndStdev(double *list, double &stdev) const
 // (feet, meters, parsecs, whatever) and imageWidth in pixels since
 // those stay constant for the entire length of the run
 TrackedObjectList::TrackedObjectList(double objectWidth, int imageWidth) :
-   _objectWidth(objectWidth),
-   _imageWidth(imageWidth)
+   _imageWidth(imageWidth),
+   _detectCount(0),
+   _objectWidth(objectWidth)
 {
-   _detectCount = 0;
 }
 #if 0
 void Add(const cv::Rect &position)

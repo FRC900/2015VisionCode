@@ -167,8 +167,8 @@ class TrackedObjectList
    private :
       std::list<TrackedObject> _list;        // list of currently valid detected objects
       int                      _imageWidth;  // width of captured frame
-      double                   _objectWidth; // width of the object tracked
       int                      _detectCount; // ID of next objectcreated
+      double                   _objectWidth; // width of the object tracked
 };
 
 #endif
