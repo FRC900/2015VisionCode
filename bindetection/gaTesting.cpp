@@ -20,7 +20,7 @@ vector <binImage> allBinImages;
 vector <binImageGPU> allBinImagesGPU;
 
 int centerArea = 4000;
-int rectArea = 100;
+const double areaRatio = 0.23; // detected area is within 23% of desired detection size
 Mat drawCopy;
 
 vector<string> &split(const string &s, char delim, vector<string> &elems) {
@@ -33,14 +33,23 @@ vector<string> &split(const string &s, char delim, vector<string> &elems) {
     return elems;
 }
 
-bool rectangleCompare(Rect rect1, Rect rect2) {
+bool rectangleCompare(Rect rect1, Rect rect2, int i) {
 
-Point center1 = Point(rect1.width/2,rect1.height/2);
-Point center2 = Point(rect2.width/2,rect2.height/2);
+Point center1 = Point(rect1.x + rect1.width/2,rect1.y + rect1.height/2);
+Point center2 = Point(rect2.x + rect2.width/2,rect2.y + rect2.height/2);
 Rect centerRect = Rect(center1,center2);
-bool matched = ((abs((rect1.width * rect1.height) - (rect2.width * rect2.height)) < rectArea) && ((centerRect.width * centerRect.height) < centerArea));
+double area1 = rect1.width * rect1.height;
+double area2 = rect2.width * rect2.height;
+//cout << endl << "\t Rect 1 " << rect1 << " Rect 2 " << rect2 << " center 1 " << center1 << " center 2" << center2 << endl;
+bool matched = ((fabs(area1 / area2 - 1.0) < areaRatio) && ((centerRect.width * centerRect.height) < centerArea));
 if(matched) 
 cout << "rectangles matched" << endl;
+//drawCopy = allBinImages[i].image.clone();
+//rectangle(drawCopy,rect1,Scalar(0,255,0),4);
+//rectangle(drawCopy,rect2,Scalar(0,0,255),4);
+//rectangle(drawCopy,centerRect,Scalar(255,0,0),4);
+//imshow("Image",drawCopy);
+//waitKey(0); 
 return matched;
 }
 
@@ -72,17 +81,19 @@ GA2DBinaryStringGenome & genome = (GA2DBinaryStringGenome &)g;
      intval[i] = getIntFrom2DBinaryString(genome, i);
   }
 
-vector <Rect> binsThreshold;
 vector <Rect> binsClassifier;
+#if 0
+vector <Rect> binsThreshold;
 vector <Rect> filteredBins;
 Mat threshHoldImage;
+#endif
 float foundRect = 0.0;
 int totalRect = 0;
 cout << "trying values: ";
 for(int i = 0; i < genome.height(); i++)
 cout << intval[i] << ",";
 scale = intval[0];
-neighbors = intval[1];
+neighbors = intval[1] + 1;
 vector<unsigned> directions;
 for(int i = 0; i < allBinImages.size(); i++) { //run for each image
 	if (gpu::getCudaEnabledDeviceCount() > 0)
@@ -90,16 +101,17 @@ for(int i = 0; i < allBinImages.size(); i++) { //run for each image
 	else
 	   detectCascade->cascadeDetect(allBinImages[i].image,binsClassifier, directions); //detect stuff
 	foundRect = 0;
-	for( int j = 0; binsClassifier.size() < j; j++) { //run for each detected bin
-		if (rectangleCompare(binsClassifier[j],allBinImages[i].binLoc)) //if the detection was real
+	cout << binsClassifier.size() <<",";
+	for( int j = 0; j < binsClassifier.size(); j++) { //run for each detected bin
+		if (rectangleCompare(binsClassifier[j],allBinImages[i].binLoc, i)) //if the detection was real
 		foundRect++;
 		else
 		foundRect = foundRect - 0.2;
 		totalRect++;
 	}
 }
-drawCopy = allBinImages[allBinImages.size() - 1].image.clone();
-/*rectangle(drawCopy,allBinImages[allBinImages.size() - 1].binLoc,Scalar(0,255,0),4);
+/*drawCopy = allBinImages[allBinImages.size() - 1].image.clone();
+rectangle(drawCopy,allBinImages[allBinImages.size() - 1].binLoc,Scalar(0,255,0),4);
 for (int j = 0; j < binsClassifier.size(); j++)
 rectangle(drawCopy,binsClassifier[j],Scalar(0,0,255),4);
 imshow("Image",drawCopy);
@@ -107,18 +119,18 @@ waitKey(5); */
 float successRate = 0;
 if (totalRect != 0)
    successRate = foundRect / (float)totalRect;
+   successRate += (float(scale) / (1 << genome.width())) * 0.2;
 if (successRate < 0)
-   float successRate = 0;
+   successRate = 0;
+if (successRate > 1)
+   successRate = 1;
 cout << "Returning: " << successRate << endl;
 return successRate;
 }
 
-
-
-
 int main(int argc, char **argv) {
 
-   const char *cascadeName = "../cascade_training/classifier_bin_5/cascade_oldformat_32.xml";
+   const char *cascadeName = "../cascade_training/classifier_bin_6/cascade_oldformat_49.xml";
    if (gpu::getCudaEnabledDeviceCount() > 0) {
       detectCascade = new GPU_CascadeDetect(cascadeName);
       cout << "GPU Detected, running GPU detection" << endl;
@@ -181,7 +193,7 @@ while ((dp = readdir(dirp)) != NULL) {
 		}
 	imageNum++;
     }
-int width    = 6; //number of bits per number
+int width    = 5; //number of bits per number
 int height   = 2; //number of values to change
 int popsize  = 30; //how many pairs of numbers it creates per gen
 int ngen     = 400; //number of generations to run
