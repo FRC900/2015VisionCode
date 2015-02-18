@@ -9,7 +9,11 @@
 #include "imagedetect.hpp"
 #include <stdlib.h> 
 #include <sys/types.h>
+#ifndef _MSC_VER
 #include <dirent.h>
+#else
+#include <Windows.h>
+#endif
 using namespace std;
 using namespace cv;
 BaseCascadeDetect *detectCascade;
@@ -43,7 +47,7 @@ double area2 = rect2.width * rect2.height;
 //cout << endl << "\t Rect 1 " << rect1 << " Rect 2 " << rect2 << " center 1 " << center1 << " center 2" << center2 << endl;
 bool matched = ((fabs(area1 / area2 - 1.0) < areaRatio) && ((centerRect.width * centerRect.height) < centerArea));
 if(matched) 
-cout << "rectangles matched" << endl;
+cout << "M";
 //drawCopy = allBinImages[i].image.clone();
 //rectangle(drawCopy,rect1,Scalar(0,255,0),4);
 //rectangle(drawCopy,rect2,Scalar(0,0,255),4);
@@ -106,7 +110,7 @@ for(int i = 0; i < allBinImages.size(); i++) { //run for each image
 		if (rectangleCompare(binsClassifier[j],allBinImages[i].binLoc, i)) //if the detection was real
 		foundRect++;
 		else
-		foundRect = foundRect - 0.2;
+		foundRect = foundRect - 0.1;
 		totalRect++;
 	}
 }
@@ -119,7 +123,7 @@ waitKey(5); */
 float successRate = 0;
 if (totalRect != 0)
    successRate = foundRect / (float)totalRect;
-   successRate += (float(scale) / (1 << genome.width())) * 0.2;
+   successRate += (float(scale) / (1 << genome.width())) * 0.1;
 if (successRate < 0)
    successRate = 0;
 if (successRate > 1)
@@ -153,6 +157,20 @@ int imageNum = 0;
 int position;
 vector<string> image_names;
 vector<string> parameters;
+#ifdef _MSC_VER
+HANDLE hFind;
+WIN32_FIND_DATA FindFileData;
+
+if((hFind = FindFirstFile("gasource/*.png", &FindFileData)) != INVALID_HANDLE_VALUE){
+   do
+   {
+      if (!strstr(FindFileData.cFileName, "_r.png"))
+	 image_names.push_back(FindFileData.cFileName);
+   }
+   while(FindNextFile(hFind, &FindFileData));
+   FindClose(hFind);
+}
+#else
 DIR *dirp = opendir("./gaSource/");
 struct dirent *dp;
 if (!dirp)
@@ -162,6 +180,7 @@ while ((dp = readdir(dirp)) != NULL) {
 	 image_names.push_back(dp->d_name);
    }
    closedir(dirp);
+#endif
    cout << "Read " << image_names.size() << " image names" << endl;
    for (vector<string>::iterator it = image_names.begin(); it != image_names.end(); ++it) //run for each image
    {

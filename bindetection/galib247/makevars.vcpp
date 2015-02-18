@@ -33,11 +33,11 @@ INSTALL     = copy
 # /MT     multi    EXE       LIBCMT.LIB
 #
 # /GR     enable RTTI
-# /GX     enable synchronous exception handling
+# /EHsc   enable synchronous exception handling
 # /YX     automate precompiled header
 # /FD     generate file dependencies
 
-CFLAGS   = /nologo /D_WINDOWS /DWIN32 /D_MBCS /W3 /GR /GX /TP
+CFLAGS   = /nologo /D_WINDOWS /DWIN32 /D_MBCS /W3 /GR /EHsc /TP /D_CRT_SECURE_NO_WARNINGS
 LFLAGS   = /nologo /subsystem:console /incremental:no
 
 !ifdef RELEASE_BUILD
@@ -75,5 +75,5 @@ ARFLAGS  = /nologo
 
 .SUFFIXES:
 .SUFFIXES: .C
-.C.o:
-	$(CXX) $(CXXFLAGS) /c $< /Fo$*.o
+.C.obj:
+	$(CXX) $(CXXFLAGS) /c $< /Fo$*.obj
