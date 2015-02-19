@@ -24,13 +24,15 @@ int main( int argc, const char** argv )
    const string frameOpt = "--frame=";
    double frameStart = 0.0;
    const string captureAllOpt = "--all";
+   const string batchModeOpt = "--batch";
 
    // Flags for various UI features
    bool pause = false;        // pause playback?
    bool captureAll = false;   // capture all found targets to image files?
    bool tracking = true;      // display tracking info?
    bool printFrames = false;  // print frame number?
-   
+   bool batchMode = false;    // non-interactive mode - no display, run through
+                              // as quickly as possible. Combine with --all
    enum GPU_MODE
    {
       GPU_MODE_UNINITIALIZED,
@@ -62,6 +64,8 @@ int main( int argc, const char** argv )
 	    frameStart = (double)atoi(argv[fileArgc] + frameOpt.length());
 	 else if (captureAllOpt.compare(0, captureAllOpt.length(), argv[fileArgc], captureAllOpt.length()) == 0)
 	    captureAll = true;
+	 else if (batchModeOpt.compare(0, batchModeOpt.length(), argv[fileArgc], batchModeOpt.length()) == 0)
+	    batchMode = true;
 	 else
 	    break;
       }
@@ -91,15 +95,17 @@ int main( int argc, const char** argv )
 
    Mat frame;
    vector <Mat> images;
-   	
    
-   string detectWindowName = "Detection Parameters";
-   namedWindow(detectWindowName);
-   createTrackbar ("Scale", detectWindowName, &scale, 50, NULL);
-   createTrackbar ("Neighbors", detectWindowName, &neighbors, 50, NULL);
-   createTrackbar ("Max Detect", detectWindowName, &maxDetectSize, 1000, NULL);
+   if (!batchMode)
+   {
+      string detectWindowName = "Detection Parameters";
+      namedWindow(detectWindowName);
+      createTrackbar ("Scale", detectWindowName, &scale, 50, NULL);
+      createTrackbar ("Neighbors", detectWindowName, &neighbors, 50, NULL);
+      createTrackbar ("Max Detect", detectWindowName, &maxDetectSize, 1000, NULL);
+   }
 
-   const char *cascadeName = "../cascade_training/classifier_bin_6/cascade_oldformat_49.xml";
+   const char *cascadeName = "../cascade_training/classifier_bin_6/cascade_oldformat_51.xml";
    // Use GPU code if hardware is detected, otherwise
    // fall back to CPU code
    BaseCascadeDetect *detectCascade = NULL;;
@@ -180,7 +186,8 @@ int main( int argc, const char** argv )
 		     }
 		     if(intersection.y > lowestYVal.y) {
 			//cout << "found intersection" << endl;
-			rectangle(frame, detectRects[indexHighest], Scalar(0,255,255), 3);
+			if (!batchMode)
+			   rectangle(frame, detectRects[indexHighest], Scalar(0,255,255), 3);
 			detectRects.erase(detectRects.begin()+indexHighest);
 			detectDirections.erase(detectDirections.begin()+indexHighest);
 		     }				
@@ -208,20 +215,24 @@ int main( int argc, const char** argv )
 	       break;
 	 }
 
-	 rectangle( frame, detectRects[i], rectColor, 3);
+	 if (!batchMode)
+	    rectangle( frame, detectRects[i], rectColor, 3);
 	 // Label each outlined image with a digit.  Top-level code allows
 	 // users to save these small images by hitting the key they're labeled with
 	 // This should be a quick way to grab lots of falsly detected images
 	 // which need to be added to the negative list for the next
 	 // pass of classifier training.
-	 stringstream label;
-	 label << i;
-	 putText(frame, label.str(), Point(detectRects[i].x+10, detectRects[i].y+30), 
-	       FONT_HERSHEY_PLAIN, 2.0, Scalar(0, 0, 255));
+	 if (!batchMode)
+	 {
+	    stringstream label;
+	    label << i;
+	    putText(frame, label.str(), Point(detectRects[i].x+10, detectRects[i].y+30), 
+		  FONT_HERSHEY_PLAIN, 2.0, Scalar(0, 0, 255));
 
-	 // Process this detected rectangle - either update the nearest
-	 // object or add it as a new one
-	 binTrackingList.processDetect(detectRects[i]);
+	    // Process this detected rectangle - either update the nearest
+	    // object or add it as a new one
+	    binTrackingList.processDetect(detectRects[i]);
+	 }
       }
       // Print detect status of live objects
       binTrackingList.print();
@@ -236,23 +247,26 @@ int main( int argc, const char** argv )
 	    if (displayList[i].ratio < 0.15)
 	       continue;
 
-	    // Color moves from red to green (via brown, yuck) 
-	    // as the detected ratio goes up
-	    Scalar rectColor(0, 255 * displayList[i].ratio, 255 * (1.0 - displayList[i].ratio));
+	    if (!batchMode)
+	    {
+	       // Color moves from red to green (via brown, yuck) 
+	       // as the detected ratio goes up
+	       Scalar rectColor(0, 255 * displayList[i].ratio, 255 * (1.0 - displayList[i].ratio));
 
-	    // Highlight detected target
-	    rectangle(frame, displayList[i].rect, rectColor, 3);
+	       // Highlight detected target
+	       rectangle(frame, displayList[i].rect, rectColor, 3);
 
-	    // Write detect ID, distance and angle data
-	    putText(frame, displayList[i].id, Point(displayList[i].rect.x+25, displayList[i].rect.y+30), FONT_HERSHEY_PLAIN, 2.0, rectColor);
-	    stringstream distLabel;
-	    distLabel << "D=";
-	    distLabel << displayList[i].distance;
-	    putText(frame, distLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+50), FONT_HERSHEY_PLAIN, 1.5, rectColor);
-	    stringstream angleLabel;
-	    angleLabel << "A=";
-	    angleLabel << displayList[i].angle;
-	    putText(frame, angleLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+70), FONT_HERSHEY_PLAIN, 1.5, rectColor);
+	       // Write detect ID, distance and angle data
+	       putText(frame, displayList[i].id, Point(displayList[i].rect.x+25, displayList[i].rect.y+30), FONT_HERSHEY_PLAIN, 2.0, rectColor);
+	       stringstream distLabel;
+	       distLabel << "D=";
+	       distLabel << displayList[i].distance;
+	       putText(frame, distLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+50), FONT_HERSHEY_PLAIN, 1.5, rectColor);
+	       stringstream angleLabel;
+	       angleLabel << "A=";
+	       angleLabel << displayList[i].angle;
+	       putText(frame, angleLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+70), FONT_HERSHEY_PLAIN, 1.5, rectColor);
+	    }
 	 }
       }
       // Don't update to next frame if paused to prevent
@@ -260,81 +274,95 @@ int main( int argc, const char** argv )
       if (!pause)
 	 binTrackingList.nextFrame();
 
-      if (printFrames && cap->VideoCap())
+      if (!batchMode && printFrames && cap->VideoCap())
       {
-	 int frames = cap->VideoCap()->get(CV_CAP_PROP_FRAME_COUNT);
 	 stringstream ss;
 	 ss << cap->frameCounter();
 	 ss << '/';
-	 ss << frames;
+	 ss << cap->VideoCap()->get(CV_CAP_PROP_FRAME_COUNT);
 	 putText(frame, ss.str(), Point(frame.cols - 15 * ss.str().length(), 20), FONT_HERSHEY_PLAIN, 1.5, Scalar(0,0,255));
       }
       if (frameTicksIndex >= frameTicksLength)
       {
-	 double sum = 0;
-	 for (size_t i = 0; i < frameTicksLength; i++)
-	    sum += frameTicks[i];
-	 sum /= frameTicksLength;
-	 stringstream ss;
-	 ss.precision(3);
-	 ss << 1.0/sum;
-	 ss << " FPS";
-	 putText(frame, ss.str(), Point(frame.cols - 15 * ss.str().length(), 50), FONT_HERSHEY_PLAIN, 1.5, Scalar(0,0,255));
-
+	 // Display if GUI is up or print every frameTicksLength frames
+	 if (!batchMode || ((frameTicksIndex % frameTicksLength) == 0))
+	 {
+	    double sum = 0;
+	    for (size_t i = 0; i < frameTicksLength; i++)
+	       sum += frameTicks[i];
+	    sum /= frameTicksLength;
+	    stringstream ss;
+	    if (batchMode)
+	    {
+	       ss << cap->frameCounter();
+	       ss << '/';
+	       ss << cap->VideoCap()->get(CV_CAP_PROP_FRAME_COUNT);
+	       ss << " : ";
+	    }
+	    ss.precision(3);
+	    ss << 1.0/sum;
+	    ss << " FPS";
+	    if (!batchMode)
+	       putText(frame, ss.str(), Point(frame.cols - 15 * ss.str().length(), 50), FONT_HERSHEY_PLAIN, 1.5, Scalar(0,0,255));
+	    else
+	       cout << ss.str() << endl;
+	 }
       }
       // Put an A on the screen if capture-all is enabled so
       // users can keep track of that toggle's mode
-      if (captureAll)
+      if (!batchMode && captureAll)
 	 putText(frame, "A", Point(25,25), FONT_HERSHEY_PLAIN, 2.5, Scalar(0, 255, 255));
+      if (!batchMode)
+      {
+	 //-- Show what you got
+	 imshow( windowName, frame );
 
-      //-- Show what you got
-      imshow( windowName, frame );
-
-      // Process user IO
-      char c = waitKey(5);
-      if( c == 'c' ) { break; } // exit
-      else if( c == 'q' ) { break; } // exit
-      else if( c == 27 ) { break; } // exit
-      else if( c == ' ') { pause = !pause; }
-      else if( c == 'f')  // advance to next frame
-      {
-	 cap->getNextFrame(false, frame);
-      }
-      else if (c == 'A') // toggle capture-all
-      {
-	 captureAll = !captureAll;
-      }
-      else if (c == 't') // toggle tracking info display
-      {
-	 tracking = !tracking;
-      }
-      else if (c == 'a') // save all detected images
-      {
-	 Mat frameCopy;
-	 cap->getNextFrame(true, frameCopy);
-	 for (size_t index = 0; index < detectRects.size(); index++)
-	    writeImage(frameCopy, detectRects, index, capPath.c_str(), cap->frameCounter());
-      }
-      else if (c == 'p') // print frame number to screen
-      {
-	 cout << cap->frameCounter() << endl;
-      }
-      else if (c == 'P')
-      {
-	 printFrames = !printFrames;
-      }
-      else if (c == 'G') // toggle CPU/GPU mode
-      {
-	 if (gpuModeNext == GPU_MODE_GPU)
-	    gpuModeNext = GPU_MODE_CPU;
-	 else
-	    gpuModeNext = GPU_MODE_GPU;
-      }
-      else if (isdigit(c)) // save a single detected image
-      {
-	 Mat frameCopy;
-	 cap->getNextFrame(true, frameCopy);
-	 writeImage(frameCopy, detectRects, c - '0', capPath.c_str(), cap->frameCounter());
+	 // Process user IO
+	 char c = waitKey(5);
+	 if( c == 'c' ) { break; } // exit
+	 else if( c == 'q' ) { break; } // exit
+	 else if( c == 27 ) { break; } // exit
+	 else if( c == ' ') { pause = !pause; }
+	 else if( c == 'f')  // advance to next frame
+	 {
+	    cap->getNextFrame(false, frame);
+	 }
+	 else if (c == 'A') // toggle capture-all
+	 {
+	    captureAll = !captureAll;
+	 }
+	 else if (c == 't') // toggle tracking info display
+	 {
+	    tracking = !tracking;
+	 }
+	 else if (c == 'a') // save all detected images
+	 {
+	    Mat frameCopy;
+	    cap->getNextFrame(true, frameCopy);
+	    for (size_t index = 0; index < detectRects.size(); index++)
+	       writeImage(frameCopy, detectRects, index, capPath.c_str(), cap->frameCounter());
+	 }
+	 else if (c == 'p') // print frame number to screen
+	 {
+	    cout << cap->frameCounter() << endl;
+	 }
+	 else if (c == 'P')
+	 {
+	    printFrames = !printFrames;
+	 }
+	 else if (c == 'G') // toggle CPU/GPU mode
+	 {
+	    if (gpuModeNext == GPU_MODE_GPU)
+	       gpuModeNext = GPU_MODE_CPU;
+	    else
+	       gpuModeNext = GPU_MODE_GPU;
+	 }
+	 else if (isdigit(c)) // save a single detected image
+	 {
+	    Mat frameCopy;
+	    cap->getNextFrame(true, frameCopy);
+	    writeImage(frameCopy, detectRects, c - '0', capPath.c_str(), cap->frameCounter());
+	 }
       }
       if (captureAll && detectRects.size())
       {
