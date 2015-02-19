@@ -2,7 +2,7 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include <opencv2/gpu/gpu.hpp>
-
+#include <opencv2/opencv.hpp>
 #include "imagedetect.hpp"
 
 #include "iostream"
@@ -11,6 +11,7 @@ int scale         = 10;
 int neighbors     = 5;
 int minDetectSize = 20;
 int maxDetectSize = 200 * 4;
+int gpuDownScale = 1;
 
 
 // TODO : make this a parameter to the detect code
@@ -305,8 +306,12 @@ void GPU_CascadeDetect::cascadeDetect (const GpuMat &frameGPUInput, vector<Rect>
 }
 
 void GPU_CascadeDetect::cascadeDetect (const Mat &frame, vector<Rect> &imageRects, vector<unsigned> &direction) { //gpu version with wrapper
+   Mat nonConstFrame = frame.clone(); //create a copy that's not constant
+   float fxy = (float)(gpuDownScale/10); //create the scale factor
+   Mat resized(round(fxy * frame.cols),round(fxy * frame.rows),frame.type()); //create a target image with same type and different size as original
+   resize(nonConstFrame,resized,Size(0,0),fxy,fxy,INTER_LINEAR);
    GpuMat uploadFrame;
-   uploadFrame.upload(frame);
+   uploadFrame.upload(resized);
    cascadeDetect ( uploadFrame, imageRects, direction);
 }
 

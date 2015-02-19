@@ -98,7 +98,7 @@ int main( int argc, const char** argv )
    createTrackbar ("Scale", detectWindowName, &scale, 50, NULL);
    createTrackbar ("Neighbors", detectWindowName, &neighbors, 50, NULL);
    createTrackbar ("Max Detect", detectWindowName, &maxDetectSize, 1000, NULL);
-
+   createTrackbar ("GPU Scale", detectWindowName, &gpuDownScale, 20, NULL);
    const char *cascadeName = "../cascade_training/classifier_bin_6/cascade_oldformat_49.xml";
    // Use GPU code if hardware is detected, otherwise
    // fall back to CPU code

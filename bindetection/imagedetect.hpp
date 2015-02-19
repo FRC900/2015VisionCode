@@ -62,6 +62,7 @@ extern int neighbors;
 extern int minDetectSize;
 extern int maxDetectSize;
 extern int histDivider;
+extern int gpuDownScale;
 
 void thresholdImage(const cv::Mat &frame, cv::Mat &outFrame, std::vector <cv::Rect> &rects,
 			  int H_MIN, int H_MAX, int S_MIN, int S_MAX, int V_MIN, int V_MAX);
