@@ -6,6 +6,7 @@
 #include "imagedetect.hpp"
 
 #include "iostream"
+//#define DETECT_ROTATED
 
 int scale         = 10;
 int neighbors     = 5;
@@ -265,7 +266,7 @@ void GPU_CascadeDetect::cascadeDetect (const GpuMat &frameGPUInput, vector<Rect>
      direction.push_back(2);
   }
 
-#if 0
+#if 1
   //-- Detect objects at 180 degree rotation
   detectCount = _classifier.detectMultiScale(frameGPU[2], 
 	detectResultGPU, 
@@ -311,23 +312,25 @@ void GPU_CascadeDetect::cascadeDetect (const GpuMat &frameGPUInput, vector<Rect>
 
 void GPU_CascadeDetect::cascadeDetect (const Mat &frame, vector<Rect> &imageRects, vector<unsigned> &direction) { //gpu version with wrapper
    Mat nonConstFrame = frame.clone(); //create a copy that's not constant
-   float fxy;
    GpuMat uploadFrame;
-   int resizedCols;
-   int frameCols;
-   do {
-    fxy = 1 / (1.01 + gpuScale/100.0); //create the scale factor
+   uploadFrame.upload(frame);
+   cascadeDetect(uploadFrame, imageRects, direction);
+   float fxy = 1.0 / (1.01 + gpuScale/100.0); //create the scale factor
+   while(fxy > 0.5)
+   {
+    cerr << "fxy = " << fxy << endl;
     Mat resized(round(fxy * frame.cols),round(fxy * frame.rows),frame.type()); //create a target image with same type and different size as original
     resize(nonConstFrame,resized,Size(0,0),fxy,fxy,INTER_LINEAR);
     uploadFrame.upload(resized);
     vector <Rect> frameImageRects;
-    cascadeDetect ( uploadFrame, frameImageRects, direction);
+    vector <unsigned> frameImageDirections;
+    cascadeDetect(uploadFrame, frameImageRects, frameImageDirections);
     for(int i = 0; i < frameImageRects.size(); i++) {
       imageRects.push_back(scaleRects(frameImageRects[i], fxy));
+      direction.push_back(frameImageDirections[i]);
     }
-    resizedCols = resized.cols;
-    frameCols = frame.cols;
-  }while(resizedCols > frameCols * 0.5);
+    fxy = fxy / (1.01 + gpuScale/100.0); // create the scale factor
+  }
 }
 
 // For each detected rectange, check if each rect is in

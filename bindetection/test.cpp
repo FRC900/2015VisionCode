@@ -33,6 +33,8 @@ int main( int argc, const char** argv )
    bool tracking    = true;      // display tracking info?
    bool printFrames = false;  // print frame number?
    
+   // Allow switching between CPU and GPU
+   // for testing 
    enum GPU_MODE
    {
       GPU_MODE_UNINITIALIZED,
@@ -67,14 +69,16 @@ int main( int argc, const char** argv )
       capPath = "negative/2-11";
       windowName = "Camera 0";
    }
-   // Digit? Open camera
-   else if (isdigit(*argv[fileArgc]) && !strstr(argv[fileArgc],".jpg"))
+   // Digit, but no dot (meaning no file extension)? Open camera
+   // Also handle explicit -1 to pick the default camera
+   else if (!strstr(argv[fileArgc],".") &&
+            (isdigit(*argv[fileArgc]) || !strcmp(argv[fileArgc], "-1")))
    {
       cap = new VideoIn(*argv[fileArgc] - '0');
       capPath = "negative/2-11_" + (*argv[fileArgc] - '0');
       stringstream ss;
       ss << "Camera ";
-      ss << *argv[fileArgc] - '0';
+      ss << argv[fileArgc];
       windowName = ss.str();
    }
    else
@@ -91,7 +95,6 @@ int main( int argc, const char** argv )
    }
 
    Mat frame;
-   vector <Mat> images;
    // If UI is up, pop up the parameters window
    if (!batchMode)
    {
@@ -100,9 +103,9 @@ int main( int argc, const char** argv )
       createTrackbar ("Scale", detectWindowName, &scale, 50, NULL);
       createTrackbar ("Neighbors", detectWindowName, &neighbors, 50, NULL);
       createTrackbar ("Max Detect", detectWindowName, &maxDetectSize, 1000, NULL);
-      createTrackbar ("GPU Scale", detectWindowName, &gpuDownScale, 20, NULL);
+      createTrackbar ("GPU Scale", detectWindowName, &gpuScale, 100, NULL);
    }
-   const char *cascadeName = "../cascade_training/classifier_bin_6/cascade_oldformat_49.xml";
+   const char *cascadeName = "../cascade_training/classifier_bin_5/cascade_oldformat_30.xml";
    // Use GPU code if hardware is detected, otherwise
    // fall back to CPU code
    BaseCascadeDetect *detectCascade = NULL;;
@@ -123,20 +126,27 @@ int main( int argc, const char** argv )
    TrackedObjectList binTrackingList(24.0, frame.cols);
 
 #define frameTicksLength (sizeof(frameTicks) / sizeof(frameTicks[0]))
-   double frameTicks[20];
+   double frameTicks[3];
    int64 startTick;
    int64 endTick;
    size_t frameTicksIndex = 0;
-   // Read the video stream
+   // Start of the main loop
+   //  -- grab a frame
+   //  -- update the angle of tracked objects 
+   //  -- do a cascade detect on the current frame
+   //  -- add those newly detected objects to the list of tracked objects
    while(cap->getNextFrame(pause, frame))
    {
-      startTick = getTickCount();
+      startTick = getTickCount(); // start time for this frame
+
       //TODO : grab angle delta from robot
       // Adjust the position of all of the detected objects
       // to account for movement of the robot between frames
       double deltaAngle = 0.0;
       binTrackingList.adjustAngle(deltaAngle);
 
+      // Code to allow switching between CPU and GPU 
+      // for testing
       if ((gpuModeCurrent == GPU_MODE_UNINITIALIZED) || (gpuModeCurrent != gpuModeNext))
       {
 	 if (detectCascade)
@@ -155,15 +165,11 @@ int main( int argc, const char** argv )
 	 }
       }
       // Apply the classifier to the frame
+      // detectRects is a vector of rectangles, one for each detected object
+      // detectDirections is the direction of each detected object - we might not use this
       vector<Rect> detectRects;
       vector<unsigned> detectDirections;
       detectCascade->cascadeDetect(frame, detectRects, detectDirections); 
-
-      images.clear();
-      // Filter out images using threshold values - 
-      // since bins are green this could be used as a second pass
-      // to get rid of false positives which aren't green enough
-      vector <Rect> filteredRects;
 
       for( size_t i = 0; i < min(detectRects.size(), detectMax); i++ ) 
       {
@@ -195,6 +201,7 @@ int main( int argc, const char** argv )
 	 if (!batchMode)
 	 {
 	    // Mark detected rectangle on image
+	    // Change color based on direction we think the bin is pointing
 	    Scalar rectColor;
 	    switch (detectDirections[i])
 	    {
@@ -214,8 +221,8 @@ int main( int argc, const char** argv )
 		  rectColor = Scalar(255,0,255);
 		  break;
 	    }
-
 	    rectangle( frame, detectRects[i], rectColor, 3);
+
 	    // Label each outlined image with a digit.  Top-level code allows
 	    // users to save these small images by hitting the key they're labeled with
 	    // This should be a quick way to grab lots of falsly detected images
@@ -236,7 +243,7 @@ int main( int argc, const char** argv )
 
       if (tracking)
       {
-	 // Grab info from detected objects, print it ou
+	 // Grab info from trackedobjects, print it out
 	 vector<TrackedObjectDisplay> displayList;
 	 binTrackingList.getDisplay(displayList);
 	 for (size_t i = 0; !batchMode && (i < displayList.size()); i++)
@@ -265,9 +272,11 @@ int main( int argc, const char** argv )
       }
       // Don't update to next frame if paused to prevent
       // objects missing from this frame to be aged out
+      // as the current frame is redisplayed over and over
       if (!pause)
 	 binTrackingList.nextFrame();
 
+      // Print frame number of video if the option is enabled
       if (!batchMode && printFrames && cap->VideoCap())
       {
 	 stringstream ss;
@@ -339,6 +348,8 @@ int main( int argc, const char** argv )
 	 }
 	 else if (c == 'a') // save all detected images
 	 {
+	    // Save from a copy rather than the original
+	    // so all the markup isn't saved, only the raw image
 	    Mat frameCopy;
 	    cap->getNextFrame(true, frameCopy);
 	    for (size_t index = 0; index < detectRects.size(); index++)
@@ -370,6 +381,8 @@ int main( int argc, const char** argv )
       // to their own output image file
       if (captureAll && detectRects.size())
       {
+	 // Save from a copy rather than the original
+	 // so all the markup isn't saved, only the raw image
 	 Mat frameCopy;
 	 cap->getNextFrame(true, frameCopy);
 	 for (size_t index = 0; index < detectRects.size(); index++)
@@ -382,6 +395,12 @@ int main( int argc, const char** argv )
    return 0;
 }
 
+// Write out the selected rectangle from the input frame
+// Save multiple copies - the full size image, that full size image converted to grayscale and histogram equalized, and a small version of each.
+// The small version is saved because while the input images to the training process are 20x20
+// the detection code can find larger versions of them. Scale them down to 20x20 so the complete detected
+// image is used as a negative to the training code. Without this, the training code will pull a 20x20
+// sub-image out of the larger full image
 void writeImage(const Mat &frame, const vector<Rect> &rects, size_t index, const char *path, int frameCounter)
 {
    if (index < rects.size())
