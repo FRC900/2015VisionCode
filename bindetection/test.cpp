@@ -106,7 +106,7 @@ int main( int argc, const char** argv )
       createTrackbar ("Max Detect", detectWindowName, &maxDetectSize, 1000, NULL);
       createTrackbar ("GPU Scale", detectWindowName, &gpuScale, 100, NULL);
    }
-   const char *cascadeName = "../cascade_training/classifier_bin_5/cascade_oldformat_30.xml";
+   const char *cascadeName = "../cascade_training/classifier_bin_5/cascade_oldformat_33.xml";
    // Use GPU code if hardware is detected, otherwise
    // fall back to CPU code
    BaseCascadeDetect *detectCascade = NULL;;
@@ -238,13 +238,14 @@ int main( int argc, const char** argv )
 
 	 // Process this detected rectangle - either update the nearest
 	 // object or add it as a new one
-	 binTrackingList.processDetect(detectRects[i]);
+	 if (!batchMode)
+	    binTrackingList.processDetect(detectRects[i]);
       }
-      // Print detect status of live objects
-      binTrackingList.print();
 
       if (tracking && !batchMode)
       {
+	 // Print detect status of live objects
+	 binTrackingList.print();
 	 // Grab info from trackedobjects, print it out
 	 vector<TrackedObjectDisplay> displayList;
 	 binTrackingList.getDisplay(displayList);
@@ -253,26 +254,23 @@ int main( int argc, const char** argv )
 	    if (displayList[i].ratio < 0.15)
 	       continue;
 
-	    if (!batchMode)
-	    {
-	       // Color moves from red to green (via brown, yuck) 
-	       // as the detected ratio goes up
-	       Scalar rectColor(0, 255 * displayList[i].ratio, 255 * (1.0 - displayList[i].ratio));
+	    // Color moves from red to green (via brown, yuck) 
+	    // as the detected ratio goes up
+	    Scalar rectColor(0, 255 * displayList[i].ratio, 255 * (1.0 - displayList[i].ratio));
 
-	       // Highlight detected target
-	       rectangle(frame, displayList[i].rect, rectColor, 3);
+	    // Highlight detected target
+	    rectangle(frame, displayList[i].rect, rectColor, 3);
 
-	       // Write detect ID, distance and angle data
-	       putText(frame, displayList[i].id, Point(displayList[i].rect.x+25, displayList[i].rect.y+30), FONT_HERSHEY_PLAIN, 2.0, rectColor);
-	       stringstream distLabel;
-	       distLabel << "D=";
-	       distLabel << displayList[i].distance;
-	       putText(frame, distLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+50), FONT_HERSHEY_PLAIN, 1.5, rectColor);
-	       stringstream angleLabel;
-	       angleLabel << "A=";
-	       angleLabel << displayList[i].angle;
-	       putText(frame, angleLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+70), FONT_HERSHEY_PLAIN, 1.5, rectColor);
-	    }
+	    // Write detect ID, distance and angle data
+	    putText(frame, displayList[i].id, Point(displayList[i].rect.x+25, displayList[i].rect.y+30), FONT_HERSHEY_PLAIN, 2.0, rectColor);
+	    stringstream distLabel;
+	    distLabel << "D=";
+	    distLabel << displayList[i].distance;
+	    putText(frame, distLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+50), FONT_HERSHEY_PLAIN, 1.5, rectColor);
+	    stringstream angleLabel;
+	    angleLabel << "A=";
+	    angleLabel << displayList[i].angle;
+	    putText(frame, angleLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+70), FONT_HERSHEY_PLAIN, 1.5, rectColor);
 	 }
       }
       // Don't update to next frame if paused to prevent
