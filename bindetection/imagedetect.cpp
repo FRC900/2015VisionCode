@@ -11,7 +11,7 @@ int scale         = 10;
 int neighbors     = 5;
 int minDetectSize = 20;
 int maxDetectSize = 200 * 4;
-int gpuDownScale = 1;
+int gpuScale = 10;
 
 
 // TODO : make this a parameter to the detect code
@@ -206,6 +206,10 @@ static void DrawRects(string windowName, const GpuMat &frameGPU, Rect *faces, si
    }
    imshow(windowName, frame);
 }
+Rect scaleRects(const Rect &input, float inputScaleFactor) {
+  float scaleFactor = 1.0 / inputScaleFactor;
+  return Rect((input.x * scaleFactor),(input.y * scaleFactor),(input.width * scaleFactor),(input.height * scaleFactor));
+}
 
 void GPU_CascadeDetect::cascadeDetect (const GpuMat &frameGPUInput, vector<Rect> &imageRects, vector<unsigned> &direction) //gpu version
 {
@@ -217,10 +221,10 @@ void GPU_CascadeDetect::cascadeDetect (const GpuMat &frameGPUInput, vector<Rect>
   //-- Detect objects
   int detectCount;
   detectCount = _classifier.detectMultiScale(frameGPU[0], 
-	detectResultGPU, 
-	1.01 + scale/100., 
-	neighbors, 
-	Size(minDetectSize * DETECT_ASPECT_RATIO, minDetectSize));
+	 detectResultGPU, 
+	 1.01 + scale/100., 
+	 neighbors, 
+	 Size(minDetectSize * DETECT_ASPECT_RATIO, minDetectSize));
 
   // download only detected number of rectangles
   Mat detectResult;
@@ -307,12 +311,23 @@ void GPU_CascadeDetect::cascadeDetect (const GpuMat &frameGPUInput, vector<Rect>
 
 void GPU_CascadeDetect::cascadeDetect (const Mat &frame, vector<Rect> &imageRects, vector<unsigned> &direction) { //gpu version with wrapper
    Mat nonConstFrame = frame.clone(); //create a copy that's not constant
-   float fxy = (float)(gpuDownScale/10); //create the scale factor
-   Mat resized(round(fxy * frame.cols),round(fxy * frame.rows),frame.type()); //create a target image with same type and different size as original
-   resize(nonConstFrame,resized,Size(0,0),fxy,fxy,INTER_LINEAR);
+   float fxy;
    GpuMat uploadFrame;
-   uploadFrame.upload(resized);
-   cascadeDetect ( uploadFrame, imageRects, direction);
+   int resizedCols;
+   int frameCols;
+   do {
+    fxy = 1 / (1.01 + gpuScale/100.0); //create the scale factor
+    Mat resized(round(fxy * frame.cols),round(fxy * frame.rows),frame.type()); //create a target image with same type and different size as original
+    resize(nonConstFrame,resized,Size(0,0),fxy,fxy,INTER_LINEAR);
+    uploadFrame.upload(resized);
+    vector <Rect> frameImageRects;
+    cascadeDetect ( uploadFrame, frameImageRects, direction);
+    for(int i = 0; i < frameImageRects.size(); i++) {
+      imageRects.push_back(scaleRects(frameImageRects[i], fxy));
+    }
+    resizedCols = resized.cols;
+    frameCols = frame.cols;
+  }while(resizedCols > frameCols * 0.5);
 }
 
 // For each detected rectange, check if each rect is in
