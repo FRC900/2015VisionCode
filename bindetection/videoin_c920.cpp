@@ -46,7 +46,7 @@ VideoIn::VideoIn(int _stream)
    _frameCounter = 0;
 
 
-   _camera.ChangeCaptureSize(v4l2::CAPTURE_SIZE_1280x720);
+   _camera.ChangeCaptureSize(v4l2::CAPTURE_SIZE_640x480);
    _camera.ChangeCaptureFPS(v4l2::CAPTURE_FPS_30);
    _camera.GetBrightness(_brightness);
    _camera.GetContrast(_contrast);
