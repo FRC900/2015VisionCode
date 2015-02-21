@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include "networktables/NetworkTable.h"
+#include "networktables2/type/NumberArray.h"
 
 #include "imagedetect.hpp"
 #include "videoin_c920.hpp"
@@ -154,7 +155,12 @@ int main( int argc, const char** argv )
 
    NetworkTable::SetClientMode();
    NetworkTable::SetIPAddress("10.9.0.2");
-   NetworkTable *net_table = NetworkTable::GetTable("VisionTable");
+   NetworkTable *netTable = NetworkTable::GetTable("VisionTable");
+   const size_t netTableArraySize = 7; // 7 bins?
+   NumberArray netTableArray;
+
+   // 7 bins max, 3 entries each (confidence, distance, angle)
+   netTableArray.setSize(netTableArraySize * 3);
 
    // Frame timing information
 #define frameTicksLength (sizeof(frameTicks) / sizeof(frameTicks[0]))
@@ -287,54 +293,53 @@ int main( int argc, const char** argv )
 	    binTrackingList.processDetect(detectRects[i]);
       }
 
-      if (!batchMode)
+      // Print detect status of live objects
+      if (tracking)
+	 binTrackingList.print();
+      // Grab info from trackedobjects, print it out
+      vector<TrackedObjectDisplay> displayList;
+      binTrackingList.getDisplay(displayList);
+
+      // Clear out network table array
+      for (size_t i = 0; i < (netTableArraySize * 3); i++)
+	 netTableArray.set(i, -1);
+
+      for (size_t i = 0; i < displayList.size(); i++)
       {
-	 // Print detect status of live objects
-	 if (tracking)
-	    binTrackingList.print();
-	 // Grab info from trackedobjects, print it out
-	 vector<TrackedObjectDisplay> displayList;
-	 binTrackingList.getDisplay(displayList);
+	 if (displayList[i].ratio < 0.15)
+	    continue;
 
-	 net_table->PutNumber("BinsDetected", displayList.size());
-
-	 for (size_t i = 0; !batchMode && (i < displayList.size()); i++)
+	 if (tracking && !batchMode)
 	 {
-	    if (displayList[i].ratio < 0.15)
-	       continue;
+	    // Color moves from red to green (via brown, yuck) 
+	    // as the detected ratio goes up
+	    Scalar rectColor(0, 255 * displayList[i].ratio, 255 * (1.0 - displayList[i].ratio));
 
-	    if (tracking)
-	    {
-	       // Color moves from red to green (via brown, yuck) 
-	       // as the detected ratio goes up
-	       Scalar rectColor(0, 255 * displayList[i].ratio, 255 * (1.0 - displayList[i].ratio));
+	    // Highlight detected target
+	    rectangle(frame, displayList[i].rect, rectColor, 3);
 
-	       // Highlight detected target
-	       rectangle(frame, displayList[i].rect, rectColor, 3);
+	    // Write detect ID, distance and angle data
+	    putText(frame, displayList[i].id, Point(displayList[i].rect.x+25, displayList[i].rect.y+30), FONT_HERSHEY_PLAIN, 2.0, rectColor);
+	    stringstream distLabel;
+	    distLabel << "D=";
+	    distLabel << displayList[i].distance;
+	    putText(frame, distLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+50), FONT_HERSHEY_PLAIN, 1.5, rectColor);
+	    stringstream angleLabel;
+	    angleLabel << "A=";
+	    angleLabel << displayList[i].angle;
+	    putText(frame, angleLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+70), FONT_HERSHEY_PLAIN, 1.5, rectColor);
+	 }
 
-	       // Write detect ID, distance and angle data
-	       putText(frame, displayList[i].id, Point(displayList[i].rect.x+25, displayList[i].rect.y+30), FONT_HERSHEY_PLAIN, 2.0, rectColor);
-	       stringstream distLabel;
-	       distLabel << "D=";
-	       distLabel << displayList[i].distance;
-	       putText(frame, distLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+50), FONT_HERSHEY_PLAIN, 1.5, rectColor);
-	       stringstream angleLabel;
-	       angleLabel << "A=";
-	       angleLabel << displayList[i].angle;
-	       putText(frame, angleLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+70), FONT_HERSHEY_PLAIN, 1.5, rectColor);
-	    }
-
-	    stringstream ss;
-	    ss << "Distance";
-	    ss << i;
-	    net_table->PutNumber(ss.str(), displayList[i].distance);
-	    ss.str(string());
-	    ss.clear();
-	    ss << "Angle";
-	    ss << i;
-	    net_table->PutNumber(ss.str(), displayList[i].angle);
+	 if (i < netTableArraySize)
+	 {
+	    netTableArray.set(i*3,   displayList[i].ratio);
+	    netTableArray.set(i*3+1, displayList[i].distance);
+	    netTableArray.set(i*3+2, displayList[i].angle);
 	 }
       }
+
+      netTable->PutValue("VisionArray", netTableArray);
+
       // Don't update to next frame if paused to prevent
       // objects missing from this frame to be aged out
       // as the current frame is redisplayed over and over
@@ -350,6 +355,8 @@ int main( int argc, const char** argv )
 	 ss << cap->VideoCap()->get(CV_CAP_PROP_FRAME_COUNT);
 	 putText(frame, ss.str(), Point(frame.cols - 15 * ss.str().length(), 20), FONT_HERSHEY_PLAIN, 1.5, Scalar(0,0,255));
       }
+
+      // Display current classifier under test
       {
 	 stringstream ss;
 	 ss << classifierDirNum;
