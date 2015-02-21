@@ -12,7 +12,7 @@ int scale         = 10;
 int neighbors     = 5;
 int minDetectSize = 20;
 int maxDetectSize = 200 * 4;
-int gpuScale = 10;
+int gpuScale      = 99;
 
 
 // TODO : make this a parameter to the detect code
@@ -318,7 +318,6 @@ void GPU_CascadeDetect::cascadeDetect (const Mat &frame, vector<Rect> &imageRect
    float fxy = 1.0 / (1.01 + gpuScale/100.0); //create the scale factor
    while(fxy > 0.5)
    {
-    cerr << "fxy = " << fxy << endl;
     Mat resized(round(fxy * frame.cols),round(fxy * frame.rows),frame.type()); //create a target image with same type and different size as original
     resize(nonConstFrame,resized,Size(0,0),fxy,fxy,INTER_LINEAR);
     uploadFrame.upload(resized);

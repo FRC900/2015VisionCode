@@ -6,6 +6,8 @@
 #include <iostream>
 #include <stdio.h>
 
+#include "networktables/NetworkTable.h"
+
 #include "imagedetect.hpp"
 #include "videoin_c920.hpp"
 #include "track.hpp"
@@ -27,11 +29,11 @@ int main( int argc, const char** argv )
    const string batchModeOpt = "--batch";
 
    // Flags for various UI features
-   bool pause       = false;        // pause playback?
-   bool captureAll  = false;   // capture all found targets to image files?
-   bool tracking    = true;      // display tracking info?
+   bool pause       = false;  // pause playback?
+   bool captureAll  = false;  // capture all found targets to image files?
+   bool tracking    = true;   // display tracking info?
    bool printFrames = false;  // print frame number?
-   bool batchMode = false;    // non-interactive mode - no display, run through
+   bool batchMode   = false;  // non-interactive mode - no display, run through
                               // as quickly as possible. Combine with --all
    
    // Allow switching between CPU and GPU
@@ -125,6 +127,13 @@ int main( int argc, const char** argv )
    // Create list of tracked objects
    // recycling bins are 24" wide
    TrackedObjectList binTrackingList(24.0, frame.cols);
+
+   NetworkTable::SetClientMode();
+   NetworkTable::SetTeam(900);
+   NetworkTable *net_table = NetworkTable::GetTable("VisionTable");
+
+   if (net_table->IsConnected())
+      cerr << "NetworkTable Connected..." << endl;
 
 #define frameTicksLength (sizeof(frameTicks) / sizeof(frameTicks[0]))
    double frameTicks[3];
@@ -242,13 +251,16 @@ int main( int argc, const char** argv )
 	    binTrackingList.processDetect(detectRects[i]);
       }
 
-      if (tracking && !batchMode)
+      if (tracking && (!batchMode || net_table->IsConnected()))
       {
 	 // Print detect status of live objects
-	 binTrackingList.print();
+	 if (!batchMode)
+	    binTrackingList.print();
 	 // Grab info from trackedobjects, print it out
 	 vector<TrackedObjectDisplay> displayList;
 	 binTrackingList.getDisplay(displayList);
+	 if (net_table->IsConnected()) 
+	    net_table->PutNumber("BinsDetected", displayList.size());
 	 for (size_t i = 0; !batchMode && (i < displayList.size()); i++)
 	 {
 	    if (displayList[i].ratio < 0.15)
@@ -271,6 +283,19 @@ int main( int argc, const char** argv )
 	    angleLabel << "A=";
 	    angleLabel << displayList[i].angle;
 	    putText(frame, angleLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+70), FONT_HERSHEY_PLAIN, 1.5, rectColor);
+
+	    if (net_table->IsConnected()) 
+	    {
+	       stringstream ss;
+	       ss << "Distance";
+	       ss << i;
+	       net_table->PutNumber(ss.str(), displayList[i].distance);
+	       ss.str(string());
+	       ss.clear();
+	       ss << "Angle";
+	       ss << i;
+	       net_table->PutNumber(ss.str(), displayList[i].angle);
+	    }
 	 }
       }
       // Don't update to next frame if paused to prevent
