@@ -42,9 +42,9 @@ string getClassifierName(int directory, int stage)
 
 int main( int argc, const char** argv )
 {
-   string windowName = "Capture - Face detection";
-   string capPath;
-   VideoIn *cap;
+   string windowName = "Bin detection";
+   string capPath; // Output directory for captured images
+   VideoIn *cap; // video input - image, video or camera
    const size_t detectMax = 10;
    const string frameOpt = "--frame=";
    double frameStart = 0.0;
@@ -59,8 +59,7 @@ int main( int argc, const char** argv )
    bool batchMode   = false;  // non-interactive mode - no display, run through
                               // as quickly as possible. Combine with --all
    
-   // Allow switching between CPU and GPU
-   // for testing 
+   // Allow switching between CPU and GPU for testing 
    enum CLASSIFIER_MODE
    {
       CLASSIFIER_MODE_UNINITIALIZED,
@@ -74,6 +73,7 @@ int main( int argc, const char** argv )
    if (gpu::getCudaEnabledDeviceCount() > 0)
       classifierModeNext = CLASSIFIER_MODE_GPU;
 
+   // Classifier directory and stage to start with
    int classifierDirNum   = 5;
    int classifierStageNum = 30;
 
@@ -163,11 +163,14 @@ int main( int argc, const char** argv )
       cerr << "NetworkTable Connected..." << endl;
 #endif
 
+   // Frame timing information
 #define frameTicksLength (sizeof(frameTicks) / sizeof(frameTicks[0]))
    double frameTicks[3];
    int64 startTick;
    int64 endTick;
    size_t frameTicksIndex = 0;
+
+
    // Start of the main loop
    //  -- grab a frame
    //  -- update the angle of tracked objects 
@@ -194,15 +197,20 @@ int main( int argc, const char** argv )
 	 // CPU/GPU mode setting 
 	 if (classifierModeNext == CLASSIFIER_MODE_RELOAD)
 	    classifierModeNext = classifierModeCurrent;
+
+	 // Delete the old classifier if it has been initialized
 	 if (detectClassifier)
 	    delete detectClassifier;
+
+	 // Create a new CPU or GPU classifier based on the
+	 // user's selection
 	 if (classifierModeNext == CLASSIFIER_MODE_GPU)
 	    detectClassifier = new GPU_CascadeDetect(classifierName.c_str());
 	 else
 	    detectClassifier = new CPU_CascadeDetect(classifierName.c_str());
 	 classifierModeCurrent = classifierModeNext;
 
-	 // Load the cascades
+	 // Verfiy the classifier loaded
 	 if( !detectClassifier->loaded() )
 	 {
 	    cerr << "--(!)Error loading " << classifierName << endl; 
