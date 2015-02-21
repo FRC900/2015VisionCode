@@ -6,7 +6,9 @@
 #include <iostream>
 #include <stdio.h>
 
+#ifdef __linux
 #include "networktables/NetworkTable.h"
+#endif
 
 #include "imagedetect.hpp"
 #include "videoin_c920.hpp"
@@ -108,7 +110,7 @@ int main( int argc, const char** argv )
       createTrackbar ("Max Detect", detectWindowName, &maxDetectSize, 1000, NULL);
       createTrackbar ("GPU Scale", detectWindowName, &gpuScale, 100, NULL);
    }
-   const char *cascadeName = "../cascade_training/classifier_bin_5/cascade_oldformat_33.xml";
+   const char *cascadeName = "../cascade_training/classifier_bin_5/cascade_oldformat_14.xml";
    // Use GPU code if hardware is detected, otherwise
    // fall back to CPU code
    BaseCascadeDetect *detectCascade = NULL;;
@@ -128,12 +130,14 @@ int main( int argc, const char** argv )
    // recycling bins are 24" wide
    TrackedObjectList binTrackingList(24.0, frame.cols);
 
+#ifdef __linux
    NetworkTable::SetClientMode();
    NetworkTable::SetTeam(900);
    NetworkTable *net_table = NetworkTable::GetTable("VisionTable");
 
    if (net_table->IsConnected())
       cerr << "NetworkTable Connected..." << endl;
+#endif
 
 #define frameTicksLength (sizeof(frameTicks) / sizeof(frameTicks[0]))
    double frameTicks[3];
@@ -251,7 +255,11 @@ int main( int argc, const char** argv )
 	    binTrackingList.processDetect(detectRects[i]);
       }
 
-      if (tracking && (!batchMode || net_table->IsConnected()))
+      if (tracking && (!batchMode 
+#ifdef __linux
+	       || net_table->IsConnected()
+#endif
+	 ))
       {
 	 // Print detect status of live objects
 	 if (!batchMode)
@@ -259,8 +267,10 @@ int main( int argc, const char** argv )
 	 // Grab info from trackedobjects, print it out
 	 vector<TrackedObjectDisplay> displayList;
 	 binTrackingList.getDisplay(displayList);
+#ifdef __linux
 	 if (net_table->IsConnected()) 
 	    net_table->PutNumber("BinsDetected", displayList.size());
+#endif
 	 for (size_t i = 0; !batchMode && (i < displayList.size()); i++)
 	 {
 	    if (displayList[i].ratio < 0.15)
@@ -284,6 +294,7 @@ int main( int argc, const char** argv )
 	    angleLabel << displayList[i].angle;
 	    putText(frame, angleLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+70), FONT_HERSHEY_PLAIN, 1.5, rectColor);
 
+#ifdef __linux
 	    if (net_table->IsConnected()) 
 	    {
 	       stringstream ss;
@@ -296,6 +307,7 @@ int main( int argc, const char** argv )
 	       ss << i;
 	       net_table->PutNumber(ss.str(), displayList[i].angle);
 	    }
+#endif
 	 }
       }
       // Don't update to next frame if paused to prevent
