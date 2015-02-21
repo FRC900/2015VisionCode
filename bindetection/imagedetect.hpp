@@ -48,6 +48,10 @@ class GPU_CascadeDetect : public BaseCascadeDetect
       {
 	 cascadeLoaded = _classifier.load(cascadeName);
       }
+      ~GPU_CascadeDetect(void)
+      {
+	 _classifier.release();
+      }
       void cascadeDetect(const cv::Mat &frame, std::vector<cv::Rect> &imageRects, std::vector<unsigned> &direction);
       void cascadeDetect(const cv::gpu::GpuMat &frameGPUInput, std::vector<cv::Rect> &imageRects, std::vector<unsigned> &direction);
 
