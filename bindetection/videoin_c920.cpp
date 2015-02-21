@@ -24,7 +24,6 @@ VideoIn::VideoIn(const char *path)
 
 VideoIn::VideoIn(int _stream)
 {
-   
    if (_stream < 0)
       _stream = 0;
    stringstream videoStream;
@@ -56,8 +55,8 @@ VideoIn::VideoIn(int _stream)
    _camera.GetBacklightCompensation(_backlightCompensation);
    _camera.GetWhiteBalanceTemperature(_whiteBalanceTemperature);
    ++_whiteBalanceTemperature;
-   _camera.GetFocus(_focus);
-   ++_focus;
+  // _camera.GetFocus(_focus);
+  // ++_focus;
    cv::namedWindow("Adjustments", CV_WINDOW_NORMAL);
    cv::createTrackbar("Brightness", "Adjustments", &_brightness, 255);
    cv::createTrackbar("Contrast", "Adjustments", &_contrast, 255);
