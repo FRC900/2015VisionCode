@@ -458,18 +458,26 @@ int main( int argc, const char** argv )
 	 }
 	 else if (c == '.') // higher classifier stage
 	 {
-	    if (getClassifierName(classifierDirNum, classifierStageNum+1).length())
+	    int num = classifierStageNum + 1;
+	    while ((getClassifierName(classifierDirNum, num).length() == 0) &&
+		  (num < 100))
+	       num += 1;
+	    if (num < 100)
 	    {
-	       classifierStageNum += 1;
-	       classifierModeNext   = CLASSIFIER_MODE_RELOAD;
+	       classifierStageNum = num;
+	       classifierModeNext = CLASSIFIER_MODE_RELOAD;
 	    }
 	 }
 	 else if (c == ',') // lower classifier stage
 	 {
-	    if (getClassifierName(classifierDirNum, classifierStageNum-1).length())
+	    int num = classifierStageNum - 1;
+	    while ((getClassifierName(classifierDirNum, num).length() == 0) &&
+		  (num > 0))
+	       num -= 1;
+	    if (num > 0)
 	    {
-	       classifierStageNum -= 1;
-	       classifierModeNext   = CLASSIFIER_MODE_RELOAD;
+	       classifierStageNum = num;
+	       classifierModeNext = CLASSIFIER_MODE_RELOAD;
 	    }
 	 }
 	 else if (c == '>') // higher classifier dir num
