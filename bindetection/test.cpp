@@ -156,11 +156,9 @@ int main( int argc, const char** argv )
 
 #ifdef __linux
    NetworkTable::SetClientMode();
-   NetworkTable::SetTeam(900);
+   NetworkTable::SetIPAddress("10.9.0.2");
    NetworkTable *net_table = NetworkTable::GetTable("VisionTable");
 
-   if (net_table->IsConnected())
-      cerr << "NetworkTable Connected..." << endl;
 #endif
 
    // Frame timing information
@@ -294,58 +292,53 @@ int main( int argc, const char** argv )
 	    binTrackingList.processDetect(detectRects[i]);
       }
 
-      if (tracking && (!batchMode 
-#ifdef __linux
-	       || net_table->IsConnected()
-#endif
-	 ))
+      if (!batchMode)
       {
 	 // Print detect status of live objects
-	 if (!batchMode)
+	 if (tracking)
 	    binTrackingList.print();
 	 // Grab info from trackedobjects, print it out
 	 vector<TrackedObjectDisplay> displayList;
 	 binTrackingList.getDisplay(displayList);
 #ifdef __linux
-	 if (net_table->IsConnected()) 
-	    net_table->PutNumber("BinsDetected", displayList.size());
+	 net_table->PutNumber("BinsDetected", displayList.size());
 #endif
 	 for (size_t i = 0; !batchMode && (i < displayList.size()); i++)
 	 {
 	    if (displayList[i].ratio < 0.15)
 	       continue;
 
-	    // Color moves from red to green (via brown, yuck) 
-	    // as the detected ratio goes up
-	    Scalar rectColor(0, 255 * displayList[i].ratio, 255 * (1.0 - displayList[i].ratio));
+	    if (tracking)
+	    {
+	       // Color moves from red to green (via brown, yuck) 
+	       // as the detected ratio goes up
+	       Scalar rectColor(0, 255 * displayList[i].ratio, 255 * (1.0 - displayList[i].ratio));
 
-	    // Highlight detected target
-	    rectangle(frame, displayList[i].rect, rectColor, 3);
+	       // Highlight detected target
+	       rectangle(frame, displayList[i].rect, rectColor, 3);
 
-	    // Write detect ID, distance and angle data
-	    putText(frame, displayList[i].id, Point(displayList[i].rect.x+25, displayList[i].rect.y+30), FONT_HERSHEY_PLAIN, 2.0, rectColor);
-	    stringstream distLabel;
-	    distLabel << "D=";
-	    distLabel << displayList[i].distance;
-	    putText(frame, distLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+50), FONT_HERSHEY_PLAIN, 1.5, rectColor);
-	    stringstream angleLabel;
-	    angleLabel << "A=";
-	    angleLabel << displayList[i].angle;
-	    putText(frame, angleLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+70), FONT_HERSHEY_PLAIN, 1.5, rectColor);
+	       // Write detect ID, distance and angle data
+	       putText(frame, displayList[i].id, Point(displayList[i].rect.x+25, displayList[i].rect.y+30), FONT_HERSHEY_PLAIN, 2.0, rectColor);
+	       stringstream distLabel;
+	       distLabel << "D=";
+	       distLabel << displayList[i].distance;
+	       putText(frame, distLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+50), FONT_HERSHEY_PLAIN, 1.5, rectColor);
+	       stringstream angleLabel;
+	       angleLabel << "A=";
+	       angleLabel << displayList[i].angle;
+	       putText(frame, angleLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+70), FONT_HERSHEY_PLAIN, 1.5, rectColor);
+	    }
 
 #ifdef __linux
-	    if (net_table->IsConnected()) 
-	    {
-	       stringstream ss;
-	       ss << "Distance";
-	       ss << i;
-	       net_table->PutNumber(ss.str(), displayList[i].distance);
-	       ss.str(string());
-	       ss.clear();
-	       ss << "Angle";
-	       ss << i;
-	       net_table->PutNumber(ss.str(), displayList[i].angle);
-	    }
+	    stringstream ss;
+	    ss << "Distance";
+	    ss << i;
+	    net_table->PutNumber(ss.str(), displayList[i].distance);
+	    ss.str(string());
+	    ss.clear();
+	    ss << "Angle";
+	    ss << i;
+	    net_table->PutNumber(ss.str(), displayList[i].angle);
 #endif
 	 }
       }
