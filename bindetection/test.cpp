@@ -5,6 +5,9 @@
 
 #include <iostream>
 #include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #ifdef __linux
 #include "networktables/NetworkTable.h"
@@ -18,6 +21,24 @@ using namespace std;
 using namespace cv;
 
 void writeImage(const Mat &frame, const vector<Rect> &rects, size_t index, const char *path, int frameCounter);
+
+// given a directory number and stage within that directory
+// generate a filename to load the cascade from.  Check that
+// the file exists - if it doesnt, return an empty string
+string getClassifierName(int directory, int stage)
+{
+   stringstream ss;
+   ss << "../cascade_training/classifier_bin_";
+   ss << directory;
+   ss << "/cascade_oldformat_";
+   ss << stage;
+   ss << ".xml";
+
+   struct stat fileStat;
+   if (stat(ss.str().c_str(), &fileStat) == 0)
+      return string(ss.str());
+   return string();
+}
 
 int main( int argc, const char** argv )
 {
@@ -40,17 +61,21 @@ int main( int argc, const char** argv )
    
    // Allow switching between CPU and GPU
    // for testing 
-   enum GPU_MODE
+   enum CLASSIFIER_MODE
    {
-      GPU_MODE_UNINITIALIZED,
-      GPU_MODE_CPU,
-      GPU_MODE_GPU
+      CLASSIFIER_MODE_UNINITIALIZED,
+      CLASSIFIER_MODE_RELOAD,
+      CLASSIFIER_MODE_CPU,
+      CLASSIFIER_MODE_GPU
    };
 
-   GPU_MODE gpuModeCurrent = GPU_MODE_UNINITIALIZED;
-   GPU_MODE gpuModeNext    = GPU_MODE_CPU;
+   CLASSIFIER_MODE classifierModeCurrent = CLASSIFIER_MODE_UNINITIALIZED;
+   CLASSIFIER_MODE classifierModeNext    = CLASSIFIER_MODE_CPU;
    if (gpu::getCudaEnabledDeviceCount() > 0)
-      gpuModeNext = GPU_MODE_GPU;
+      classifierModeNext = CLASSIFIER_MODE_GPU;
+
+   int classifierDirNum   = 5;
+   int classifierStageNum = 30;
 
    // Read through command line args, extract
    // cmd line parameters and input filename
@@ -110,10 +135,9 @@ int main( int argc, const char** argv )
       createTrackbar ("Max Detect", detectWindowName, &maxDetectSize, 1000, NULL);
       createTrackbar ("GPU Scale", detectWindowName, &gpuScale, 100, NULL);
    }
-   const char *cascadeName = "../cascade_training/classifier_bin_5/cascade_oldformat_14.xml";
    // Use GPU code if hardware is detected, otherwise
    // fall back to CPU code
-   BaseCascadeDetect *detectCascade = NULL;;
+   BaseCascadeDetect *detectClassifier = NULL;;
    
    // Grab initial frame to figure out image size and so on
    if (!cap->getNextFrame(false, frame))
@@ -161,20 +185,27 @@ int main( int argc, const char** argv )
 
       // Code to allow switching between CPU and GPU 
       // for testing
-      if ((gpuModeCurrent == GPU_MODE_UNINITIALIZED) || (gpuModeCurrent != gpuModeNext))
+      if ((classifierModeCurrent == CLASSIFIER_MODE_UNINITIALIZED) || 
+	  (classifierModeCurrent != classifierModeNext))
       {
-	 if (detectCascade)
-	    delete detectCascade;
-	 if (gpuModeNext == GPU_MODE_GPU)
-	    detectCascade = new GPU_CascadeDetect(cascadeName);
+	 string classifierName = getClassifierName(classifierDirNum, classifierStageNum);
+
+	 // If reloading with new classifier name, keep the current
+	 // CPU/GPU mode setting 
+	 if (classifierModeNext == CLASSIFIER_MODE_RELOAD)
+	    classifierModeNext = classifierModeCurrent;
+	 if (detectClassifier)
+	    delete detectClassifier;
+	 if (classifierModeNext == CLASSIFIER_MODE_GPU)
+	    detectClassifier = new GPU_CascadeDetect(classifierName.c_str());
 	 else
-	    detectCascade = new CPU_CascadeDetect(cascadeName);
-	 gpuModeCurrent = gpuModeNext;
+	    detectClassifier = new CPU_CascadeDetect(classifierName.c_str());
+	 classifierModeCurrent = classifierModeNext;
 
 	 // Load the cascades
-	 if( !detectCascade->loaded() )
+	 if( !detectClassifier->loaded() )
 	 {
-	    cerr << "--(!)Error loading " << cascadeName << endl; 
+	    cerr << "--(!)Error loading " << classifierName << endl; 
 	    return -1; 
 	 }
       }
@@ -183,7 +214,7 @@ int main( int argc, const char** argv )
       // detectDirections is the direction of each detected object - we might not use this
       vector<Rect> detectRects;
       vector<unsigned> detectDirections;
-      detectCascade->cascadeDetect(frame, detectRects, detectDirections); 
+      detectClassifier->cascadeDetect(frame, detectRects, detectDirections); 
 
       for( size_t i = 0; i < min(detectRects.size(), detectMax); i++ ) 
       {
@@ -325,6 +356,13 @@ int main( int argc, const char** argv )
 	 ss << cap->VideoCap()->get(CV_CAP_PROP_FRAME_COUNT);
 	 putText(frame, ss.str(), Point(frame.cols - 15 * ss.str().length(), 20), FONT_HERSHEY_PLAIN, 1.5, Scalar(0,0,255));
       }
+      {
+	 stringstream ss;
+	 ss << classifierDirNum;
+	 ss << ',';
+	 ss << classifierStageNum;
+	 putText(frame, ss.str(), Point(0, frame.rows- 30), FONT_HERSHEY_PLAIN, 1.5, Scalar(0,0,255));
+      }
 
       // For interactive mode, update the FPS as soon as we have
       // a complete array of frame time entries
@@ -405,10 +443,42 @@ int main( int argc, const char** argv )
 	 }
 	 else if (c == 'G') // toggle CPU/GPU mode
 	 {
-	    if (gpuModeNext == GPU_MODE_GPU)
-	       gpuModeNext = GPU_MODE_CPU;
+	    if (classifierModeNext == CLASSIFIER_MODE_GPU)
+	       classifierModeNext = CLASSIFIER_MODE_CPU;
 	    else
-	       gpuModeNext = GPU_MODE_GPU;
+	       classifierModeNext = CLASSIFIER_MODE_GPU;
+	 }
+	 else if (c == '.') // higher classifier stage
+	 {
+	    if (getClassifierName(classifierDirNum, classifierStageNum+1).length())
+	    {
+	       classifierStageNum += 1;
+	       classifierModeNext   = CLASSIFIER_MODE_RELOAD;
+	    }
+	 }
+	 else if (c == ',') // lower classifier stage
+	 {
+	    if (getClassifierName(classifierDirNum, classifierStageNum-1).length())
+	    {
+	       classifierStageNum -= 1;
+	       classifierModeNext   = CLASSIFIER_MODE_RELOAD;
+	    }
+	 }
+	 else if (c == '>') // higher classifier dir num
+	 {
+	    if (getClassifierName(classifierDirNum+1, classifierStageNum).length())
+	    {
+	       classifierDirNum += 1;
+	       classifierModeNext   = CLASSIFIER_MODE_RELOAD;
+	    }
+	 }
+	 else if (c == '<') // higher classifier dir num
+	 {
+	    if (getClassifierName(classifierDirNum-1, classifierStageNum).length())
+	    {
+	       classifierDirNum -= 1;
+	       classifierModeNext = CLASSIFIER_MODE_RELOAD;
+	    }
 	 }
 	 else if (isdigit(c)) // save a single detected image
 	 {
