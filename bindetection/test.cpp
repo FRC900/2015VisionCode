@@ -9,9 +9,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#ifdef __linux
 #include "networktables/NetworkTable.h"
-#endif
 
 #include "imagedetect.hpp"
 #include "videoin_c920.hpp"
@@ -154,12 +152,9 @@ int main( int argc, const char** argv )
    // recycling bins are 24" wide
    TrackedObjectList binTrackingList(24.0, frame.cols);
 
-#ifdef __linux
    NetworkTable::SetClientMode();
    NetworkTable::SetIPAddress("10.9.0.2");
    NetworkTable *net_table = NetworkTable::GetTable("VisionTable");
-
-#endif
 
    // Frame timing information
 #define frameTicksLength (sizeof(frameTicks) / sizeof(frameTicks[0]))
@@ -300,9 +295,9 @@ int main( int argc, const char** argv )
 	 // Grab info from trackedobjects, print it out
 	 vector<TrackedObjectDisplay> displayList;
 	 binTrackingList.getDisplay(displayList);
-#ifdef __linux
+
 	 net_table->PutNumber("BinsDetected", displayList.size());
-#endif
+
 	 for (size_t i = 0; !batchMode && (i < displayList.size()); i++)
 	 {
 	    if (displayList[i].ratio < 0.15)
@@ -329,7 +324,6 @@ int main( int argc, const char** argv )
 	       putText(frame, angleLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+70), FONT_HERSHEY_PLAIN, 1.5, rectColor);
 	    }
 
-#ifdef __linux
 	    stringstream ss;
 	    ss << "Distance";
 	    ss << i;
@@ -339,7 +333,6 @@ int main( int argc, const char** argv )
 	    ss << "Angle";
 	    ss << i;
 	    net_table->PutNumber(ss.str(), displayList[i].angle);
-#endif
 	 }
       }
       // Don't update to next frame if paused to prevent
