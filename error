@@ -1,9 +1,0 @@
-BA distance 282.252+-0  angle 12.5063+-0
-OpenCV Error: Gpu API call (NCV Assertion Failed: retcode=26, file=/hdd/buildbot/slave_jetson_tk1_2/52-O4T-L4T/opencv/modules/gpu/src/nvidia/NCVHaarObjectDetection.cu, line=1589
-) in NCVDebugOutputHandler, file /hdd/buildbot/slave_jetson_tk1_2/52-O4T-L4T/opencv/modules/gpu/src/cascadeclassifier.cpp, line 173
-terminate called after throwing an instance of 'cv::Exception'
-  what():  /hdd/buildbot/slave_jetson_tk1_2/52-O4T-L4T/opencv/modules/gpu/src/cascadeclassifier.cpp:173: error: (-217) NCV Assertion Failed: retcode=26, file=/hdd/buildbot/slave_jetson_tk1_2/52-O4T-L4T/opencv/modules/gpu/src/nvidia/NCVHaarObjectDetection.cu, line=1589
- in function NCVDebugOutputHandler
-
-Aborted
-
