@@ -73,8 +73,8 @@ int main( int argc, const char** argv )
       classifierModeNext = CLASSIFIER_MODE_GPU;
 
    // Classifier directory and stage to start with
-   int classifierDirNum   = 5;
-   int classifierStageNum = 30;
+   int classifierDirNum   = 7;
+   int classifierStageNum = 19;
 
    // Read through command line args, extract
    // cmd line parameters and input filename
@@ -370,7 +370,7 @@ int main( int argc, const char** argv )
       // For batch mode, only update every frameTicksLength frames to
       // avoid printing too much stuff
       if ((!batchMode && (frameTicksIndex >= frameTicksLength)) ||
-	    (batchMode && ((frameTicksIndex % frameTicksLength) == 0)))
+	    (batchMode && ((frameTicksIndex % (frameTicksLength*10)) == 0)))
       {
 	 // Get the average frame time over the last
 	 // frameTicksLength frames
