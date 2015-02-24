@@ -99,8 +99,8 @@ int main( int argc, const char** argv )
       // No arguments? Open default camera
       // and hope for the best
       cap = new VideoIn(0);
-      capPath = "negative/2-11";
-      windowName = "Camera 0";
+      capPath = "2-11";
+      windowName = "Default Camera";
    }
    // Digit, but no dot (meaning no file extension)? Open camera
    // Also handle explicit -1 to pick the default camera
@@ -108,7 +108,7 @@ int main( int argc, const char** argv )
             (isdigit(*argv[fileArgc]) || !strcmp(argv[fileArgc], "-1")))
    {
       cap = new VideoIn(*argv[fileArgc] - '0');
-      capPath = "negative/2-11_" + (*argv[fileArgc] - '0');
+      capPath = "2-11" + (*argv[fileArgc] - '0');
       stringstream ss;
       ss << "Camera ";
       ss << argv[fileArgc];
@@ -123,9 +123,15 @@ int main( int argc, const char** argv )
 	 cap->VideoCap()->set(CV_CAP_PROP_POS_FRAMES, frameStart);
 	 cap->frameCounter(frameStart);
       }
-      capPath = "negative/" + string(argv[fileArgc]).substr(string(argv[fileArgc]).rfind('/')+1);
+      capPath = argv[fileArgc];
+      cerr << capPath << endl;
+      const size_t last_slash_idx = capPath.find_last_of("\\/");
+      cerr << last_slash_idx << endl;
+      if (std::string::npos != last_slash_idx)
+	 capPath.erase(0, last_slash_idx + 1);
       windowName = argv[fileArgc];
    }
+   cerr << capPath << endl;
 
    Mat frame;
    // If UI is up, pop up the parameters window
@@ -402,31 +408,32 @@ int main( int argc, const char** argv )
 	 else
 	    cout << ss.str() << endl;
       }
-	 // Driverstation Code
-	 if (ds)
+      // Driverstation Code
+      if (ds)
+      {
+	 bool hits[4];
+	 for (int i = 0; i < 4; i++)
 	 {
-	    bool hits[4];
-	    for (int i = 0; i < 4; i++)
+	    Rect dsRect(i * frame.cols / 4, 0, frame.cols/4, frame.rows);
+	    rectangle(frame, dsRect, Scalar(0,255,255,3));
+	    if (!batchMode)
+	       hits[i] = false;
+	    for( size_t j = 0; j < displayList.size(); j++ ) 
 	    {
-	       Rect dsRect(i * frame.cols / 4, 0, frame.cols/4, frame.rows);
-	       rectangle(frame, dsRect, Scalar(0,255,255,3));
-	       if (!batchMode)
-		  hits[i] = false;
-	       for( size_t j = 0; j < displayList.size(); j++ ) 
+	       if (((displayList[j].rect & dsRect) == displayList[j].rect) && (displayList[j].ratio > 0.15))
 	       {
-		  if (((displayList[j].rect & dsRect) == displayList[j].rect) && (displayList[j].ratio > 0.15))
-		  {
-		     if (!batchMode)
-			rectangle(frame, displayList[j].rect, Scalar(255,128,128), 3);
-		     hits[i] = true;
-		  }
+		  if (!batchMode)
+		     rectangle(frame, displayList[j].rect, Scalar(255,128,128), 3);
+		  hits[i] = true;
 	       }
-	       stringstream ss;
-	       ss << "Bin";
-	       ss << (i+1);
-	       netTable->PutBoolean(ss.str().c_str(), hits[i]);
 	    }
+	    stringstream ss;
+	    ss << "Bin";
+	    ss << (i+1);
+	    netTable->PutBoolean(ss.str().c_str(), hits[i]);
 	 }
+      }
+
       if (!batchMode)
       {
 	 // Put an A on the screen if capture-all is enabled so
@@ -557,27 +564,29 @@ void writeImage(const Mat &frame, const vector<Rect> &rects, size_t index, const
       Mat image = frame(rects[index]);
       // Create filename, save image
       stringstream fn;
+      fn << "negative/";
       fn << path;
       fn << "_";
       fn << frameCounter;
       fn << "_";
       fn << index;
-      imwrite(fn.str().substr(fn.str().rfind('\\')+1) + ".png", image);
+      cout << fn.str() << endl;
+      imwrite(fn.str() + ".png", image);
 
       // Save grayscale equalized version
       Mat frameGray;
       cvtColor( image, frameGray, CV_BGR2GRAY );
       equalizeHist( frameGray, frameGray );
-      imwrite(fn.str().substr(fn.str().rfind('\\')+1) + "_g.png", frameGray);
+      imwrite(fn.str() + "_g.png", frameGray);
 
       // Save 20x20 version of the same image
       Mat smallImg;
       resize(image, smallImg, Size(20,20));
-      imwrite(fn.str().substr(fn.str().rfind('\\')+1) + "_s.png", smallImg);
+      imwrite(fn.str() + "_s.png", smallImg);
 
       // Save grayscale equalized version of small image
       cvtColor( smallImg, frameGray, CV_BGR2GRAY );
       equalizeHist( frameGray, frameGray );
-      imwrite(fn.str().substr(fn.str().rfind('\\')+1) + "_g_s.png", frameGray);
+      imwrite(fn.str() + "_g_s.png", frameGray);
    }
 }
