@@ -4,9 +4,10 @@
 #include <math.h>
 
 
-TrackedObject::TrackedObject(const cv::Rect &position, int id, size_t historyLength)
+TrackedObject::TrackedObject(const cv::Rect &position, int id, size_t historyLength, size_t dataLength)
 {
    _listLength    = historyLength;
+   _dataLength    = dataLength;
    _detectArray   = new bool[historyLength];
    _distanceArray = new double[historyLength];
    _angleArray    = new double[historyLength];
@@ -14,6 +15,7 @@ TrackedObject::TrackedObject(const cv::Rect &position, int id, size_t historyLen
       _detectArray[i] = false;
    _listIndex     = 0;
    _position      = position;
+   // Label with base-26 letter ID (A, B, C .. Z, AA, AB, AC, etc)
    do 
    {
       _id += (char)(id % 26 + 'A');
@@ -28,6 +30,7 @@ TrackedObject::TrackedObject(const cv::Rect &position, int id, size_t historyLen
 TrackedObject::TrackedObject(const TrackedObject &object)
 {
    _listLength    = object._listLength;
+   _dataLength    = object._dataLength;
    _detectArray   = new bool[object._listLength];
    _distanceArray = new double[object._listLength];
    _angleArray    = new double[object._listLength];
@@ -41,6 +44,7 @@ TrackedObject::TrackedObject(const TrackedObject &object)
 TrackedObject &TrackedObject::operator=(const TrackedObject &object)
 {
    _listLength = object._listLength;
+   _dataLength = object._dataLength;
    delete [] _detectArray;
    delete [] _distanceArray;
    delete [] _angleArray;
@@ -130,10 +134,27 @@ void TrackedObject::clearDetected(void)
 double TrackedObject::getDetectedRatio(void) const
 {
    int detectedCount = 0;
-   for (size_t i = 0; i < _listLength; i++)
+   size_t i;
+   size_t limit;
+   bool recentHits = true;
+   
+   // Don't display detected bins if they're not seen for at least 1 of 4 consecutive frames
+   if (_listIndex > 4)
+   {
+      recentHits = false;
+      for (i = _listIndex; (i >= 0) && (i >= _listIndex - 4) && !recentHits; i--)
+	 if (_detectArray[i % _listLength])
+	    recentHits = true;
+   }
+
+   for (i = 0; i < _listLength; i++)
       if (_detectArray[i])
 	 detectedCount += 1;
-   return ((double)detectedCount / _listLength);
+   double detectRatio = (double)detectedCount / _listLength;
+   if (!recentHits)
+      detectRatio = std::min(0.1, detectRatio);
+   return detectRatio;
+	 
 }
 
 // Increment to the next frame
@@ -187,26 +208,31 @@ std::string TrackedObject::getId(void) const
    return _id;
 }
 
-
 // Helper function to average distance and angle
 double TrackedObject::getAverageAndStdev(double *list, double &stdev) const
 {
    double sum        = 0.0;
    size_t validCount = 0;
-   for (size_t i = 0; i < _listLength; i++)
+   size_t seenCount  = 0;
+   // Work backwards from _listIndex.  Find the first _dataLength valid entries and get the average
+   // of those.  Make sure it doesn't loop around multiple times
+   for (size_t i = _listIndex; (seenCount < _listLength) && (validCount < _dataLength); i--)
    {
-      //std::cout << "\t\t" << _detectArray[i] << " " << list[i] << std::endl;
-      if (_detectArray[i])
+      if (_detectArray[i % _listLength])
       {
 	 validCount += 1;
-	 sum += list[i];
+	 sum += list[i % _listLength];
       }
+      seenCount += 1;
    }
    double average   = sum / validCount;
    double sumSquare = 0.0;
-   for (size_t i = 0; i < _listLength; i++)
-      if (_detectArray[i])
-	 sumSquare += (list[i] - average) * (list[i] - average);
+   for (size_t i = _listIndex; (seenCount < _listLength) && (validCount < _dataLength); i--)
+   {
+      if (_detectArray[i % _listLength])
+	 sumSquare += (list[i % _listLength] - average) * (list[i % _listLength] - average);
+      seenCount += 1;
+   }
    stdev = sumSquare / validCount;
    return average;
 }

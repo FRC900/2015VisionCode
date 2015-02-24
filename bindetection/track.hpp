@@ -5,7 +5,8 @@
 #include <string>
 #include <list>
 
-const size_t TrackedObjectArrayLength = 20;
+const size_t TrackedObjectHistoryLength = 20;
+const size_t TrackedObjectDataLength = 5;
 
 const double HFOV = 69; // horizontal field of view of C920 camera
 
@@ -25,7 +26,8 @@ class TrackedObject
    public :
       TrackedObject(const cv::Rect &position, 
 	    int id,
-	    size_t historyLength = TrackedObjectArrayLength);
+	    size_t historyLength = TrackedObjectHistoryLength,
+	    size_t dataLength = TrackedObjectDataLength);
 
       // Copy constructor and assignement operators are needed to do a
       // deep copy.  This makes new arrays for each object copied rather
@@ -87,9 +89,10 @@ class TrackedObject
       std::string getId(void) const;
       
    private :
-      cv::Rect _position;    // last position of tracked object
-      size_t   _listLength;  // number of entries in history arrays
-      size_t   _listIndex;   // current entry being modified in history arrays
+      cv::Rect _position;   // last position of tracked object
+      size_t   _listLength; // number of entries in history arrays
+      size_t   _dataLength; // number of entries in history arrays
+      size_t   _listIndex;  // current entry being modified in history arrays
       // whether or not the object was seen in a given frame - 
       // used to flag entries in other history arrays as valid 
       // and to figure out which tracked objects are persistent 
