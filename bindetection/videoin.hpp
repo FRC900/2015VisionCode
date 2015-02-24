@@ -11,18 +11,10 @@ class VideoIn
       VideoIn(const char *path);
       VideoIn(int stream = -1);
 
-      cv::VideoCapture *VideoCap(void) 
-      {
-	 if (_video)
-	    return &_cap;
-	 return NULL;
-      }
+      cv::VideoCapture *VideoCap(void);
       bool getNextFrame(bool pause, cv::Mat &frame);
       int frameCounter(void);
-      void frameCounter(int frameCount)
-      {
-	 _frameCounter = frameCount;
-      }
+      void frameCounter(int frameCount);
 
    private:
       cv::VideoCapture _cap;

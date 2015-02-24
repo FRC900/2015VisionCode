@@ -69,6 +69,13 @@ VideoIn::VideoIn(int _stream)
    cv::createTrackbar("Focus", "Adjustments", &_focus, 256);
 }
 
+VideoCapture *VideoIn::VideoCap(void) 
+{
+   if (_video && !_c920)
+      return &_cap;
+   return NULL;
+}
+
 bool VideoIn::getNextFrame(bool pause, Mat &frame)
 {
    if (_c920)
@@ -108,5 +115,11 @@ bool VideoIn::getNextFrame(bool pause, Mat &frame)
 int VideoIn::frameCounter(void)
 {
    return _frameCounter;
+}
+void VideoIn::frameCounter(int frameCount)
+{
+   if (_video && !_c920)
+      _cap.set(CV_CAP_PROP_POS_FRAMES, frameCount);
+   _frameCounter = frameCount;
 }
 #endif

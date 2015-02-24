@@ -20,45 +20,31 @@ using namespace std;
 using namespace cv;
 
 void writeImage(const Mat &frame, const vector<Rect> &rects, size_t index, const char *path, int frameCounter);
+string getClassifierName(int directory, int stage);
+string getDateTimeString(void);
 
-// given a directory number and stage within that directory
-// generate a filename to load the cascade from.  Check that
-// the file exists - if it doesnt, return an empty string
-string getClassifierName(int directory, int stage)
+struct Args
 {
-   stringstream ss;
-   ss << "../cascade_training/classifier_bin_";
-   ss << directory;
-   ss << "/cascade_oldformat_";
-   ss << stage;
-   ss << ".xml";
+   bool captureAll;  // capture all found targets to image files?
+   bool tracking;    // display tracking info?
+   bool batchMode;   // non-interactive mode - no display, run through
+                     // as quickly as possible. Combine with --all
+   bool ds;          // driver-station?
+   int  frameStart;  // frame number to start from
+   string inputName; // input file name or camera number
+};
 
-   struct stat fileStat;
-   if (stat(ss.str().c_str(), &fileStat) == 0)
-      return string(ss.str());
-   return string();
-}
+bool processArgs(int argc, const char **argv, Args &args);
+void openVideoCap(const string &fileName, VideoIn *&cap, string &capPath, string &windowName);
+
 
 int main( int argc, const char** argv )
 {
-   string windowName = "Bin detection";
-   string capPath; // Output directory for captured images
-   VideoIn *cap; // video input - image, video or camera
    const size_t detectMax = 10;
-   const string frameOpt = "--frame=";
-   double frameStart = 0.0;
-   const string captureAllOpt = "--all";
-   const string batchModeOpt = "--batch";
-   const string dsOpt = "--ds";
 
    // Flags for various UI features
-   bool pause       = false;  // pause playback?
-   bool captureAll  = false;  // capture all found targets to image files?
-   bool tracking    = true;   // display tracking info?
-   bool printFrames = false;  // print frame number?
-   bool batchMode   = false;  // non-interactive mode - no display, run through
-                              // as quickly as possible. Combine with --all
-   bool ds          = false;  // driver-station?
+   bool pause = false;       // pause playback?
+   bool printFrames = false; // print frame number?
    
    // Allow switching between CPU and GPU for testing 
    enum CLASSIFIER_MODE
@@ -76,66 +62,30 @@ int main( int argc, const char** argv )
 
    // Classifier directory and stage to start with
    int classifierDirNum   = 7;
-   int classifierStageNum = 18;
+   int classifierStageNum = 21;
 
+   // Pointer to either CPU or GPU classifier
+   BaseCascadeDetect *detectClassifier = NULL;;
+   
    // Read through command line args, extract
    // cmd line parameters and input filename
-   int fileArgc;
-   for (fileArgc = 1; fileArgc < argc; fileArgc++)
-   {
-      if (frameOpt.compare(0, frameOpt.length(), argv[fileArgc], frameOpt.length()) == 0)
-	 frameStart = (double)atoi(argv[fileArgc] + frameOpt.length());
-      else if (captureAllOpt.compare(0, captureAllOpt.length(), argv[fileArgc], captureAllOpt.length()) == 0)
-	 captureAll = true;
-      else if (batchModeOpt.compare(0, batchModeOpt.length(), argv[fileArgc], batchModeOpt.length()) == 0)
-	 batchMode = true;
-      else if (dsOpt.compare(0, dsOpt.length(), argv[fileArgc], dsOpt.length()) == 0)
-	 ds = true;
-      else
-	 break;
-   }
-   if (fileArgc >= argc)
-   {
-      // No arguments? Open default camera
-      // and hope for the best
-      cap = new VideoIn(0);
-      capPath = "2-11";
-      windowName = "Default Camera";
-   }
-   // Digit, but no dot (meaning no file extension)? Open camera
-   // Also handle explicit -1 to pick the default camera
-   else if (!strstr(argv[fileArgc],".") &&
-            (isdigit(*argv[fileArgc]) || !strcmp(argv[fileArgc], "-1")))
-   {
-      cap = new VideoIn(*argv[fileArgc] - '0');
-      capPath = "2-11" + (*argv[fileArgc] - '0');
-      stringstream ss;
-      ss << "Camera ";
-      ss << argv[fileArgc];
-      windowName = ss.str();
-   }
-   else
-   {
-      // Open file name - will handle images or videos
-      cap = new VideoIn(argv[fileArgc]);
-      if (cap->VideoCap())
-      {
-	 cap->VideoCap()->set(CV_CAP_PROP_POS_FRAMES, frameStart);
-	 cap->frameCounter(frameStart);
-      }
-      capPath = argv[fileArgc];
-      cerr << capPath << endl;
-      const size_t last_slash_idx = capPath.find_last_of("\\/");
-      cerr << last_slash_idx << endl;
-      if (std::string::npos != last_slash_idx)
-	 capPath.erase(0, last_slash_idx + 1);
-      windowName = argv[fileArgc];
-   }
-   cerr << capPath << endl;
+   Args args;
+   if (!processArgs(argc, argv, args))
+      return -2;
+
+   string windowName = "Bin detection"; // GUI window name
+   string capPath; // Output directory for captured images
+   VideoIn *cap; // video input - image, video or camera
+   openVideoCap(args.inputName, cap, capPath, windowName);
+
+   // Seek to start frame if necessary
+   if (args.frameStart > 0)
+      cap->frameCounter(args.frameStart);
 
    Mat frame;
+
    // If UI is up, pop up the parameters window
-   if (!batchMode)
+   if (!args.batchMode)
    {
       string detectWindowName = "Detection Parameters";
       namedWindow(detectWindowName);
@@ -144,10 +94,6 @@ int main( int argc, const char** argv )
       createTrackbar ("Max Detect", detectWindowName, &maxDetectSize, 1000, NULL);
       createTrackbar ("GPU Scale", detectWindowName, &gpuScale, 100, NULL);
    }
-   // Use GPU code if hardware is detected, otherwise
-   // fall back to CPU code
-   BaseCascadeDetect *detectClassifier = NULL;;
-   
    // Grab initial frame to figure out image size and so on
    if (!cap->getNextFrame(false, frame))
    {
@@ -178,7 +124,6 @@ int main( int argc, const char** argv )
    int64 startTick;
    int64 endTick;
    size_t frameTicksIndex = 0;
-
 
    // Start of the main loop
    //  -- grab a frame
@@ -253,7 +198,7 @@ int main( int argc, const char** argv )
 		     }
 		     if(intersection.y > lowestYVal.y) {
 			//cout << "found intersection" << endl;
-			if (!batchMode)
+			if (!args.batchMode)
 			   rectangle(frame, detectRects[indexHighest], Scalar(0,255,255), 3);
 			detectRects.erase(detectRects.begin()+indexHighest);
 			detectDirections.erase(detectDirections.begin()+indexHighest);
@@ -261,7 +206,7 @@ int main( int argc, const char** argv )
 		  }
 	    }
 	 }
-	 if (!batchMode)
+	 if (!args.batchMode)
 	 {
 	    // Mark detected rectangle on image
 	    // Change color based on direction we think the bin is pointing
@@ -299,12 +244,12 @@ int main( int argc, const char** argv )
 
 	 // Process this detected rectangle - either update the nearest
 	 // object or add it as a new one
-	 if (!batchMode)
+	 if (!args.batchMode)
 	    binTrackingList.processDetect(detectRects[i]);
       }
 
       // Print detect status of live objects
-      if (tracking)
+      if (args.tracking)
 	 binTrackingList.print();
       // Grab info from trackedobjects, print it out
       vector<TrackedObjectDisplay> displayList;
@@ -319,7 +264,7 @@ int main( int argc, const char** argv )
 	 if (displayList[i].ratio < 0.15)
 	    continue;
 
-	 if (tracking && !batchMode)
+	 if (args.tracking && !args.batchMode)
 	 {
 	    // Color moves from red to green (via brown, yuck) 
 	    // as the detected ratio goes up
@@ -348,7 +293,7 @@ int main( int argc, const char** argv )
 	 }
       }
 
-      if(!ds)
+      if(!args.ds)
 	 netTable->PutValue("VisionArray", netTableArray);
 
       // Don't update to next frame if paused to prevent
@@ -358,7 +303,7 @@ int main( int argc, const char** argv )
 	 binTrackingList.nextFrame();
 
       // Print frame number of video if the option is enabled
-      if (!batchMode && printFrames && cap->VideoCap())
+      if (!args.batchMode && printFrames && cap->VideoCap())
       {
 	 stringstream ss;
 	 ss << cap->frameCounter();
@@ -378,10 +323,10 @@ int main( int argc, const char** argv )
 
       // For interactive mode, update the FPS as soon as we have
       // a complete array of frame time entries
-      // For batch mode, only update every frameTicksLength frames to
+      // For args.batch mode, only update every frameTicksLength frames to
       // avoid printing too much stuff
-      if ((!batchMode && (frameTicksIndex >= frameTicksLength)) ||
-	    (batchMode && ((frameTicksIndex % (frameTicksLength*10)) == 0)))
+      if ((!args.batchMode && (frameTicksIndex >= frameTicksLength)) ||
+	  (args.batchMode && ((frameTicksIndex % (frameTicksLength*10)) == 0)))
       {
 	 // Get the average frame time over the last
 	 // frameTicksLength frames
@@ -390,9 +335,9 @@ int main( int argc, const char** argv )
 	    sum += frameTicks[i];
 	 sum /= frameTicksLength;
 	 stringstream ss;
-	 // If in batch mode and reading a video, display
+	 // If in args.batch mode and reading a video, display
 	 // the frame count
-	 if (batchMode && cap->VideoCap())
+	 if (args.batchMode && cap->VideoCap())
 	 {
 	    ss << cap->frameCounter();
 	    ss << '/';
@@ -403,26 +348,31 @@ int main( int argc, const char** argv )
 	 ss.precision(3);
 	 ss << 1.0 / sum;
 	 ss << " FPS";
-	 if (!batchMode)
+	 if (!args.batchMode)
 	    putText(frame, ss.str(), Point(frame.cols - 15 * ss.str().length(), 50), FONT_HERSHEY_PLAIN, 1.5, Scalar(0,0,255));
 	 else
 	    cout << ss.str() << endl;
       }
       // Driverstation Code
-      if (ds)
+      if (args.ds)
       {
+	 // Report boolean value for each bin on the step
 	 bool hits[4];
 	 for (int i = 0; i < 4; i++)
 	 {
 	    Rect dsRect(i * frame.cols / 4, 0, frame.cols/4, frame.rows);
-	    rectangle(frame, dsRect, Scalar(0,255,255,3));
-	    if (!batchMode)
-	       hits[i] = false;
+	    if (!args.batchMode)
+	       rectangle(frame, dsRect, Scalar(0,255,255,3));
+	    hits[i] = false;
+	    // For each quadrant of the field, look for a detected
+	    // rectangle contained entirely in the quadrant
+	    // Assume that if that's found, it is a bin
+	    // TODO : Tune this later with a distance range
 	    for( size_t j = 0; j < displayList.size(); j++ ) 
 	    {
 	       if (((displayList[j].rect & dsRect) == displayList[j].rect) && (displayList[j].ratio > 0.15))
 	       {
-		  if (!batchMode)
+		  if (!args.batchMode)
 		     rectangle(frame, displayList[j].rect, Scalar(255,128,128), 3);
 		  hits[i] = true;
 	       }
@@ -434,11 +384,11 @@ int main( int argc, const char** argv )
 	 }
       }
 
-      if (!batchMode)
+      if (!args.batchMode)
       {
 	 // Put an A on the screen if capture-all is enabled so
 	 // users can keep track of that toggle's mode
-	 if (captureAll)
+	 if (args.captureAll)
 	    putText(frame, "A", Point(25,25), FONT_HERSHEY_PLAIN, 2.5, Scalar(0, 255, 255));
 
 	 //-- Show what you got
@@ -456,11 +406,11 @@ int main( int argc, const char** argv )
 	 }
 	 else if (c == 'A') // toggle capture-all
 	 {
-	    captureAll = !captureAll;
+	    args.captureAll = !args.captureAll;
 	 }
-	 else if (c == 't') // toggle tracking info display
+	 else if (c == 't') // toggle args.tracking info display
 	 {
-	    tracking = !tracking;
+	    args.tracking = !args.tracking;
 	 }
 	 else if (c == 'a') // save all detected images
 	 {
@@ -533,9 +483,9 @@ int main( int argc, const char** argv )
 	    writeImage(frameCopy, detectRects, c - '0', capPath.c_str(), cap->frameCounter());
 	 }
       }
-      // If captureAll is enabled, write each detected rectangle
+      // If args.captureAll is enabled, write each detected rectangle
       // to their own output image file
-      if (captureAll && detectRects.size())
+      if (args.captureAll && detectRects.size())
       {
 	 // Save from a copy rather than the original
 	 // so all the markup isn't saved, only the raw image
@@ -570,7 +520,6 @@ void writeImage(const Mat &frame, const vector<Rect> &rects, size_t index, const
       fn << frameCounter;
       fn << "_";
       fn << index;
-      cout << fn.str() << endl;
       imwrite(fn.str() + ".png", image);
 
       // Save grayscale equalized version
@@ -590,3 +539,118 @@ void writeImage(const Mat &frame, const vector<Rect> &rects, size_t index, const
       imwrite(fn.str() + "_g_s.png", frameGray);
    }
 }
+//
+// given a directory number and stage within that directory
+// generate a filename to load the cascade from.  Check that
+// the file exists - if it doesnt, return an empty string
+string getClassifierName(int directory, int stage)
+{
+   stringstream ss;
+   ss << "../cascade_training/classifier_bin_";
+   ss << directory;
+   ss << "/cascade_oldformat_";
+   ss << stage;
+   ss << ".xml";
+
+   struct stat fileStat;
+   if (stat(ss.str().c_str(), &fileStat) == 0)
+      return string(ss.str());
+   return string();
+}
+
+string getDateTimeString(void)
+{
+   time_t rawtime;
+   struct tm * timeinfo;
+
+   time (&rawtime);
+   timeinfo = localtime (&rawtime);
+
+   stringstream ss;
+   ss << timeinfo->tm_mon + 1;
+   ss << "-";
+   ss << timeinfo->tm_mday;
+   ss << "_";
+   ss << timeinfo->tm_hour;
+   ss << "_";
+   ss << timeinfo->tm_min;
+   return ss.str();
+}
+
+// Process command line args. 
+bool processArgs(int argc, const char **argv, Args &args)
+{
+   const string frameOpt      = "--frame=";
+   const string captureAllOpt = "--all";
+   const string batchModeOpt  = "--batch";
+   const string dsOpt         = "--ds";
+   const string badOpt        = "--";
+
+   args.captureAll  = false;
+   args.tracking    = true;
+   args.batchMode   = false;
+   args.ds          = false;
+   args.frameStart  = 0.0;
+   args.inputName.clear();
+
+   // Read through command line args, extract
+   // cmd line parameters and input filename
+   int fileArgc;
+   for (fileArgc = 1; fileArgc < argc; fileArgc++)
+   {
+      if (frameOpt.compare(0, frameOpt.length(), argv[fileArgc], frameOpt.length()) == 0)
+	 args.frameStart = atoi(argv[fileArgc] + frameOpt.length());
+      else if (captureAllOpt.compare(0, captureAllOpt.length(), argv[fileArgc], captureAllOpt.length()) == 0)
+	 args.captureAll = true;
+      else if (batchModeOpt.compare(0, batchModeOpt.length(), argv[fileArgc], batchModeOpt.length()) == 0)
+	 args.batchMode = true;
+      else if (dsOpt.compare(0, dsOpt.length(), argv[fileArgc], dsOpt.length()) == 0)
+	 args.ds = true;
+      else if (badOpt.compare(0, badOpt.length(), argv[fileArgc], badOpt.length()) == 0)
+      {
+	 cerr << "Unknown command line option " << argv[fileArgc] << endl;
+	 return false; // unknown option
+      }
+      else // first non -- arg is filename or camera number
+	 break;
+   }
+
+   if (fileArgc < argc)
+      args.inputName = argv[fileArgc];
+   return true;
+}
+
+// Open video capture object. Figure out if input is camera, video, image, etc
+void openVideoCap(const string &fileName, VideoIn *&cap, string &capPath, string &windowName)
+{
+   if (fileName.length() == 0)
+   {
+      // No arguments? Open default camera
+      // and hope for the best
+      cap        = new VideoIn(0);
+      capPath    = getDateTimeString();
+      windowName = "Default Camera";
+   }
+   // Digit, but no dot (meaning no file extension)? Open camera
+   // Also handle explicit -1 to pick the default camera
+   else if ((fileName.find('.') == string::npos) &&
+            (isdigit(fileName[0]) || fileName.compare("-1") == 0))
+   {
+      cap        = new VideoIn(fileName[0] - '0');
+      capPath    = getDateTimeString() + "_" + fileName;
+      windowName = "Camera " + fileName;
+   }
+   else // has to be a file name, we hope
+   {
+      // Open file name - will handle images or videos
+      cap = new VideoIn(fileName.c_str());
+
+      // Strip off directory for capture path
+      capPath = fileName;
+      const size_t last_slash_idx = capPath.find_last_of("\\/");
+      if (std::string::npos != last_slash_idx)
+	 capPath.erase(0, last_slash_idx + 1);
+      windowName = fileName;
+   }
+}
+

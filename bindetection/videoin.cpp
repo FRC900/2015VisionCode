@@ -43,3 +43,17 @@ int VideoIn::frameCounter(void)
 {
    return _frameCounter;
 }
+
+VideoCapture *VideoIn::VideoCap(void) 
+{
+   if (_video)
+      return &_cap;
+   return NULL;
+}
+void VideoIn::frameCounter(int frameCount)
+{
+   if (_video)
+      _cap.set(CV_CAP_PROP_POS_FRAMES, frameCount);
+   _frameCounter = frameCount;
+}
+
