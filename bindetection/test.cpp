@@ -342,7 +342,8 @@ int main( int argc, const char** argv )
 	 }
       }
 
-      netTable->PutValue("VisionArray", netTableArray);
+      if(!ds)
+	 netTable->PutValue("VisionArray", netTableArray);
 
       // Don't update to next frame if paused to prevent
       // objects missing from this frame to be aged out
@@ -401,6 +402,31 @@ int main( int argc, const char** argv )
 	 else
 	    cout << ss.str() << endl;
       }
+	 // Driverstation Code
+	 if (ds)
+	 {
+	    bool hits[4];
+	    for (int i = 0; i < 4; i++)
+	    {
+	       Rect dsRect(i * frame.cols / 4, 0, frame.cols/4, frame.rows);
+	       rectangle(frame, dsRect, Scalar(0,255,255,3));
+	       if (!batchMode)
+		  hits[i] = false;
+	       for( size_t j = 0; j < displayList.size(); j++ ) 
+	       {
+		  if (((displayList[j].rect & dsRect) == displayList[j].rect) && (displayList[j].ratio > 0.15))
+		  {
+		     if (!batchMode)
+			rectangle(frame, displayList[j].rect, Scalar(255,128,128), 3);
+		     hits[i] = true;
+		  }
+	       }
+	       stringstream ss;
+	       ss << "Bin";
+	       ss << (i+1);
+	       netTable->PutBoolean(ss.str().c_str(), hits[i]);
+	    }
+	 }
       if (!batchMode)
       {
 	 // Put an A on the screen if capture-all is enabled so
@@ -408,17 +434,6 @@ int main( int argc, const char** argv )
 	 if (captureAll)
 	    putText(frame, "A", Point(25,25), FONT_HERSHEY_PLAIN, 2.5, Scalar(0, 255, 255));
 
-	 if (ds)
-	 {
-	    for (int i = 0; i < 4; i++)
-	    {
-	       Rect dsRect(i * frame.cols / 4, 0, frame.cols/4, frame.rows);
-	       rectangle(frame, dsRect, Scalar(0,255,255,3));
-	       for( size_t j = 0; j < displayList.size(); j++ ) 
-		  if ((displayList[j].rect & dsRect) == displayList[j].rect)
-		     rectangle(frame, displayList[j].rect, Scalar(255,128,128), 3);
-	    }
-	 }
 	 //-- Show what you got
 	 imshow( windowName, frame );
 
