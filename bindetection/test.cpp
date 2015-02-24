@@ -49,6 +49,7 @@ int main( int argc, const char** argv )
    double frameStart = 0.0;
    const string captureAllOpt = "--all";
    const string batchModeOpt = "--batch";
+   const string dsOpt = "--ds";
 
    // Flags for various UI features
    bool pause       = false;  // pause playback?
@@ -57,6 +58,7 @@ int main( int argc, const char** argv )
    bool printFrames = false;  // print frame number?
    bool batchMode   = false;  // non-interactive mode - no display, run through
                               // as quickly as possible. Combine with --all
+   bool ds          = false;  // driver-station?
    
    // Allow switching between CPU and GPU for testing 
    enum CLASSIFIER_MODE
@@ -74,7 +76,7 @@ int main( int argc, const char** argv )
 
    // Classifier directory and stage to start with
    int classifierDirNum   = 7;
-   int classifierStageNum = 19;
+   int classifierStageNum = 18;
 
    // Read through command line args, extract
    // cmd line parameters and input filename
@@ -87,6 +89,8 @@ int main( int argc, const char** argv )
 	 captureAll = true;
       else if (batchModeOpt.compare(0, batchModeOpt.length(), argv[fileArgc], batchModeOpt.length()) == 0)
 	 batchMode = true;
+      else if (dsOpt.compare(0, dsOpt.length(), argv[fileArgc], dsOpt.length()) == 0)
+	 ds = true;
       else
 	 break;
    }
@@ -404,6 +408,17 @@ int main( int argc, const char** argv )
 	 if (captureAll)
 	    putText(frame, "A", Point(25,25), FONT_HERSHEY_PLAIN, 2.5, Scalar(0, 255, 255));
 
+	 if (ds)
+	 {
+	    for (int i = 0; i < 4; i++)
+	    {
+	       Rect dsRect(i * frame.cols / 4, 0, frame.cols/4, frame.rows);
+	       rectangle(frame, dsRect, Scalar(0,255,255,3));
+	       for( size_t j = 0; j < displayList.size(); j++ ) 
+		  if ((displayList[j].rect & dsRect) == displayList[j].rect)
+		     rectangle(frame, displayList[j].rect, Scalar(255,128,128), 3);
+	    }
+	 }
 	 //-- Show what you got
 	 imshow( windowName, frame );
 
