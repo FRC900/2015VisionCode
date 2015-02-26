@@ -81,8 +81,8 @@ int main( int argc, const char** argv )
       classifierModeNext = CLASSIFIER_MODE_GPU;
 
    // Classifier directory and stage to start with
-   int classifierDirNum   = 7;
-   int classifierStageNum = 21;
+   int classifierDirNum   = 5;
+   int classifierStageNum = 30;
 
    // Pointer to either CPU or GPU classifier
    BaseCascadeDetect *detectClassifier = NULL;;
