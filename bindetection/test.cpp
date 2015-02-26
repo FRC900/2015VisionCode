@@ -125,14 +125,6 @@ int main( int argc, const char** argv )
    // TODO : Verify this once camera is calibrated
    minDetectSize = frame.cols * 0.05;
 
-   const int fourCC = fourcc('M','J','P','G');
-
-   string videoOutName = getVideoOutName();
-   Size S(frame.rows, frame.cols);
-   VideoWriter outputVideo(videoOutName.c_str(), fourCC, 30, S, true);
-   const in videoWritePollFrequency = 60;
-   int videoWritePollCounter = videoWritePollFrequency;
-
    // Create list of tracked objects
    // recycling bins are 24" wide
    TrackedObjectList binTrackingList(24.0, frame.cols);
@@ -145,6 +137,16 @@ int main( int argc, const char** argv )
 
    // 7 bins max, 3 entries each (confidence, distance, angle)
    netTableArray.setSize(netTableArraySize * 3);
+
+   // Code to write video frames to avi file on disk
+   const int fourCC = fourcc('M','J','P','G');
+
+   string videoOutName = getVideoOutName();
+   Size S(frame.rows, frame.cols);
+   VideoWriter outputVideo(videoOutName.c_str(), fourCC, 30, S, true);
+   args.writeVideo = netTable->GetBoolean("WriteVideo", args.writeVideo);
+   const int videoWritePollFrequency = 60; // check for network table entry every this many frames (~5 seconds or so)
+   int videoWritePollCount = videoWritePollFrequency;
 
    // Frame timing information
 #define frameTicksLength (sizeof(frameTicks) / sizeof(frameTicks[0]))
@@ -164,8 +166,8 @@ int main( int argc, const char** argv )
 
       if (--videoWritePollCount == 0)
       {
-	 netTable->GetBoolean("WriteVideo", args.writeVideo);
-	 videoWritePollCounter = videoWritePollFrequency;
+	 args.writeVideo = netTable->GetBoolean("WriteVideo", args.writeVideo);
+	 videoWritePollCount = videoWritePollFrequency;
       }
       if (args.writeVideo)
 	 outputVideo << frame;
