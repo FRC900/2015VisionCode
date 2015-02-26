@@ -57,6 +57,7 @@ VideoIn::VideoIn(int _stream)
    ++_whiteBalanceTemperature;
   // _camera.GetFocus(_focus);
   // ++_focus;
+#if 0
    cv::namedWindow("Adjustments", CV_WINDOW_NORMAL);
    cv::createTrackbar("Brightness", "Adjustments", &_brightness, 255);
    cv::createTrackbar("Contrast", "Adjustments", &_contrast, 255);
@@ -64,6 +65,7 @@ VideoIn::VideoIn(int _stream)
    cv::createTrackbar("Sharpness", "Adjustments", &_sharpness, 255);
    cv::createTrackbar("Gain", "Adjustments", &_gain, 255);
    cv::createTrackbar("Backlight Compensation", "Adjustments", &_backlightCompensation, 1);
+#endif
    // Off by one to account for -1 being auto.
    cv::createTrackbar("White Balance Temperature", "Adjustments", &_whiteBalanceTemperature, 6501);
    cv::createTrackbar("Focus", "Adjustments", &_focus, 256);
