@@ -8,10 +8,10 @@
 #include "iostream"
 //#define DETECT_ROTATED
 
-int scale         = 10;
+int scale         = 5;
 int neighbors     = 5;
 int minDetectSize = 20;
-int maxDetectSize = 200 * 4;
+int maxDetectSize = 200 * 3;
 int gpuScale      = 99;
 
 
