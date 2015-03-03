@@ -16,6 +16,11 @@
 #include "videoin_c920.hpp"
 #include "track.hpp"
 
+#define __u32 unsigned int
+/*  Four-character-code (FOURCC) */
+#define fourcc(a,b,c,d)\
+   (((__u32)(a)<<0)|((__u32)(b)<<8)|((__u32)(c)<<16)|((__u32)(d)<<24))
+
 using namespace std;
 using namespace cv;
 
@@ -30,6 +35,7 @@ struct Args
    bool batchMode;   // non-interactive mode - no display, run through
                      // as quickly as possible. Combine with --all
    bool ds;          // driver-station?
+   bool writeVideo;  // write captured video to output
    int  frameStart;  // frame number to start from
    string inputName; // input file name or camera number
 };
@@ -37,6 +43,20 @@ struct Args
 bool processArgs(int argc, const char **argv, Args &args);
 void openVideoCap(const string &fileName, VideoIn *&cap, string &capPath, string &windowName);
 
+string getVideoOutName(void)
+{
+   char name[256];
+   int index = 0;
+   int rc;
+   struct stat statbuf;
+   do 
+   {
+      sprintf(name, "cap%d.avi", index++);
+      rc = stat(name, &statbuf);
+   }
+   while (rc == 0);
+   return string(name);
+}
 
 int main( int argc, const char** argv )
 {
@@ -61,8 +81,8 @@ int main( int argc, const char** argv )
       classifierModeNext = CLASSIFIER_MODE_GPU;
 
    // Classifier directory and stage to start with
-   int classifierDirNum   = 7;
-   int classifierStageNum = 21;
+   int classifierDirNum   = 5;
+   int classifierStageNum = 30;
 
    // Pointer to either CPU or GPU classifier
    BaseCascadeDetect *detectClassifier = NULL;;
@@ -118,6 +138,16 @@ int main( int argc, const char** argv )
    // 7 bins max, 3 entries each (confidence, distance, angle)
    netTableArray.setSize(netTableArraySize * 3);
 
+   // Code to write video frames to avi file on disk
+   const int fourCC = fourcc('M','J','P','G');
+
+   string videoOutName = getVideoOutName();
+   Size S(frame.cols, frame.rows);
+   VideoWriter outputVideo(videoOutName.c_str(), fourCC, 30, S, true);
+   args.writeVideo = netTable->GetBoolean("WriteVideo", args.writeVideo);
+   const int videoWritePollFrequency = 60; // check for network table entry every this many frames (~5 seconds or so)
+   int videoWritePollCount = videoWritePollFrequency;
+
    // Frame timing information
 #define frameTicksLength (sizeof(frameTicks) / sizeof(frameTicks[0]))
    double frameTicks[3];
@@ -133,6 +163,14 @@ int main( int argc, const char** argv )
    while(cap->getNextFrame(pause, frame))
    {
       startTick = getTickCount(); // start time for this frame
+
+      if (--videoWritePollCount == 0)
+      {
+	 args.writeVideo = netTable->GetBoolean("WriteVideo", args.writeVideo);
+	 videoWritePollCount = videoWritePollFrequency;
+      }
+      if (args.writeVideo)
+	 outputVideo << frame;
 
       //TODO : grab angle delta from robot
       // Adjust the position of all of the detected objects
@@ -546,7 +584,7 @@ void writeImage(const Mat &frame, const vector<Rect> &rects, size_t index, const
 string getClassifierName(int directory, int stage)
 {
    stringstream ss;
-   ss << "../cascade_training/classifier_bin_";
+   ss << "/home/ubuntu/2015VisionCode/cascade_training/classifier_bin_";
    ss << directory;
    ss << "/cascade_oldformat_";
    ss << stage;
@@ -584,13 +622,15 @@ bool processArgs(int argc, const char **argv, Args &args)
    const string captureAllOpt = "--all";
    const string batchModeOpt  = "--batch";
    const string dsOpt         = "--ds";
+   const string writeVideoOpt = "--capture";
    const string badOpt        = "--";
 
-   args.captureAll  = false;
-   args.tracking    = true;
-   args.batchMode   = false;
-   args.ds          = false;
-   args.frameStart  = 0.0;
+   args.captureAll   = false;
+   args.tracking     = true;
+   args.batchMode    = false;
+   args.ds           = false;
+   args.writeVideo   = false;
+   args.frameStart   = 0.0;
    args.inputName.clear();
 
    // Read through command line args, extract
@@ -606,6 +646,8 @@ bool processArgs(int argc, const char **argv, Args &args)
 	 args.batchMode = true;
       else if (dsOpt.compare(0, dsOpt.length(), argv[fileArgc], dsOpt.length()) == 0)
 	 args.ds = true;
+      else if (writeVideoOpt.compare(0, writeVideoOpt.length(), argv[fileArgc], writeVideoOpt.length()) == 0)
+	 args.writeVideo = true;
       else if (badOpt.compare(0, badOpt.length(), argv[fileArgc], badOpt.length()) == 0)
       {
 	 cerr << "Unknown command line option " << argv[fileArgc] << endl;
