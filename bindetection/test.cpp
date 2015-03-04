@@ -168,7 +168,7 @@ int main( int argc, const char** argv )
       }
       if (args.writeVideo) {
 	 if (!outputVideo.isOpened())
-	    outputVideo.open(videoOutName.c_str(), CV_FOURCC('M','J','P','G'), 30, S, true);
+	    outputVideo.open(videoOutName.c_str(), CV_FOURCC('M','J','P','G'), 15, S, true);
 	 outputVideo << frame;
       }
       //TODO : grab angle delta from robot
