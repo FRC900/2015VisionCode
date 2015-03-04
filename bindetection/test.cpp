@@ -17,9 +17,6 @@
 #include "track.hpp"
 
 #define __u32 unsigned int
-/*  Four-character-code (FOURCC) */
-#define fourcc(a,b,c,d)\
-   (((__u32)(a)<<0)|((__u32)(b)<<8)|((__u32)(c)<<16)|((__u32)(d)<<24))
 
 using namespace std;
 using namespace cv;
@@ -139,7 +136,7 @@ int main( int argc, const char** argv )
    netTableArray.setSize(netTableArraySize * 3);
 
    // Code to write video frames to avi file on disk
-   const int fourCC = fourcc('M','J','P','G');
+   const int fourCC = CV_FOURCC('M','J','P','G');
 
    string videoOutName = getVideoOutName();
    Size S(frame.cols, frame.rows);
@@ -169,11 +166,11 @@ int main( int argc, const char** argv )
 	 args.writeVideo = netTable->GetBoolean("WriteVideo", args.writeVideo);
 	 videoWritePollCount = videoWritePollFrequency;
       }
-	  if (args.writeVideo) {
-		  if (!outputVideo.isOpened())
-			  outputVideo.open(videoOutName.c_str(), fourCC, 30, S, true);
-		  outputVideo << frame;
-	  }
+      if (args.writeVideo) {
+	 if (!outputVideo.isOpened())
+	    outputVideo.open(videoOutName.c_str(), CV_FOURCC('M','J','P','G'), 30, S, true);
+	 outputVideo << frame;
+      }
       //TODO : grab angle delta from robot
       // Adjust the position of all of the detected objects
       // to account for movement of the robot between frames
@@ -586,7 +583,7 @@ void writeImage(const Mat &frame, const vector<Rect> &rects, size_t index, const
 string getClassifierName(int directory, int stage)
 {
    stringstream ss;
-   ss << "/cygdrive/a/2015VisionCode/cascade_training/classifier_bin_";
+   ss << "/home/ubuntu/2015VisionCode/cascade_training/classifier_bin_";
    ss << directory;
    ss << "/cascade_oldformat_";
    ss << stage;
