@@ -143,7 +143,7 @@ int main( int argc, const char** argv )
 
    string videoOutName = getVideoOutName();
    Size S(frame.cols, frame.rows);
-   VideoWriter outputVideo(videoOutName.c_str(), fourCC, 30, S, true);
+   VideoWriter outputVideo;
    args.writeVideo = netTable->GetBoolean("WriteVideo", args.writeVideo);
    const int videoWritePollFrequency = 60; // check for network table entry every this many frames (~5 seconds or so)
    int videoWritePollCount = videoWritePollFrequency;
@@ -169,9 +169,11 @@ int main( int argc, const char** argv )
 	 args.writeVideo = netTable->GetBoolean("WriteVideo", args.writeVideo);
 	 videoWritePollCount = videoWritePollFrequency;
       }
-      if (args.writeVideo)
-	 outputVideo << frame;
-
+	  if (args.writeVideo) {
+		  if (!outputVideo.isOpened())
+			  outputVideo.open(videoOutName.c_str(), fourCC, 30, S, true);
+		  outputVideo << frame;
+	  }
       //TODO : grab angle delta from robot
       // Adjust the position of all of the detected objects
       // to account for movement of the robot between frames
@@ -584,7 +586,7 @@ void writeImage(const Mat &frame, const vector<Rect> &rects, size_t index, const
 string getClassifierName(int directory, int stage)
 {
    stringstream ss;
-   ss << "/home/ubuntu/2015VisionCode/cascade_training/classifier_bin_";
+   ss << "/cygdrive/a/2015VisionCode/cascade_training/classifier_bin_";
    ss << directory;
    ss << "/cascade_oldformat_";
    ss << stage;
