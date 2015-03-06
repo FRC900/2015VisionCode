@@ -78,8 +78,8 @@ int main( int argc, const char** argv )
       classifierModeNext = CLASSIFIER_MODE_GPU;
 
    // Classifier directory and stage to start with
-   int classifierDirNum   = 5;
-   int classifierStageNum = 30;
+   int classifierDirNum   = 10;
+   int classifierStageNum = 20;
 
    // Pointer to either CPU or GPU classifier
    BaseCascadeDetect *detectClassifier = NULL;;
@@ -585,7 +585,7 @@ string getClassifierName(int directory, int stage)
    stringstream ss;
    ss << "/home/ubuntu/2015VisionCode/cascade_training/classifier_bin_";
    ss << directory;
-   ss << "/cascade_oldformat_";
+   ss << "/cascade_";
    ss << stage;
    ss << ".xml";
 
