@@ -67,8 +67,8 @@ int main( int argc, const char** argv )
       classifierModeNext = CLASSIFIER_MODE_GPU;
 
    // Classifier directory and stage to start with
-   int classifierDirNum   = 11;
-   int classifierStageNum = 23;
+   int classifierDirNum   = 13;
+   int classifierStageNum = 28;
 
    // Pointer to either CPU or GPU classifier
    BaseCascadeDetect *detectClassifier = NULL;;
@@ -112,7 +112,8 @@ int main( int argc, const char** argv )
      
    // Minimum size of a bin at ~30 feet distance
    // TODO : Verify this once camera is calibrated
-   minDetectSize = frame.cols * 0.05;
+   minDetectSize = frame.cols * 0.06;
+   cout << minDetectSize << endl;
 
    // Create list of tracked objects
    // recycling bins are 24" wide
@@ -299,10 +300,12 @@ int main( int argc, const char** argv )
 	    writeNetTableNumber(netTable,"Ratio", i, displayList[i].ratio);
 	    writeNetTableNumber(netTable,"Distance", i, displayList[i].distance);
 	    writeNetTableNumber(netTable,"Angle", i, displayList[i].angle);
+#if 0
 	    cout << i << " ";
 	    cout << displayList[i].ratio << " ";
 	    cout << displayList[i].distance << " ";
 	    cout << displayList[i].angle << endl;
+#endif
 	 }
       }
 
@@ -498,7 +501,7 @@ int main( int argc, const char** argv )
 	 // so all the markup isn't saved, only the raw image
 	 Mat frameCopy;
 	 cap->getNextFrame(true, frameCopy);
-	 for (size_t index = 0; index < detectRects.size(); index++)
+	 for (size_t index = 0; index < min(detectRects.size(), detectMax); index++)
 	    writeImage(frameCopy, detectRects, index, capPath.c_str(), cap->frameCounter());
       }
       // Save frame time for the current frame
@@ -660,14 +663,13 @@ void writeNetTableNumber(NetworkTable *netTable, string label, int index, double
 bool maybeReloadClassifier(BaseCascadeDetect *&detectClassifier, 
       CLASSIFIER_MODE &modeCurrent, 
       CLASSIFIER_MODE &modeNext, 
-      int DirNum, int StageNum)
+      int dirNum, int stageNum)
 {
    if ((modeCurrent == CLASSIFIER_MODE_UNINITIALIZED) || 
        (modeCurrent != modeNext))
    {
-      string Name = getClassifierName(DirNum, StageNum);
-cerr << Name << endl;
-cerr << "Current " << modeCurrent <<" Next " << modeNext<<endl;
+      string name = getClassifierName(dirNum, stageNum);
+cerr << name << endl;
 
       // If reloading with new name, keep the current
       // CPU/GPU mode setting 
@@ -681,15 +683,15 @@ cerr << "Current " << modeCurrent <<" Next " << modeNext<<endl;
       // Create a new CPU or GPU  based on the
       // user's selection
       if (modeNext == CLASSIFIER_MODE_GPU)
-	 detectClassifier = new GPU_CascadeDetect(Name.c_str());
+	 detectClassifier = new GPU_CascadeDetect(name.c_str());
       else
-	 detectClassifier = new CPU_CascadeDetect(Name.c_str());
+	 detectClassifier = new CPU_CascadeDetect(name.c_str());
       modeCurrent = modeNext;
 
       // Verfiy the  loaded
       if( !detectClassifier->loaded() )
       {
-	 cerr << "--(!)Error loading " << Name << endl; 
+	 cerr << "--(!)Error loading " << name << endl; 
 	 return false; 
       }
    }

@@ -1,6 +1,6 @@
 while (1)
 {
-   my $pid = open(PIPE, "/bin/opencv_traincascade -data classifier_bin_13 -vec positives.vec -bg negatives.dat -w 20 -h 20 -numStages 55 -minHitRate 0.999 -maxFalseAlarmRate 0.5 -numPos 11250 -numNeg 7000 -featureType LBP -precalcValBufSize 1750 -precalcIdxBufSize 1750 -maxWeakCount 1000 |");
+   my $pid = open(PIPE, "/bin/opencv_traincascade -data classifier_bin_12 -vec positives.vec -bg negatives.dat -w 20 -h 20 -numStages 55 -minHitRate 0.999 -maxFalseAlarmRate 0.5 -numPos 8000 -numNeg 5000 -featureType LBP -precalcValBufSize 1750 -precalcIdxBufSize 1750 -maxWeakCount 1000 |");
    while ($line = <PIPE>)
    {
       print $line;

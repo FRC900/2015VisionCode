@@ -10,7 +10,7 @@ mv temp.dat negatives.dat
 /bin/find positive_images -name \*.png > positives.dat
 /bin/find positive_images -name \*.jpg >> positives.dat
 # For each positive image, create a number of randomly rotated versions of that image
-perl createtrainsamples.pl positives.dat negatives.dat . 12000 | tee foo.txt
+perl createtrainsamples.pl positives.dat negatives.dat . 8500 | tee foo.txt
 
 # Merge each set of randomized versions of the images into one big .vec file
 rm positives.vec ordered_positives.vec
