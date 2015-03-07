@@ -19,7 +19,7 @@ VideoIn::VideoIn(const char *path)
    }
    _frameCounter = 0;
 }
-VideoIn::VideoIn(int stream)
+VideoIn::VideoIn(int stream, bool gui)
 {
    _cap = VideoCapture(stream);
    _video = true;

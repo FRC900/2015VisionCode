@@ -12,6 +12,7 @@
 #include "networktables/NetworkTable.h"
 #include "networktables2/type/NumberArray.h"
 
+#include "classifierio.hpp"
 #include "imagedetect.hpp"
 #include "videoin_c920.hpp"
 #include "track.hpp"
@@ -20,11 +21,6 @@ using namespace std;
 using namespace cv;
 
 void writeImage(const Mat &frame, const vector<Rect> &rects, size_t index, const char *path, int frameCounter);
-string getClassifierDir(int directory);
-string getClassifierName(int directory, int stage);
-bool findNextClassifierStage(int dirNum, int &stageNum, bool increment);
-bool findNextClassifierDir(int &dirNum, int &stageNum, bool increment);
-
 string getDateTimeString(void);
 
 void writeNetTableNumber(NetworkTable *netTable, string label, int index, double value);
@@ -37,7 +33,7 @@ enum CLASSIFIER_MODE
    CLASSIFIER_MODE_CPU,
    CLASSIFIER_MODE_GPU
 };
-bool maybeReloadClassifier(BaseCascadeDetect *&detectClassifier, CLASSIFIER_MODE ModeCurrent, CLASSIFIER_MODE ModeNext, int DirNumber, int StageNumber);
+bool maybeReloadClassifier(BaseCascadeDetect *&detectClassifier, CLASSIFIER_MODE &modeCurrent, CLASSIFIER_MODE &modeNext, int DirNumber, int StageNumber);
 
 struct Args
 {
@@ -52,22 +48,8 @@ struct Args
 };
 
 bool processArgs(int argc, const char **argv, Args &args);
-void openVideoCap(const string &fileName, VideoIn *&cap, string &capPath, string &windowName);
-
-string getVideoOutName(void)
-{
-   char name[256];
-   int index = 0;
-   int rc;
-   struct stat statbuf;
-   do 
-   {
-      sprintf(name, "cap%d.avi", index++);
-      rc = stat(name, &statbuf);
-   }
-   while (rc == 0);
-   return string(name);
-}
+void openVideoCap(const string &fileName, VideoIn *&cap, string &capPath, string &windowName, bool gui);
+string getVideoOutName(void);
 
 int main( int argc, const char** argv )
 {
@@ -85,8 +67,8 @@ int main( int argc, const char** argv )
       classifierModeNext = CLASSIFIER_MODE_GPU;
 
    // Classifier directory and stage to start with
-   int classifierDirNum   = 12;
-   int classifierStageNum = 26;
+   int classifierDirNum   = 11;
+   int classifierStageNum = 23;
 
    // Pointer to either CPU or GPU classifier
    BaseCascadeDetect *detectClassifier = NULL;;
@@ -100,7 +82,7 @@ int main( int argc, const char** argv )
    string windowName = "Bin detection"; // GUI window name
    string capPath; // Output directory for captured images
    VideoIn *cap; // video input - image, video or camera
-   openVideoCap(args.inputName, cap, capPath, windowName);
+   openVideoCap(args.inputName, cap, capPath, windowName, !args.batchMode);
 
    if (!args.batchMode)
       namedWindow(windowName, WINDOW_AUTOSIZE);
@@ -565,101 +547,6 @@ void writeImage(const Mat &frame, const vector<Rect> &rects, size_t index, const
    }
 }
 
-// given a directory number generate a filename for that dir
-// if it exists - if it doesnt, return an empty string
-string getClassifierDir(int directory)
-{
-   struct stat fileStat;
-   stringstream ss;
-   ss << "/home/ubuntu/2015VisionCode/cascade_training/classifier_bin_";
-   ss << directory;
-   if ((stat(ss.str().c_str(), &fileStat) == 0) && S_ISDIR(fileStat.st_mode))
-      return string(ss.str());
-   return string();
-}
-
-// given a directory number and stage within that directory
-// generate a filename to load the cascade from.  Check that
-// the file exists - if it doesnt, return an empty string
-string getClassifierName(int directory, int stage)
-{
-   struct stat fileStat;
-   stringstream ss;
-   string dirName = getClassifierDir(directory);
-   if (!dirName.length())
-      return string();
-
-   ss << dirName;
-   ss << "/cascade_oldformat_";
-   ss << stage;
-   ss << ".xml";
-
-   if ((stat(ss.str().c_str(), &fileStat) == 0) && (fileStat.st_size > 5000))
-      return string(ss.str());
-
-   // Try the non-oldformat one next
-   ss.str(string());
-   ss.clear();
-   ss << dirName;
-   ss << "/cascade_";
-   ss << stage;
-   ss << ".xml";
-
-   if ((stat(ss.str().c_str(), &fileStat) == 0) && (fileStat.st_size > 5000))
-      return string(ss.str());
-
-   // Found neither?  Return an empty string
-   return string();
-}
-
-// Find the next valid classifier. Since some .xml input
-// files crash the GPU we've deleted them. Skip over missing
-// files in the sequence
-bool findNextClassifierStage(int dirNum, int &stageNum, bool increment)
-{
-   int adder = increment ? 1 : -1;
-   int num = stageNum + adder;
-   bool found;
-
-   for (found = false; !found && ((num > 0) && (num < 100)); num += adder)
-   {
-      if (getClassifierName(dirNum, num).length())
-      {
-	 found = true;
-	 stageNum = num;
-      }
-   }
-      
-   return found;
-}
-
-// Find the next valid classifier dir. Start with current stage in that
-// directory and work down until a classifier is found
-bool findNextClassifierDir(int &dirNum, int &stageNum, bool increment)
-{
-   int adder = increment ? 1 : -1;
-   int dnum = dirNum + adder;
-   bool found;
-
-   for (found = false; !found && ((dnum > 0) && (dnum < 100)); dnum += adder)
-   {
-      if (getClassifierDir(dnum).length())
-      {
-	 int snum = stageNum + 1;
-	 // Try to find a valid classifier in this dir, counting
-	 // down from the current stage number
-	 if (findNextClassifierStage(dnum, snum, false))
-	 {
-	    dirNum   = dnum;
-	    stageNum = snum;
-	    found    = true;
-	 }
-      }
-   }
-      
-   return found;
-}
-
 string getDateTimeString(void)
 {
    time_t rawtime;
@@ -727,13 +614,13 @@ bool processArgs(int argc, const char **argv, Args &args)
 }
 
 // Open video capture object. Figure out if input is camera, video, image, etc
-void openVideoCap(const string &fileName, VideoIn *&cap, string &capPath, string &windowName)
+void openVideoCap(const string &fileName, VideoIn *&cap, string &capPath, string &windowName, bool gui)
 {
    if (fileName.length() == 0)
    {
       // No arguments? Open default camera
       // and hope for the best
-      cap        = new VideoIn(0);
+      cap        = new VideoIn(0, gui);
       capPath    = getDateTimeString();
       windowName = "Default Camera";
    }
@@ -742,7 +629,7 @@ void openVideoCap(const string &fileName, VideoIn *&cap, string &capPath, string
    else if ((fileName.find('.') == string::npos) &&
             (isdigit(fileName[0]) || fileName.compare("-1") == 0))
    {
-      cap        = new VideoIn(fileName[0] - '0');
+      cap        = new VideoIn(fileName[0] - '0', gui);
       capPath    = getDateTimeString() + "_" + fileName;
       windowName = "Camera " + fileName;
    }
@@ -770,18 +657,22 @@ void writeNetTableNumber(NetworkTable *netTable, string label, int index, double
 
 // Code to allow switching between CPU and GPU for testing
 // Also used to reload different classifer stages on the fly
-bool maybeReloadClassifier(BaseCascadeDetect *&detectClassifier, CLASSIFIER_MODE ModeCurrent, CLASSIFIER_MODE ModeNext, int DirNum, int StageNum)
+bool maybeReloadClassifier(BaseCascadeDetect *&detectClassifier, 
+      CLASSIFIER_MODE &modeCurrent, 
+      CLASSIFIER_MODE &modeNext, 
+      int DirNum, int StageNum)
 {
-   if ((ModeCurrent == CLASSIFIER_MODE_UNINITIALIZED) || 
-       (ModeCurrent != ModeNext))
+   if ((modeCurrent == CLASSIFIER_MODE_UNINITIALIZED) || 
+       (modeCurrent != modeNext))
    {
       string Name = getClassifierName(DirNum, StageNum);
 cerr << Name << endl;
+cerr << "Current " << modeCurrent <<" Next " << modeNext<<endl;
 
-      // If reloading with new  name, keep the current
+      // If reloading with new name, keep the current
       // CPU/GPU mode setting 
-      if (ModeNext == CLASSIFIER_MODE_RELOAD)
-	 ModeNext = ModeCurrent;
+      if (modeNext == CLASSIFIER_MODE_RELOAD)
+	 modeNext = modeCurrent;
 
       // Delete the old  if it has been initialized
       if (detectClassifier)
@@ -789,11 +680,11 @@ cerr << Name << endl;
 
       // Create a new CPU or GPU  based on the
       // user's selection
-      if (ModeNext == CLASSIFIER_MODE_GPU)
+      if (modeNext == CLASSIFIER_MODE_GPU)
 	 detectClassifier = new GPU_CascadeDetect(Name.c_str());
       else
 	 detectClassifier = new CPU_CascadeDetect(Name.c_str());
-      ModeCurrent = ModeNext;
+      modeCurrent = modeNext;
 
       // Verfiy the  loaded
       if( !detectClassifier->loaded() )
@@ -804,3 +695,23 @@ cerr << Name << endl;
    }
    return true;
 }
+
+string getVideoOutName(void)
+{
+   int index = 0;
+   int rc;
+   struct stat statbuf;
+   stringstream ss;
+   do 
+   {
+      ss.str(string(""));
+      ss.clear();
+      ss << "cap";
+      ss << index;
+      ss << ".avi";
+      rc = stat(ss.str().c_str(), &statbuf);
+   }
+   while (rc == 0);
+   return ss.str();
+}
+

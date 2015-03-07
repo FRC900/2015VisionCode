@@ -16,7 +16,7 @@ class VideoIn
 {
    public:
       VideoIn(const char *path);
-      VideoIn(int _stream = -1);
+      VideoIn(int _stream = -1, bool gui = false);
 
       cv::VideoCapture *VideoCap(void);
       bool getNextFrame(bool pause, cv::Mat &frame);
