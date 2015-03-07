@@ -20,16 +20,25 @@ using namespace std;
 using namespace cv;
 
 void writeImage(const Mat &frame, const vector<Rect> &rects, size_t index, const char *path, int frameCounter);
+string getClassifierDir(int directory);
 string getClassifierName(int directory, int stage);
+bool findNextClassifierStage(int dirNum, int &stageNum, bool increment);
+bool findNextClassifierDir(int &dirNum, int &stageNum, bool increment);
+
 string getDateTimeString(void);
 
-void writeNetTableNumber(NetworkTable *netTable, string label, int index, double value)
+void writeNetTableNumber(NetworkTable *netTable, string label, int index, double value);
+
+// Allow switching between CPU and GPU for testing 
+enum CLASSIFIER_MODE
 {
-	stringstream ss;
-	ss << label;
-	ss << (index+1);
-	netTable->PutNumber(ss.str().c_str(), value);
-}
+   CLASSIFIER_MODE_UNINITIALIZED,
+   CLASSIFIER_MODE_RELOAD,
+   CLASSIFIER_MODE_CPU,
+   CLASSIFIER_MODE_GPU
+};
+bool maybeReloadClassifier(BaseCascadeDetect *&detectClassifier, CLASSIFIER_MODE ModeCurrent, CLASSIFIER_MODE ModeNext, int DirNumber, int StageNumber);
+
 struct Args
 {
    bool captureAll;  // capture all found targets to image files?
@@ -67,24 +76,17 @@ int main( int argc, const char** argv )
    // Flags for various UI features
    bool pause = false;       // pause playback?
    bool printFrames = false; // print frame number?
-   
-   // Allow switching between CPU and GPU for testing 
-   enum CLASSIFIER_MODE
-   {
-      CLASSIFIER_MODE_UNINITIALIZED,
-      CLASSIFIER_MODE_RELOAD,
-      CLASSIFIER_MODE_CPU,
-      CLASSIFIER_MODE_GPU
-   };
 
+   int frameDisplayFrequency = 1;
+   
    CLASSIFIER_MODE classifierModeCurrent = CLASSIFIER_MODE_UNINITIALIZED;
    CLASSIFIER_MODE classifierModeNext    = CLASSIFIER_MODE_CPU;
    if (gpu::getCudaEnabledDeviceCount() > 0)
       classifierModeNext = CLASSIFIER_MODE_GPU;
 
    // Classifier directory and stage to start with
-   int classifierDirNum   = 11;
-   int classifierStageNum = 24;
+   int classifierDirNum   = 12;
+   int classifierStageNum = 26;
 
    // Pointer to either CPU or GPU classifier
    BaseCascadeDetect *detectClassifier = NULL;;
@@ -135,7 +137,7 @@ int main( int argc, const char** argv )
    TrackedObjectList binTrackingList(24.0, frame.cols);
 
    NetworkTable::SetClientMode();
-   NetworkTable::SetIPAddress("10.9.0.2");
+   NetworkTable::SetIPAddress("10.9.0.2"); 
    NetworkTable *netTable = NetworkTable::GetTable("VisionTable");
    const size_t netTableArraySize = 7; // 7 bins?
    NumberArray netTableArray;
@@ -185,38 +187,9 @@ int main( int argc, const char** argv )
       double deltaAngle = 0.0;
       binTrackingList.adjustAngle(deltaAngle);
 
-      // Code to allow switching between CPU and GPU 
-      // for testing
-      if ((classifierModeCurrent == CLASSIFIER_MODE_UNINITIALIZED) || 
-	  (classifierModeCurrent != classifierModeNext))
-      {
-	 string classifierName = getClassifierName(classifierDirNum, classifierStageNum);
-cerr << classifierName << endl;
+      if (!maybeReloadClassifier(detectClassifier, classifierModeCurrent, classifierModeNext, classifierDirNum, classifierStageNum))
+	 return -1;
 
-	 // If reloading with new classifier name, keep the current
-	 // CPU/GPU mode setting 
-	 if (classifierModeNext == CLASSIFIER_MODE_RELOAD)
-	    classifierModeNext = classifierModeCurrent;
-
-	 // Delete the old classifier if it has been initialized
-	 if (detectClassifier)
-	    delete detectClassifier;
-
-	 // Create a new CPU or GPU classifier based on the
-	 // user's selection
-	 if (classifierModeNext == CLASSIFIER_MODE_GPU)
-	    detectClassifier = new GPU_CascadeDetect(classifierName.c_str());
-	 else
-	    detectClassifier = new CPU_CascadeDetect(classifierName.c_str());
-	 classifierModeCurrent = classifierModeNext;
-
-	 // Verfiy the classifier loaded
-	 if( !detectClassifier->loaded() )
-	 {
-	    cerr << "--(!)Error loading " << classifierName << endl; 
-	    return -1; 
-	 }
-      }
       // Apply the classifier to the frame
       // detectRects is a vector of rectangles, one for each detected object
       // detectDirections is the direction of each detected object - we might not use this
@@ -244,7 +217,7 @@ cerr << classifierName << endl;
 		     }
 		     if(intersection.y > lowestYVal.y) {
 			//cout << "found intersection" << endl;
-			if (!args.batchMode)
+			if (!args.batchMode && ((cap->frameCounter() % frameDisplayFrequency) == 0))
 			   rectangle(frame, detectRects[indexHighest], Scalar(0,255,255), 3);
 			detectRects.erase(detectRects.begin()+indexHighest);
 			detectDirections.erase(detectDirections.begin()+indexHighest);
@@ -252,7 +225,7 @@ cerr << classifierName << endl;
 		  }
 	    }
 	 }
-	 if (!args.batchMode)
+	 if (!args.batchMode && ((cap->frameCounter() % frameDisplayFrequency) == 0))
 	 {
 	    // Mark detected rectangle on image
 	    // Change color based on direction we think the bin is pointing
@@ -290,8 +263,7 @@ cerr << classifierName << endl;
 
 	 // Process this detected rectangle - either update the nearest
 	 // object or add it as a new one
-	 if (!args.batchMode)
-	    binTrackingList.processDetect(detectRects[i]);
+	 binTrackingList.processDetect(detectRects[i]);
       }
 
 #if 0
@@ -305,17 +277,18 @@ cerr << classifierName << endl;
 
       // Clear out network table array
       for (size_t i = 0; !args.ds & (i < (netTableArraySize * 3)); i++)
-	      netTableArray.set(i, -1);
+	 netTableArray.set(i, -1);
       for (size_t i = 0; !args.ds & (i < netTableArraySize); i++)
       {
-	      writeNetTableNumber(netTable,"Ratio", i, -1);
-	      writeNetTableNumber(netTable,"Distance", i, -1);
-	      writeNetTableNumber(netTable,"Angle", i, -1);
+	 writeNetTableNumber(netTable,"Ratio", i, -1);
+	 writeNetTableNumber(netTable,"Distance", i, -1);
+	 writeNetTableNumber(netTable,"Angle", i, -1);
       }
 
       for (size_t i = 0; i < displayList.size(); i++)
       {
-	 if ((displayList[i].ratio >= 0.15) && args.tracking && !args.batchMode)
+	 if ((displayList[i].ratio >= 0.15) && args.tracking && 
+	    !args.batchMode && ((cap->frameCounter() % frameDisplayFrequency) == 0))
 	 {
 	    // Color moves from red to green (via brown, yuck) 
 	    // as the detected ratio goes up
@@ -353,8 +326,8 @@ cerr << classifierName << endl;
 
       if (!args.ds)
       {
-	      netTable->PutValue("VisionArray", netTableArray);
-	      netTable->PutNumber("FrameNumber", cap->frameCounter());
+	 netTable->PutValue("VisionArray", netTableArray);
+	 netTable->PutNumber("FrameNumber", cap->frameCounter());
       }
 
       // Don't update to next frame if paused to prevent
@@ -364,7 +337,7 @@ cerr << classifierName << endl;
 	 binTrackingList.nextFrame();
 
       // Print frame number of video if the option is enabled
-      if (!args.batchMode && printFrames && cap->VideoCap())
+      if (!args.batchMode && ((cap->frameCounter() % frameDisplayFrequency) == 0)&& printFrames && cap->VideoCap())
       {
 	 stringstream ss;
 	 ss << cap->frameCounter();
@@ -386,7 +359,7 @@ cerr << classifierName << endl;
       // a complete array of frame time entries
       // For args.batch mode, only update every frameTicksLength frames to
       // avoid printing too much stuff
-      if ((!args.batchMode && (frameTicksIndex >= frameTicksLength)) ||
+      if ((!args.batchMode && ((cap->frameCounter() % frameDisplayFrequency) == 0) && (frameTicksIndex >= frameTicksLength)) ||
 	  (args.batchMode && ((frameTicksIndex % (frameTicksLength*10)) == 0)))
       {
 	 // Get the average frame time over the last
@@ -422,7 +395,7 @@ cerr << classifierName << endl;
 	 for (int i = 0; i < 4; i++)
 	 {
 	    Rect dsRect(i * frame.cols / 4, 0, frame.cols/4, frame.rows);
-	    if (!args.batchMode)
+	    if (!args.batchMode && ((cap->frameCounter() % frameDisplayFrequency) == 0))
 	       rectangle(frame, dsRect, Scalar(0,255,255,3));
 	    hits[i] = false;
 	    // For each quadrant of the field, look for a detected
@@ -433,8 +406,8 @@ cerr << classifierName << endl;
 	    {
 	       if (((displayList[j].rect & dsRect) == displayList[j].rect) && (displayList[j].ratio > 0.15))
 	       {
-		  if (!args.batchMode)
-		     rectangle(frame, displayList[j].rect, Scalar(255,128,128), 3);
+		  if (!args.batchMode && ((cap->frameCounter() % frameDisplayFrequency) == 0))
+			rectangle(frame, displayList[j].rect, Scalar(255,128,128), 3);
 		  hits[i] = true;
 	       }
 	    }
@@ -445,7 +418,7 @@ cerr << classifierName << endl;
 	 }
       }
 
-      if (!args.batchMode)
+      if (!args.batchMode && ((cap->frameCounter() % frameDisplayFrequency) == 0))
       {
 	 // Put an A on the screen if capture-all is enabled so
 	 // users can keep track of that toggle's mode
@@ -456,12 +429,11 @@ cerr << classifierName << endl;
 	 imshow( windowName, frame );
 
 	 // Process user IO
-if ((cap->frameCounter() % 4) == 3)
-{
 	 char c = waitKey(5);
 	 if ((c == 'c') || (c == 'q') || (c == 27)) 
 	 { // exit
-	    NetworkTable::Shutdown();
+	    if (netTable->IsConnected())
+	       NetworkTable::Shutdown();
 	    break; 
 	 } 
 	 else if( c == ' ') { pause = !pause; }
@@ -494,6 +466,14 @@ if ((cap->frameCounter() % 4) == 3)
 	 {
 	    printFrames = !printFrames;
 	 }
+	 else if (c == 'S')
+	 {
+	    frameDisplayFrequency += 1;
+	 }
+	 else if (c == 's')
+	 {
+	    frameDisplayFrequency = max(1, frameDisplayFrequency - 1);
+	 }
 	 else if (c == 'G') // toggle CPU/GPU mode
 	 {
 	    if (classifierModeNext == CLASSIFIER_MODE_GPU)
@@ -503,43 +483,23 @@ if ((cap->frameCounter() % 4) == 3)
 	 }
 	 else if (c == '.') // higher classifier stage
 	 {
-	    int num = classifierStageNum + 1;
-	    while ((getClassifierName(classifierDirNum, num).length() == 0) &&
-		  (num < 100))
-	       num += 1;
-	    if (num < 100)
-	    {
-	       classifierStageNum = num;
+	    if (findNextClassifierStage(classifierDirNum, classifierStageNum, true))
 	       classifierModeNext = CLASSIFIER_MODE_RELOAD;
-	    }
 	 }
 	 else if (c == ',') // lower classifier stage
 	 {
-	    int num = classifierStageNum - 1;
-	    while ((getClassifierName(classifierDirNum, num).length() == 0) &&
-		  (num > 0))
-	       num -= 1;
-	    if (num > 0)
-	    {
-	       classifierStageNum = num;
+	    if (findNextClassifierStage(classifierDirNum, classifierStageNum, false))
 	       classifierModeNext = CLASSIFIER_MODE_RELOAD;
-	    }
 	 }
 	 else if (c == '>') // higher classifier dir num
 	 {
-	    if (getClassifierName(classifierDirNum+1, classifierStageNum).length())
-	    {
-	       classifierDirNum += 1;
-	       classifierModeNext   = CLASSIFIER_MODE_RELOAD;
-	    }
+	    if (findNextClassifierDir(classifierDirNum, classifierStageNum, true))
+	       classifierModeNext = CLASSIFIER_MODE_RELOAD;
 	 }
 	 else if (c == '<') // higher classifier dir num
 	 {
-	    if (getClassifierName(classifierDirNum-1, classifierStageNum).length())
-	    {
-	       classifierDirNum -= 1;
+	    if (findNextClassifierDir(classifierDirNum, classifierStageNum, false))
 	       classifierModeNext = CLASSIFIER_MODE_RELOAD;
-	    }
 	 }
 	 else if (isdigit(c)) // save a single detected image
 	 {
@@ -547,7 +507,6 @@ if ((cap->frameCounter() % 4) == 3)
 	    cap->getNextFrame(true, frameCopy);
 	    writeImage(frameCopy, detectRects, c - '0', capPath.c_str(), cap->frameCounter());
 	 }
-      }
       }
       // If args.captureAll is enabled, write each detected rectangle
       // to their own output image file
@@ -605,23 +564,100 @@ void writeImage(const Mat &frame, const vector<Rect> &rects, size_t index, const
       imwrite(fn.str() + "_g_s.png", frameGray);
    }
 }
-//
+
+// given a directory number generate a filename for that dir
+// if it exists - if it doesnt, return an empty string
+string getClassifierDir(int directory)
+{
+   struct stat fileStat;
+   stringstream ss;
+   ss << "/home/ubuntu/2015VisionCode/cascade_training/classifier_bin_";
+   ss << directory;
+   if ((stat(ss.str().c_str(), &fileStat) == 0) && S_ISDIR(fileStat.st_mode))
+      return string(ss.str());
+   return string();
+}
+
 // given a directory number and stage within that directory
 // generate a filename to load the cascade from.  Check that
 // the file exists - if it doesnt, return an empty string
 string getClassifierName(int directory, int stage)
 {
+   struct stat fileStat;
    stringstream ss;
-   ss << "/home/ubuntu/2015VisionCode/cascade_training/classifier_bin_";
-   ss << directory;
+   string dirName = getClassifierDir(directory);
+   if (!dirName.length())
+      return string();
+
+   ss << dirName;
+   ss << "/cascade_oldformat_";
+   ss << stage;
+   ss << ".xml";
+
+   if ((stat(ss.str().c_str(), &fileStat) == 0) && (fileStat.st_size > 5000))
+      return string(ss.str());
+
+   // Try the non-oldformat one next
+   ss.str(string());
+   ss.clear();
+   ss << dirName;
    ss << "/cascade_";
    ss << stage;
    ss << ".xml";
 
-   struct stat fileStat;
-   if (stat(ss.str().c_str(), &fileStat) == 0)
+   if ((stat(ss.str().c_str(), &fileStat) == 0) && (fileStat.st_size > 5000))
       return string(ss.str());
+
+   // Found neither?  Return an empty string
    return string();
+}
+
+// Find the next valid classifier. Since some .xml input
+// files crash the GPU we've deleted them. Skip over missing
+// files in the sequence
+bool findNextClassifierStage(int dirNum, int &stageNum, bool increment)
+{
+   int adder = increment ? 1 : -1;
+   int num = stageNum + adder;
+   bool found;
+
+   for (found = false; !found && ((num > 0) && (num < 100)); num += adder)
+   {
+      if (getClassifierName(dirNum, num).length())
+      {
+	 found = true;
+	 stageNum = num;
+      }
+   }
+      
+   return found;
+}
+
+// Find the next valid classifier dir. Start with current stage in that
+// directory and work down until a classifier is found
+bool findNextClassifierDir(int &dirNum, int &stageNum, bool increment)
+{
+   int adder = increment ? 1 : -1;
+   int dnum = dirNum + adder;
+   bool found;
+
+   for (found = false; !found && ((dnum > 0) && (dnum < 100)); dnum += adder)
+   {
+      if (getClassifierDir(dnum).length())
+      {
+	 int snum = stageNum + 1;
+	 // Try to find a valid classifier in this dir, counting
+	 // down from the current stage number
+	 if (findNextClassifierStage(dnum, snum, false))
+	 {
+	    dirNum   = dnum;
+	    stageNum = snum;
+	    found    = true;
+	 }
+      }
+   }
+      
+   return found;
 }
 
 string getDateTimeString(void)
@@ -724,3 +760,47 @@ void openVideoCap(const string &fileName, VideoIn *&cap, string &capPath, string
    }
 }
 
+void writeNetTableNumber(NetworkTable *netTable, string label, int index, double value)
+{
+   stringstream ss;
+   ss << label;
+   ss << (index+1);
+   netTable->PutNumber(ss.str().c_str(), value);
+}
+
+// Code to allow switching between CPU and GPU for testing
+// Also used to reload different classifer stages on the fly
+bool maybeReloadClassifier(BaseCascadeDetect *&detectClassifier, CLASSIFIER_MODE ModeCurrent, CLASSIFIER_MODE ModeNext, int DirNum, int StageNum)
+{
+   if ((ModeCurrent == CLASSIFIER_MODE_UNINITIALIZED) || 
+       (ModeCurrent != ModeNext))
+   {
+      string Name = getClassifierName(DirNum, StageNum);
+cerr << Name << endl;
+
+      // If reloading with new  name, keep the current
+      // CPU/GPU mode setting 
+      if (ModeNext == CLASSIFIER_MODE_RELOAD)
+	 ModeNext = ModeCurrent;
+
+      // Delete the old  if it has been initialized
+      if (detectClassifier)
+	 delete detectClassifier;
+
+      // Create a new CPU or GPU  based on the
+      // user's selection
+      if (ModeNext == CLASSIFIER_MODE_GPU)
+	 detectClassifier = new GPU_CascadeDetect(Name.c_str());
+      else
+	 detectClassifier = new CPU_CascadeDetect(Name.c_str());
+      ModeCurrent = ModeNext;
+
+      // Verfiy the  loaded
+      if( !detectClassifier->loaded() )
+      {
+	 cerr << "--(!)Error loading " << Name << endl; 
+	 return false; 
+      }
+   }
+   return true;
+}
