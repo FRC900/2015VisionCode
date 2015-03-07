@@ -16,8 +16,6 @@
 #include "videoin_c920.hpp"
 #include "track.hpp"
 
-#define __u32 unsigned int
-
 using namespace std;
 using namespace cv;
 
@@ -25,6 +23,13 @@ void writeImage(const Mat &frame, const vector<Rect> &rects, size_t index, const
 string getClassifierName(int directory, int stage);
 string getDateTimeString(void);
 
+void writeNetTableNumber(NetworkTable *netTable, string label, int index, double value)
+{
+	stringstream ss;
+	ss << label;
+	ss << (index+1);
+	netTable->PutNumber(ss.str().c_str(), value);
+}
 struct Args
 {
    bool captureAll;  // capture all found targets to image files?
@@ -78,8 +83,8 @@ int main( int argc, const char** argv )
       classifierModeNext = CLASSIFIER_MODE_GPU;
 
    // Classifier directory and stage to start with
-   int classifierDirNum   = 10;
-   int classifierStageNum = 20;
+   int classifierDirNum   = 11;
+   int classifierStageNum = 24;
 
    // Pointer to either CPU or GPU classifier
    BaseCascadeDetect *detectClassifier = NULL;;
@@ -94,6 +99,9 @@ int main( int argc, const char** argv )
    string capPath; // Output directory for captured images
    VideoIn *cap; // video input - image, video or camera
    openVideoCap(args.inputName, cap, capPath, windowName);
+
+   if (!args.batchMode)
+      namedWindow(windowName, WINDOW_AUTOSIZE);
 
    // Seek to start frame if necessary
    if (args.frameStart > 0)
@@ -183,6 +191,7 @@ int main( int argc, const char** argv )
 	  (classifierModeCurrent != classifierModeNext))
       {
 	 string classifierName = getClassifierName(classifierDirNum, classifierStageNum);
+cerr << classifierName << endl;
 
 	 // If reloading with new classifier name, keep the current
 	 // CPU/GPU mode setting 
@@ -285,23 +294,28 @@ int main( int argc, const char** argv )
 	    binTrackingList.processDetect(detectRects[i]);
       }
 
+#if 0
       // Print detect status of live objects
       if (args.tracking)
 	 binTrackingList.print();
+#endif
       // Grab info from trackedobjects, print it out
       vector<TrackedObjectDisplay> displayList;
       binTrackingList.getDisplay(displayList);
 
       // Clear out network table array
-      for (size_t i = 0; i < (netTableArraySize * 3); i++)
-	 netTableArray.set(i, -1);
+      for (size_t i = 0; !args.ds & (i < (netTableArraySize * 3)); i++)
+	      netTableArray.set(i, -1);
+      for (size_t i = 0; !args.ds & (i < netTableArraySize); i++)
+      {
+	      writeNetTableNumber(netTable,"Ratio", i, -1);
+	      writeNetTableNumber(netTable,"Distance", i, -1);
+	      writeNetTableNumber(netTable,"Angle", i, -1);
+      }
 
       for (size_t i = 0; i < displayList.size(); i++)
       {
-	 if (displayList[i].ratio < 0.15)
-	    continue;
-
-	 if (args.tracking && !args.batchMode)
+	 if ((displayList[i].ratio >= 0.15) && args.tracking && !args.batchMode)
 	 {
 	    // Color moves from red to green (via brown, yuck) 
 	    // as the detected ratio goes up
@@ -322,16 +336,26 @@ int main( int argc, const char** argv )
 	    putText(frame, angleLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+70), FONT_HERSHEY_PLAIN, 1.5, rectColor);
 	 }
 
-	 if (i < netTableArraySize)
+	 if (!args.ds && (i < netTableArraySize))
 	 {
 	    netTableArray.set(i*3,   displayList[i].ratio);
 	    netTableArray.set(i*3+1, displayList[i].distance);
 	    netTableArray.set(i*3+2, displayList[i].angle);
+	    writeNetTableNumber(netTable,"Ratio", i, displayList[i].ratio);
+	    writeNetTableNumber(netTable,"Distance", i, displayList[i].distance);
+	    writeNetTableNumber(netTable,"Angle", i, displayList[i].angle);
+	    cout << i << " ";
+	    cout << displayList[i].ratio << " ";
+	    cout << displayList[i].distance << " ";
+	    cout << displayList[i].angle << endl;
 	 }
       }
 
-      if(!args.ds)
-	 netTable->PutValue("VisionArray", netTableArray);
+      if (!args.ds)
+      {
+	      netTable->PutValue("VisionArray", netTableArray);
+	      netTable->PutNumber("FrameNumber", cap->frameCounter());
+      }
 
       // Don't update to next frame if paused to prevent
       // objects missing from this frame to be aged out
@@ -432,10 +456,14 @@ int main( int argc, const char** argv )
 	 imshow( windowName, frame );
 
 	 // Process user IO
+if ((cap->frameCounter() % 4) == 3)
+{
 	 char c = waitKey(5);
-	 if( c == 'c' ) { break; } // exit
-	 else if( c == 'q' ) { break; } // exit
-	 else if( c == 27 ) { break; } // exit
+	 if ((c == 'c') || (c == 'q') || (c == 27)) 
+	 { // exit
+	    NetworkTable::Shutdown();
+	    break; 
+	 } 
 	 else if( c == ' ') { pause = !pause; }
 	 else if( c == 'f')  // advance to next frame
 	 {
@@ -519,6 +547,7 @@ int main( int argc, const char** argv )
 	    cap->getNextFrame(true, frameCopy);
 	    writeImage(frameCopy, detectRects, c - '0', capPath.c_str(), cap->frameCounter());
 	 }
+      }
       }
       // If args.captureAll is enabled, write each detected rectangle
       // to their own output image file
