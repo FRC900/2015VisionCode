@@ -1,4 +1,3 @@
-// WARNING: this sample is under construction! Use it on your own risk.
 #include <iostream>
 #include <fstream>
 #include <cstdio>
@@ -14,43 +13,53 @@ using namespace cv::gpu;
 int main(int argc, char **argv)
 {
    const string fname = "gputest.log";
-   int dnum = 0;
+   int dnum = 1;
    int snum = 0;
+   scale = 200;
+   minDetectSize = 200;
 
+   // Scan through gputest.log and grab previous results
+   // Likely if a classifier stage fails the program will
+   // crash so by reading the last thing written the code
+   // can restart right after the failing stage
    {
-      string str;
-      string pf;
-      int dir;
-      int stage;
+      string str; // Classifier name
+      string pf;  // pass or fail string
+      int dir;    // dir number read from file
+      int stage;  // stage # left from file
+      bool foundInput = false; // is input log empty?
       ifstream ifile(fname.c_str());
       ofstream ofile((fname + ".new").c_str());
       if (ifile.is_open() && ofile.is_open())
       {
-	 while (ifile >> dir >> stage >> str >> pf)
+	 // Even a failing line will have a dir, stage, and name
+	 while (ifile >> dir >> stage >> str)
 	 {
 	    dnum = dir;
 	    snum = stage;
-	    ofile << dir << " " << stage << " " << str << " " << pf << endl;
-	 }
-      }
-      snum += 1;
-      if (snum > 100)
-      {
-	 dnum += 1;
-	 snum = 0;
-      }
+	    foundInput = true;
+	    ofile << dir << " " << stage << " " << str << " " ;
+	    cout<< "Read " << dir << " " << stage << " " << str << " ";
 
-      // If no status for last line, write it out now
-      if (pf.length())
-      {
-	 ofile << dir << " " << stage <<" " << str << " Fail" << endl;
-	 snum += 1;
-	 if (snum > 100)
-	 {
-	    dnum += 1;
-	    snum = 0;
+	    // Look for pass or fail
+	    pf = string("");
+	    if (ifile >> pf)
+	    {
+	       ofile << pf << endl << flush;
+	       cout  << pf << endl << flush;
+	    }
+	    else // if not found, end of file. Restart at next stage
+	       break;
 	 }
       }
+      // If no status for last line, write it out now so the file
+      // format is correct
+      if (foundInput && !pf.length())
+      {
+	 ofile << "Fail" << endl;
+	 cout << "Fail" << endl;
+      }
+      cout << "Now testing from " << dnum << " " << snum << endl;
 
       if (ifile.is_open())
 	 ifile.close();
@@ -58,36 +67,49 @@ int main(int argc, char **argv)
 	 ofile.close();
    }
 
+   // Remove old log, replace it with log just created
    remove(fname.c_str());
    rename((fname + ".new").c_str(), fname.c_str());
 
    GPU_CascadeDetect *detectClassifier = NULL;
-   Mat frame = imread("gasource/video.mp4_0001_0000_0329_0088_0290_0287.png");
+   Mat frame = imread("gaSource/video1.mp4_0001_0000_0427_0187_0165_0164.png");
    ofstream ofile(fname.c_str(), std::ofstream::app);
 
+   // Scan through dirs and stages
+   // For each one found, try to load it into the
+   // GPU and see if the program fails
    for (; dnum < 25; dnum++)
    {
-      for (; snum < 100; snum++)
+      while (snum < 100)
       {
-	 string name = getClassifierName(dnum, snum);
-	 ofile << dnum << " " << snum << " " << name << flush;
-	 ofile.flush();
-
-	 // Delete the old  if it has been initialized
-	 if (detectClassifier)
-	    delete detectClassifier;
-	 detectClassifier = new GPU_CascadeDetect(name.c_str());
-
-	 // Verfiy the  loaded
-	 if( !detectClassifier->loaded() )
-	    ofile << " Fail" << endl << flush; 
-	 else
+	 if (findNextClassifierStage(dnum, snum, true))
 	 {
-	    vector<Rect> detectRects;
-	    vector<unsigned> detectDirections;
-	    detectClassifier->cascadeDetect(frame, detectRects, detectDirections); 
-	    ofile << " Pass" << endl << flush;
+	    string name = getClassifierName(dnum, snum);
+	    cout << dnum << " " << snum << " " << name << flush;
+	    ofile << dnum << " " << snum << " " << name << flush;
+
+	    // Delete the old  if it has been initialized
+	    if (detectClassifier)
+	       delete detectClassifier;
+	    detectClassifier = new GPU_CascadeDetect(name.c_str());
+
+	    // Verfiy the  loaded
+	    if( !detectClassifier->loaded() )
+	    {
+	       ofile << " Fail" << endl << flush; 
+	       cout  << " Fail" << endl << flush; 
+	    }
+	    else
+	    {
+	       vector<Rect> detectRects;
+	       vector<unsigned> detectDirections;
+	       detectClassifier->cascadeDetect(frame, detectRects, detectDirections); 
+	       ofile << " Pass" << endl << flush;
+	       cout << " Pass" << endl << flush;
+	    }
 	 }
+	 else break;
       }
+      snum = 0;
    }
 }
