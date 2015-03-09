@@ -166,6 +166,7 @@ int main( int argc, const char** argv )
 	    outputVideo.open(videoOutName.c_str(), CV_FOURCC('M','J','P','G'), 15, S, true);
 	Mat writeCopy;
 	writeCopy = frame.clone();
+
 	 time_t rawTime;
 	 time(&rawTime);
 	 struct tm * localTime;
@@ -173,10 +174,25 @@ int main( int argc, const char** argv )
 	 char arrTime[100];
 	 strftime(arrTime, sizeof(arrTime), "%T %D", localTime);
 	 putText(writeCopy,string(arrTime), Point(0,20), FONT_HERSHEY_TRIPLEX, 0.75, Scalar(147,20,255), 1);
+
 	 string matchNum = netTable->GetString("Match Number", "No Match Number");
+	 double matchTime = netTable->GetNumber("Match Time",-1);
+	 string matchTimeString;
 	 if (matchNum != "No Match Number")
 	 	matchNum = "Match Number:" + matchNum;
+	 if (matchTime == -1) 
+	 	matchTimeString = "No Match Time";
+	 else {
+	 	matchTimeString = "Match Time: ";
+	 	stringstream s;
+	 	s << matchTimeString;
+	 	s << matchTime;
+	 	matchTimeString = s.str();
+	 	}
+
 	 putText(writeCopy,matchNum,Point(0,40), FONT_HERSHEY_TRIPLEX, 0.75, Scalar(147,20,255), 1);
+	 putText(writeCopy,matchTimeString,Point(0,60), FONT_HERSHEY_TRIPLEX, 0.75, Scalar(147,20,255), 1);
+
 	 outputVideo << writeCopy;
       }
       //TODO : grab angle delta from robot
@@ -724,7 +740,7 @@ string getVideoOutName(void)
       ss.str(string(""));
       ss.clear();
       ss << "cap";
-      ss << index;
+      ss << index++;
       ss << ".avi";
       rc = stat(ss.str().c_str(), &statbuf);
    }
