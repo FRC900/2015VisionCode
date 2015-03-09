@@ -170,7 +170,11 @@ int main( int argc, const char** argv )
 	 localTime = localtime(&rawTime);
 	 char arrTime[100];
 	 strftime(arrTime, sizeof(arrTime), "%T %D", localTime);
-	 putText(frame,string(arrTime), Point(0,40), FONT_HERSHEY_TRIPLEX, 1.0, Scalar(147,20,255), 2);
+	 putText(frame,string(arrTime), Point(0,20), FONT_HERSHEY_TRIPLEX, 0.75, Scalar(147,20,255), 1);
+	 string matchNum = netTable->GetString("Match Number", "No Match Number");
+	 if (matchNum != "No Match Number")
+	 	matchNum = "Match Number:" + matchNum;
+	 putText(frame,matchNum,Point(0,40), FONT_HERSHEY_TRIPLEX, 0.75, Scalar(147,20,255), 1);
 	 outputVideo << frame;
       }
       //TODO : grab angle delta from robot
