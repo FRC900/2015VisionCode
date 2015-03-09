@@ -164,18 +164,20 @@ int main( int argc, const char** argv )
       if (args.writeVideo) {
 	 if (!outputVideo.isOpened())
 	    outputVideo.open(videoOutName.c_str(), CV_FOURCC('M','J','P','G'), 15, S, true);
+	Mat writeCopy;
+	writeCopy = frame.clone();
 	 time_t rawTime;
 	 time(&rawTime);
 	 struct tm * localTime;
 	 localTime = localtime(&rawTime);
 	 char arrTime[100];
 	 strftime(arrTime, sizeof(arrTime), "%T %D", localTime);
-	 putText(frame,string(arrTime), Point(0,20), FONT_HERSHEY_TRIPLEX, 0.75, Scalar(147,20,255), 1);
+	 putText(writeCopy,string(arrTime), Point(0,20), FONT_HERSHEY_TRIPLEX, 0.75, Scalar(147,20,255), 1);
 	 string matchNum = netTable->GetString("Match Number", "No Match Number");
 	 if (matchNum != "No Match Number")
 	 	matchNum = "Match Number:" + matchNum;
-	 putText(frame,matchNum,Point(0,40), FONT_HERSHEY_TRIPLEX, 0.75, Scalar(147,20,255), 1);
-	 outputVideo << frame;
+	 putText(writeCopy,matchNum,Point(0,40), FONT_HERSHEY_TRIPLEX, 0.75, Scalar(147,20,255), 1);
+	 outputVideo << writeCopy;
       }
       //TODO : grab angle delta from robot
       // Adjust the position of all of the detected objects
