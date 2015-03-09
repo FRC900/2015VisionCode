@@ -8,6 +8,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <time.h>
 
 #include "networktables/NetworkTable.h"
 #include "networktables2/type/NumberArray.h"
@@ -16,6 +17,7 @@
 #include "imagedetect.hpp"
 #include "videoin_c920.hpp"
 #include "track.hpp"
+
 
 using namespace std;
 using namespace cv;
@@ -162,6 +164,13 @@ int main( int argc, const char** argv )
       if (args.writeVideo) {
 	 if (!outputVideo.isOpened())
 	    outputVideo.open(videoOutName.c_str(), CV_FOURCC('M','J','P','G'), 15, S, true);
+	 time_t rawTime;
+	 time(&rawTime);
+	 struct tm * localTime;
+	 localTime = localtime(&rawTime);
+	 char arrTime[100];
+	 strftime(arrTime, sizeof(arrTime), "%T %D", localTime);
+	 putText(frame,string(arrTime), Point(0,40), FONT_HERSHEY_TRIPLEX, 1.0, Scalar(147,20,255), 2);
 	 outputVideo << frame;
       }
       //TODO : grab angle delta from robot
