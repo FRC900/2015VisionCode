@@ -20,3 +20,5 @@ target_link_libraries( gaTesting ${OpenCV_LIBS} ${LibGA} )
 
 add_executable( gputest gputest.cpp imagedetect.cpp classifierio.cpp )
 target_link_libraries( gputest ${OpenCV_LIBS} )
+add_executable( fpstest fpstest.cpp imagedetect.cpp videoin.cpp )
+target_link_libraries( fpstest ${OpenCV_LIBS} )

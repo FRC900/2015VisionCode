@@ -95,16 +95,6 @@ int main( int argc, const char** argv )
 
    Mat frame;
 
-   // If UI is up, pop up the parameters window
-   if (!args.batchMode)
-   {
-      string detectWindowName = "Detection Parameters";
-      namedWindow(detectWindowName);
-      createTrackbar ("Scale", detectWindowName, &scale, 50, NULL);
-      createTrackbar ("Neighbors", detectWindowName, &neighbors, 50, NULL);
-      createTrackbar ("Max Detect", detectWindowName, &maxDetectSize, 1000, NULL);
-      createTrackbar ("GPU Scale", detectWindowName, &gpuScale, 100, NULL);
-   }
    // Grab initial frame to figure out image size and so on
    if (!cap->getNextFrame(false, frame))
    {
@@ -116,6 +106,18 @@ int main( int argc, const char** argv )
    // TODO : Verify this once camera is calibrated
    minDetectSize = frame.cols * 0.06;
    cout << minDetectSize << endl;
+   //
+   // If UI is up, pop up the parameters window
+   if (!args.batchMode)
+   {
+      string detectWindowName = "Detection Parameters";
+      namedWindow(detectWindowName);
+      createTrackbar ("Scale", detectWindowName, &scale, 50, NULL);
+      createTrackbar ("Neighbors", detectWindowName, &neighbors, 50, NULL);
+      createTrackbar ("Min Detect", detectWindowName, &minDetectSize, 400, NULL);
+      createTrackbar ("Max Detect", detectWindowName, &maxDetectSize, 700, NULL);
+      createTrackbar ("GPU Scale", detectWindowName, &gpuScale, 100, NULL);
+   }
 
    // Create list of tracked objects
    // recycling bins are 24" wide
