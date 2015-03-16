@@ -37,16 +37,30 @@ enum CLASSIFIER_MODE
 };
 bool maybeReloadClassifier(BaseCascadeDetect *&detectClassifier, CLASSIFIER_MODE &modeCurrent, CLASSIFIER_MODE &modeNext, int DirNumber, int StageNumber);
 
-struct Args
+// TODO : make constructor with default values
+class Args
 {
-   bool captureAll;  // capture all found targets to image files?
-   bool tracking;    // display tracking info?
-   bool batchMode;   // non-interactive mode - no display, run through
-                     // as quickly as possible. Combine with --all
-   bool ds;          // driver-station?
-   bool writeVideo;  // write captured video to output
-   int  frameStart;  // frame number to start from
-   string inputName; // input file name or camera number
+   public :
+      bool captureAll;  // capture all found targets to image files?
+      bool tracking;    // display tracking info?
+      bool rects;       // display frame by frame hit info
+      bool batchMode;   // non-interactive mode - no display, run through
+      // as quickly as possible. Combine with --all
+      bool ds;          // driver-station?
+      bool writeVideo;  // write captured video to output
+      int  frameStart;  // frame number to start from
+      string inputName; // input file name or camera number
+
+      Args(void)
+      {
+	 captureAll   = false;
+	 tracking     = true;
+	 rects        = true;
+	 batchMode    = false;
+	 ds           = false;
+	 writeVideo   = false;
+	 frameStart   = 0.0;
+      }
 };
 
 bool processArgs(int argc, const char **argv, Args &args);
@@ -55,8 +69,6 @@ string getVideoOutName(void);
 
 int main( int argc, const char** argv )
 {
-   const size_t detectMax = 10;
-
    // Flags for various UI features
    bool pause = false;       // pause playback?
    bool printFrames = false; // print frame number?
@@ -69,8 +81,8 @@ int main( int argc, const char** argv )
       classifierModeNext = CLASSIFIER_MODE_GPU;
 
    // Classifier directory and stage to start with
-   int classifierDirNum   = 13;
-   int classifierStageNum = 28;
+   int classifierDirNum   = 14;
+   int classifierStageNum = 29;
 
    // Pointer to either CPU or GPU classifier
    BaseCascadeDetect *detectClassifier = NULL;;
@@ -104,7 +116,7 @@ int main( int argc, const char** argv )
      
    // Minimum size of a bin at ~30 feet distance
    // TODO : Verify this once camera is calibrated
-   minDetectSize = frame.cols * 0.06;
+   minDetectSize = frame.cols * 0.07;
    cout << minDetectSize << endl;
    //
    // If UI is up, pop up the parameters window
@@ -114,7 +126,7 @@ int main( int argc, const char** argv )
       namedWindow(detectWindowName);
       createTrackbar ("Scale", detectWindowName, &scale, 50, NULL);
       createTrackbar ("Neighbors", detectWindowName, &neighbors, 50, NULL);
-      createTrackbar ("Min Detect", detectWindowName, &minDetectSize, 400, NULL);
+      createTrackbar ("Min Detect", detectWindowName, &minDetectSize, 65, NULL);
       createTrackbar ("Max Detect", detectWindowName, &maxDetectSize, 700, NULL);
       createTrackbar ("GPU Scale", detectWindowName, &gpuScale, 100, NULL);
    }
@@ -213,7 +225,7 @@ int main( int argc, const char** argv )
       vector<unsigned> detectDirections;
       detectClassifier->cascadeDetect(frame, detectRects, detectDirections); 
 
-      for( size_t i = 0; i < min(detectRects.size(), detectMax); i++ ) 
+      for( size_t i = 0; i < detectRects.size(); i++ ) 
       {
 	 for (size_t j = 0; j < detectRects.size(); j++) {
 	    if (i != j) {
@@ -241,7 +253,7 @@ int main( int argc, const char** argv )
 		  }
 	    }
 	 }
-	 if (!args.batchMode && ((cap->frameCounter() % frameDisplayFrequency) == 0))
+	 if (!args.batchMode && args.rects && ((cap->frameCounter() % frameDisplayFrequency) == 0))
 	 {
 	    // Mark detected rectangle on image
 	    // Change color based on direction we think the bin is pointing
@@ -271,10 +283,14 @@ int main( int argc, const char** argv )
 	    // This should be a quick way to grab lots of falsly detected images
 	    // which need to be added to the negative list for the next
 	    // pass of classifier training.
-	    stringstream label;
-	    label << i;
-	    putText(frame, label.str(), Point(detectRects[i].x+10, detectRects[i].y+30), 
-		  FONT_HERSHEY_PLAIN, 2.0, Scalar(0, 0, 255));
+	    if (i < 10)
+	    {
+	       stringstream label;
+	       label << i;
+	       putText(frame, label.str(), Point(detectRects[i].x+10, detectRects[i].y+30), 
+		     FONT_HERSHEY_PLAIN, 2.0, Scalar(0, 0, 255));
+	    }
+
 	 }
 
 	 // Process this detected rectangle - either update the nearest
@@ -467,6 +483,10 @@ int main( int argc, const char** argv )
 	 {
 	    args.tracking = !args.tracking;
 	 }
+	 else if (c == 'r') // toggle args.rects info display
+	 {
+	    args.rects = !args.rects;
+	 }
 	 else if (c == 'a') // save all detected images
 	 {
 	    // Save from a copy rather than the original
@@ -534,7 +554,7 @@ int main( int argc, const char** argv )
 	 // so all the markup isn't saved, only the raw image
 	 Mat frameCopy;
 	 cap->getNextFrame(true, frameCopy);
-	 for (size_t index = 0; index < min(detectRects.size(), detectMax); index++)
+	 for (size_t index = 0; index < detectRects.size(); index++)
 	    writeImage(frameCopy, detectRects, index, capPath.c_str(), cap->frameCounter());
       }
       // Save frame time for the current frame
@@ -610,15 +630,10 @@ bool processArgs(int argc, const char **argv, Args &args)
    const string batchModeOpt  = "--batch";
    const string dsOpt         = "--ds";
    const string writeVideoOpt = "--capture";
+   const string rectsOpt      = "--no-rects";
+   const string trackingOpt   = "--no-tracking";
    const string badOpt        = "--";
 
-   args.captureAll   = false;
-   args.tracking     = true;
-   args.batchMode    = false;
-   args.ds           = false;
-   args.writeVideo   = false;
-   args.frameStart   = 0.0;
-   args.inputName.clear();
 
    // Read through command line args, extract
    // cmd line parameters and input filename
@@ -635,6 +650,10 @@ bool processArgs(int argc, const char **argv, Args &args)
 	 args.ds = true;
       else if (writeVideoOpt.compare(0, writeVideoOpt.length(), argv[fileArgc], writeVideoOpt.length()) == 0)
 	 args.writeVideo = true;
+      else if (trackingOpt.compare(0, trackingOpt.length(), argv[fileArgc], trackingOpt.length()) == 0)
+	 args.tracking = false;
+      else if (rectsOpt.compare(0, rectsOpt.length(), argv[fileArgc], rectsOpt.length()) == 0)
+	 args.rects = false;
       else if (badOpt.compare(0, badOpt.length(), argv[fileArgc], badOpt.length()) == 0)
       {
 	 cerr << "Unknown command line option " << argv[fileArgc] << endl;
