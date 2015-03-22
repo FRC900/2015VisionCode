@@ -172,6 +172,102 @@ class WriteOnFrame {
 		}
 	}
 };
+
+class UserIn {
+	private:
+		int waitKeyLength;
+
+	public:
+
+	void UserIn (int waitLenght) {
+		waitKeyLength = waitLenght;
+	}
+
+	void processKeys(void) {
+		char c = waitKey(waitKeyLength);
+			if ((c == 'c') || (c == 'q') || (c == 27)) 
+			{ // exit
+				if (netTable->IsConnected())
+					NetworkTable::Shutdown();
+				break; //Does this need to be fixed?
+			} 
+			else if( c == ' ') { pause = !pause; }
+			else if( c == 'f')  // advance to next frame
+			{
+				cap->getNextFrame(false, frame);
+			}
+			else if (c == 'A') // toggle capture-all
+			{
+				args.captureAll = !args.captureAll;
+			}
+			else if (c == 't') // toggle args.tracking info display
+			{
+				args.tracking = !args.tracking;
+			}
+			else if (c == 'r') // toggle args.rects info display
+			{
+				args.rects = !args.rects;
+			}
+			else if (c == 'a') // save all detected images
+			{
+			// Save from a copy rather than the original
+			// so all the markup isn't saved, only the raw image
+				Mat frameCopy;
+				cap->getNextFrame(true, frameCopy);
+				for (size_t index = 0; index < detectRects.size(); index++)
+					writeImage(frameCopy, detectRects, index, capPath.c_str(), cap->frameCounter());
+			}
+			else if (c == 'p') // print frame number to console
+			{
+				cout << cap->frameCounter() << endl;
+			}
+			else if (c == 'P') // Toggle frame # printing to 
+			{
+				printFrames = !printFrames;
+			}
+			else if (c == 'S')
+			{
+				frameDisplayFrequency += 1;
+			}
+			else if (c == 's')
+			{
+				frameDisplayFrequency = max(1, frameDisplayFrequency - 1);
+			}
+			else if (c == 'G') // toggle CPU/GPU mode
+			{
+				if (classifierModeNext == CLASSIFIER_MODE_GPU)
+					classifierModeNext = CLASSIFIER_MODE_CPU;
+				else
+					classifierModeNext = CLASSIFIER_MODE_GPU;
+			}
+			else if (c == '.') // higher classifier stage
+			{
+				if (findNextClassifierStage(classifierDirNum, classifierStageNum, true))
+					classifierModeNext = CLASSIFIER_MODE_RELOAD;
+			}
+			else if (c == ',') // lower classifier stage
+			{
+				if (findNextClassifierStage(classifierDirNum, classifierStageNum, false))
+					classifierModeNext = CLASSIFIER_MODE_RELOAD;
+			}
+			else if (c == '>') // higher classifier dir num
+			{
+				if (findNextClassifierDir(classifierDirNum, classifierStageNum, true))
+					classifierModeNext = CLASSIFIER_MODE_RELOAD;
+			}
+			else if (c == '<') // higher classifier dir num
+			{
+				if (findNextClassifierDir(classifierDirNum, classifierStageNum, false))
+					classifierModeNext = CLASSIFIER_MODE_RELOAD;
+			}
+			else if (isdigit(c)) // save a single detected image
+			{
+				Mat frameCopy;
+				cap->getNextFrame(true, frameCopy);
+				writeImage(frameCopy, detectRects, c - '0', capPath.c_str(), cap->frameCounter());
+			}
+	}
+};
 void checkDuplicate (vector<Rect> detectRects,vector<unsigned> detectDirections) {
 	for( size_t i = 0; i < detectRects.size(); i++ ) 
 		{
@@ -406,7 +502,8 @@ int main( int argc, const char** argv )
 			netTable->PutValue("VisionArray", netTableArray);
 			netTable->PutNumber("FrameNumber", cap->frameCounter());
 		}
-
+		UserIn keyProc(5);
+		keyProc.processKeys();
 		// Don't update to next frame if paused to prevent
 		// objects missing from this frame to be aged out
 		// as the current frame is redisplayed over and over
@@ -504,88 +601,7 @@ int main( int argc, const char** argv )
 			imshow( windowName, frame );
 
 			// Process user IO
-			char c = waitKey(5);
-			if ((c == 'c') || (c == 'q') || (c == 27)) 
-			{ // exit
-				if (netTable->IsConnected())
-					NetworkTable::Shutdown();
-				break; 
-			} 
-			else if( c == ' ') { pause = !pause; }
-			else if( c == 'f')  // advance to next frame
-			{
-				cap->getNextFrame(false, frame);
-			}
-			else if (c == 'A') // toggle capture-all
-			{
-				args.captureAll = !args.captureAll;
-			}
-			else if (c == 't') // toggle args.tracking info display
-			{
-				args.tracking = !args.tracking;
-			}
-			else if (c == 'r') // toggle args.rects info display
-			{
-				args.rects = !args.rects;
-			}
-			else if (c == 'a') // save all detected images
-			{
-			// Save from a copy rather than the original
-			// so all the markup isn't saved, only the raw image
-				Mat frameCopy;
-				cap->getNextFrame(true, frameCopy);
-				for (size_t index = 0; index < detectRects.size(); index++)
-					writeImage(frameCopy, detectRects, index, capPath.c_str(), cap->frameCounter());
-			}
-			else if (c == 'p') // print frame number to console
-			{
-				cout << cap->frameCounter() << endl;
-			}
-			else if (c == 'P') // Toggle frame # printing to 
-			{
-				printFrames = !printFrames;
-			}
-			else if (c == 'S')
-			{
-				frameDisplayFrequency += 1;
-			}
-			else if (c == 's')
-			{
-				frameDisplayFrequency = max(1, frameDisplayFrequency - 1);
-			}
-			else if (c == 'G') // toggle CPU/GPU mode
-			{
-				if (classifierModeNext == CLASSIFIER_MODE_GPU)
-					classifierModeNext = CLASSIFIER_MODE_CPU;
-				else
-					classifierModeNext = CLASSIFIER_MODE_GPU;
-			}
-			else if (c == '.') // higher classifier stage
-			{
-				if (findNextClassifierStage(classifierDirNum, classifierStageNum, true))
-					classifierModeNext = CLASSIFIER_MODE_RELOAD;
-			}
-			else if (c == ',') // lower classifier stage
-			{
-				if (findNextClassifierStage(classifierDirNum, classifierStageNum, false))
-					classifierModeNext = CLASSIFIER_MODE_RELOAD;
-			}
-			else if (c == '>') // higher classifier dir num
-			{
-				if (findNextClassifierDir(classifierDirNum, classifierStageNum, true))
-					classifierModeNext = CLASSIFIER_MODE_RELOAD;
-			}
-			else if (c == '<') // higher classifier dir num
-			{
-				if (findNextClassifierDir(classifierDirNum, classifierStageNum, false))
-					classifierModeNext = CLASSIFIER_MODE_RELOAD;
-			}
-			else if (isdigit(c)) // save a single detected image
-			{
-				Mat frameCopy;
-				cap->getNextFrame(true, frameCopy);
-				writeImage(frameCopy, detectRects, c - '0', capPath.c_str(), cap->frameCounter());
-			}
+			
 		}
 		// If args.captureAll is enabled, write each detected rectangle
 		// to their own output image file
