@@ -110,7 +110,7 @@ class WriteOnFrame {
 		Mat image;
 	public:
 
-	void WriteOnFrame(Mat imageRef) {
+	WriteOnFrame(Mat &imageRef) {
 		image = imageRef;
 	}
 	void writeTime() { //write the time on the frame
@@ -122,9 +122,7 @@ class WriteOnFrame {
 		strftime(arrTime, sizeof(arrTime), "%T %D", localTime);
 		putText(image,string(arrTime), Point(0,20), FONT_HERSHEY_TRIPLEX, 0.75, Scalar(147,20,255), 1);
 	}
-	void writeMatchNumTime() {
-		string matchNum = netTable->GetString("Match Number", "No Match Number");
-		double matchTime = netTable->GetNumber("Match Time",-1);
+	void writeMatchNumTime(string matchNum, double matchTime) {
 		string matchTimeString;
 		if (matchNum != "No Match Number")
 			matchNum = "Match Number:" + matchNum;
@@ -173,108 +171,13 @@ class WriteOnFrame {
 			{
 				stringstream label;
 				label << i;
-				putText(frame, label.str(), Point(detectRects[i].x+10, detectRects[i].y+30), 
+				putText(image, label.str(), Point(detectRects[i].x+10, detectRects[i].y+30), 
 				FONT_HERSHEY_PLAIN, 2.0, Scalar(0, 0, 255));
 			}
 		}
 	}
 };
 
-class UserIn {
-	private:
-		int waitKeyLength;
-
-	public:
-
-	void UserIn (int waitLenght) {
-		waitKeyLength = waitLenght;
-	}
-
-	void processKeys(void) {
-		char c = waitKey(waitKeyLength);
-			if ((c == 'c') || (c == 'q') || (c == 27)) 
-			{ // exit
-				if (netTable->IsConnected())
-					NetworkTable::Shutdown();
-				break; //Does this need to be fixed?
-			} 
-			else if( c == ' ') { pause = !pause; }
-			else if( c == 'f')  // advance to next frame
-			{
-				cap->getNextFrame(false, frame);
-			}
-			else if (c == 'A') // toggle capture-all
-			{
-				args.captureAll = !args.captureAll;
-			}
-			else if (c == 't') // toggle args.tracking info display
-			{
-				args.tracking = !args.tracking;
-			}
-			else if (c == 'r') // toggle args.rects info display
-			{
-				args.rects = !args.rects;
-			}
-			else if (c == 'a') // save all detected images
-			{
-			// Save from a copy rather than the original
-			// so all the markup isn't saved, only the raw image
-				Mat frameCopy;
-				cap->getNextFrame(true, frameCopy);
-				for (size_t index = 0; index < detectRects.size(); index++)
-					writeImage(frameCopy, detectRects, index, capPath.c_str(), cap->frameCounter());
-			}
-			else if (c == 'p') // print frame number to console
-			{
-				cout << cap->frameCounter() << endl;
-			}
-			else if (c == 'P') // Toggle frame # printing to 
-			{
-				printFrames = !printFrames;
-			}
-			else if (c == 'S')
-			{
-				frameDisplayFrequency += 1;
-			}
-			else if (c == 's')
-			{
-				frameDisplayFrequency = max(1, frameDisplayFrequency - 1);
-			}
-			else if (c == 'G') // toggle CPU/GPU mode
-			{
-				if (classifierModeNext == CLASSIFIER_MODE_GPU)
-					classifierModeNext = CLASSIFIER_MODE_CPU;
-				else
-					classifierModeNext = CLASSIFIER_MODE_GPU;
-			}
-			else if (c == '.') // higher classifier stage
-			{
-				if (findNextClassifierStage(classifierDirNum, classifierStageNum, true))
-					classifierModeNext = CLASSIFIER_MODE_RELOAD;
-			}
-			else if (c == ',') // lower classifier stage
-			{
-				if (findNextClassifierStage(classifierDirNum, classifierStageNum, false))
-					classifierModeNext = CLASSIFIER_MODE_RELOAD;
-			}
-			else if (c == '>') // higher classifier dir num
-			{
-				if (findNextClassifierDir(classifierDirNum, classifierStageNum, true))
-					classifierModeNext = CLASSIFIER_MODE_RELOAD;
-			}
-			else if (c == '<') // higher classifier dir num
-			{
-				if (findNextClassifierDir(classifierDirNum, classifierStageNum, false))
-					classifierModeNext = CLASSIFIER_MODE_RELOAD;
-			}
-			else if (isdigit(c)) // save a single detected image
-			{
-				Mat frameCopy;
-				cap->getNextFrame(true, frameCopy);
-				writeImage(frameCopy, detectRects, c - '0', capPath.c_str(), cap->frameCounter());
-			}
-	}
-};
 void checkDuplicate (vector<Rect> detectRects,vector<unsigned> detectDirections) {
 	for( size_t i = 0; i < detectRects.size(); i++ ) 
 		{
@@ -423,7 +326,9 @@ int main( int argc, const char** argv )
 			Mat writeCopy;
 			writeCopy = frame.clone();
 			WriteOnFrame textWriter = new WriteOnFrame(writeCopy);
-			textWriter.writeMatchNumTime();
+			string matchNum = netTable->GetString("Match Number", "No Match Number");
+			double matchTime = netTable->GetNumber("Match Time",-1);
+			textWriter.writeMatchNumTime(matchNum,matchTime);
 			textWriter.writeTime();
 			outputVideo << writeCopy;
 		}
@@ -509,8 +414,88 @@ int main( int argc, const char** argv )
 			netTable->PutValue("VisionArray", netTableArray);
 			netTable->PutNumber("FrameNumber", cap->frameCounter());
 		}
-		UserIn keyProc(5);
-		keyProc.processKeys();
+		waitKey()
+		if ((c == 'c') || (c == 'q') || (c == 27)) 
+			{ // exit
+				if (netTable->IsConnected())
+					NetworkTable::Shutdown();
+				break; //Does this need to be fixed?
+			} 
+			else if( c == ' ') { pause = !pause; }
+			else if( c == 'f')  // advance to next frame
+			{
+				cap->getNextFrame(false, frame);
+			}
+			else if (c == 'A') // toggle capture-all
+			{
+				args.captureAll = !args.captureAll;
+			}
+			else if (c == 't') // toggle args.tracking info display
+			{
+				args.tracking = !args.tracking;
+			}
+			else if (c == 'r') // toggle args.rects info display
+			{
+				args.rects = !args.rects;
+			}
+			else if (c == 'a') // save all detected images
+			{
+			// Save from a copy rather than the original
+			// so all the markup isn't saved, only the raw image
+				Mat frameCopy;
+				cap->getNextFrame(true, frameCopy);
+				for (size_t index = 0; index < detectRects.size(); index++)
+					writeImage(frameCopy, detectRects, index, capPath.c_str(), cap->frameCounter());
+			}
+			else if (c == 'p') // print frame number to console
+			{
+				cout << cap->frameCounter() << endl;
+			}
+			else if (c == 'P') // Toggle frame # printing to 
+			{
+				printFrames = !printFrames;
+			}
+			else if (c == 'S')
+			{
+				frameDisplayFrequency += 1;
+			}
+			else if (c == 's')
+			{
+				frameDisplayFrequency = max(1, frameDisplayFrequency - 1);
+			}
+			else if (c == 'G') // toggle CPU/GPU mode
+			{
+				if (classifierModeNext == CLASSIFIER_MODE_GPU)
+					classifierModeNext = CLASSIFIER_MODE_CPU;
+				else
+					classifierModeNext = CLASSIFIER_MODE_GPU;
+			}
+			else if (c == '.') // higher classifier stage
+			{
+				if (findNextClassifierStage(classifierDirNum, classifierStageNum, true))
+					classifierModeNext = CLASSIFIER_MODE_RELOAD;
+			}
+			else if (c == ',') // lower classifier stage
+			{
+				if (findNextClassifierStage(classifierDirNum, classifierStageNum, false))
+					classifierModeNext = CLASSIFIER_MODE_RELOAD;
+			}
+			else if (c == '>') // higher classifier dir num
+			{
+				if (findNextClassifierDir(classifierDirNum, classifierStageNum, true))
+					classifierModeNext = CLASSIFIER_MODE_RELOAD;
+			}
+			else if (c == '<') // higher classifier dir num
+			{
+				if (findNextClassifierDir(classifierDirNum, classifierStageNum, false))
+					classifierModeNext = CLASSIFIER_MODE_RELOAD;
+			}
+			else if (isdigit(c)) // save a single detected image
+			{
+				Mat frameCopy;
+				cap->getNextFrame(true, frameCopy);
+				writeImage(frameCopy, detectRects, c - '0', capPath.c_str(), cap->frameCounter());
+			}
 		// Don't update to next frame if paused to prevent
 		// objects missing from this frame to be aged out
 		// as the current frame is redisplayed over and over
