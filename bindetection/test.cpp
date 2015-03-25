@@ -106,7 +106,14 @@ class Args //class for processing arguments
 
 class WriteOnFrame {
 
-	void writeTime(Mat image) { //write the time on the frame
+	private:
+		Mat image;
+	public:
+
+	void WriteOnFrame(Mat imageRef) {
+		image = imageRef;
+	}
+	void writeTime() { //write the time on the frame
 		time_t rawTime;
 		time(&rawTime);
 		struct tm * localTime;
@@ -115,7 +122,7 @@ class WriteOnFrame {
 		strftime(arrTime, sizeof(arrTime), "%T %D", localTime);
 		putText(image,string(arrTime), Point(0,20), FONT_HERSHEY_TRIPLEX, 0.75, Scalar(147,20,255), 1);
 	}
-	void writeMatchNumTime(Mat image) {
+	void writeMatchNumTime() {
 		string matchNum = netTable->GetString("Match Number", "No Match Number");
 		double matchTime = netTable->GetNumber("Match Time",-1);
 		string matchTimeString;
@@ -133,7 +140,7 @@ class WriteOnFrame {
 		putText(image,matchNum,Point(0,40), FONT_HERSHEY_TRIPLEX, 0.75, Scalar(147,20,255), 1);
 		putText(image,matchTimeString,Point(0,60), FONT_HERSHEY_TRIPLEX, 0.75, Scalar(147,20,255), 1);
 	}
-	void writeRects(Mat image,vector<Rect> detectRects,vector<unsigned> detectDirections) {
+	void writeRects(vector<Rect> detectRects,vector<unsigned> detectDirections) {
 		for(size_t i = 0; i < detectRects.size(); i++) {
 		// Mark detected rectangle on image
 			// Change color based on direction we think the bin is pointing
@@ -415,9 +422,9 @@ int main( int argc, const char** argv )
 				outputVideo.open(videoOutName.c_str(), CV_FOURCC('M','J','P','G'), 15, S, true);
 			Mat writeCopy;
 			writeCopy = frame.clone();
-			WriteOnFrame textWriter;
-			textWriter.writeMatchNumTime(writeCopy);
-			textWriter.writeTime(writeCopy);
+			WriteOnFrame textWriter = new WriteOnFrame(writeCopy);
+			textWriter.writeMatchNumTime();
+			textWriter.writeTime();
 			outputVideo << writeCopy;
 		}
 		//TODO : grab angle delta from robot
