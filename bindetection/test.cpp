@@ -17,6 +17,8 @@
 #include "imagedetect.hpp"
 #include "videoin_c920.hpp"
 #include "track.hpp"
+#include "Args.hpp"
+#include "WriteOnFrame.hpp"
 
 
 using namespace std;
@@ -37,113 +39,6 @@ enum CLASSIFIER_MODE
 };
 bool maybeReloadClassifier(BaseCascadeDetect *&detectClassifier, CLASSIFIER_MODE &modeCurrent, CLASSIFIER_MODE &modeNext, int DirNumber, int StageNumber);
 
-class Args //class for processing arguments
-{
-	public :
-		bool captureAll;  // capture all found targets to image files?
-		bool tracking;    // display tracking info?
-		bool rects;       // display frame by frame hit info
-		bool batchMode;   // non-interactive mode - no display, run through
-		// as quickly as possible. Combine with --all
-		bool ds;          // driver-station?
-		bool writeVideo;  // write captured video to output
-		int  frameStart;  // frame number to start from
-		string inputName; // input file name or camera number
-
-		Args(void)
-		{
-			captureAll   = false;
-			tracking     = true;
-			rects        = true;
-			batchMode    = false;
-			ds           = false;
-			writeVideo   = false;
-			frameStart   = 0.0;
-		}
-		processArgs(int argc, const char **argv, Args &args)
-		{
-			const string frameOpt      = "--frame=";
-			const string captureAllOpt = "--all";
-			const string batchModeOpt  = "--batch";
-			const string dsOpt         = "--ds";
-			const string writeVideoOpt = "--capture";
-			const string rectsOpt      = "--no-rects";
-			const string trackingOpt   = "--no-tracking";
-			const string badOpt        = "--";
-			// Read through command line args, extract
-			// cmd line parameters and input filename
-			int fileArgc;
-			for (fileArgc = 1; fileArgc < argc; fileArgc++)
-			{
-				if (frameOpt.compare(0, frameOpt.length(), argv[fileArgc], frameOpt.length()) == 0)
-					args.frameStart = atoi(argv[fileArgc] + frameOpt.length());
-				else if (captureAllOpt.compare(0, captureAllOpt.length(), argv[fileArgc], captureAllOpt.length()) == 0)
-					args.captureAll = true;
-				else if (batchModeOpt.compare(0, batchModeOpt.length(), argv[fileArgc], batchModeOpt.length()) == 0)
-					args.batchMode = true;
-				else if (dsOpt.compare(0, dsOpt.length(), argv[fileArgc], dsOpt.length()) == 0)
-					args.ds = true;
-				else if (writeVideoOpt.compare(0, writeVideoOpt.length(), argv[fileArgc], writeVideoOpt.length()) == 0)
-					args.writeVideo = true;
-				else if (trackingOpt.compare(0, trackingOpt.length(), argv[fileArgc], trackingOpt.length()) == 0)
-					args.tracking = false;
-				else if (rectsOpt.compare(0, rectsOpt.length(), argv[fileArgc], rectsOpt.length()) == 0)
-					args.rects = false;
-				else if (badOpt.compare(0, badOpt.length(), argv[fileArgc], badOpt.length()) == 0) // unknown option
-				{
-					cerr << "Unknown command line option " << argv[fileArgc] << endl;
-					return false; 
-				}
-				else // first non -- arg is filename or camera number
-					break;
-			}
-			if (fileArgc < argc)
-				args.inputName = argv[fileArgc];
-			return true;
-		}
-};
-
-
-class WriteOnFrame {
-
-	private:
-		Mat image;
-	public:
-
-	WriteOnFrame(const Mat &setTo) {
-		image = setTo.clone();
-	}
-
-	void writeTime() { //write the time on the frame
-		time_t rawTime;
-		time(&rawTime);
-		struct tm * localTime;
-		localTime = localtime(&rawTime);
-		char arrTime[100];
-		strftime(arrTime, sizeof(arrTime), "%T %D", localTime);
-		putText(image,string(arrTime), Point(0,20), FONT_HERSHEY_TRIPLEX, 0.75, Scalar(147,20,255), 1);
-	}
-	void writeMatchNumTime(string matchNum, double matchTime) {
-		string matchTimeString;
-		if (matchNum != "No Match Number")
-			matchNum = "Match Number:" + matchNum;
-		if (matchTime == -1) 
-			matchTimeString = "No Match Time";
-		else {
-			matchTimeString = "Match Time: ";
-			stringstream s;
-			s << matchTimeString;
-			s << matchTime;
-			matchTimeString = s.str();
-	 	}
-		putText(image,matchNum,Point(0,40), FONT_HERSHEY_TRIPLEX, 0.75, Scalar(147,20,255), 1);
-		putText(image,matchTimeString,Point(0,60), FONT_HERSHEY_TRIPLEX, 0.75, Scalar(147,20,255), 1);
-	}
-
-	void write(VideoWriter &writeTo) {
-		writeTo << image;
-	}
-};
 
 void drawRects(Mat image,vector<Rect> detectRects,vector<unsigned> detectDirections) {
 	for(size_t i = 0; i < detectRects.size(); i++) {
