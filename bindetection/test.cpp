@@ -110,9 +110,10 @@ class WriteOnFrame {
 		Mat image;
 	public:
 
-	WriteOnFrame(Mat &imageRef) {
-		image = imageRef;
+	WriteOnFrame(const Mat &setTo) {
+		image = setTo.clone();
 	}
+
 	void writeTime() { //write the time on the frame
 		time_t rawTime;
 		time(&rawTime);
@@ -138,45 +139,50 @@ class WriteOnFrame {
 		putText(image,matchNum,Point(0,40), FONT_HERSHEY_TRIPLEX, 0.75, Scalar(147,20,255), 1);
 		putText(image,matchTimeString,Point(0,60), FONT_HERSHEY_TRIPLEX, 0.75, Scalar(147,20,255), 1);
 	}
-	void writeRects(vector<Rect> detectRects,vector<unsigned> detectDirections) {
-		for(size_t i = 0; i < detectRects.size(); i++) {
+
+	void write(VideoWriter &writeTo) {
+		writeTo << image;
+	}
+};
+
+void drawRects(Mat image,vector<Rect> detectRects,vector<unsigned> detectDirections) {
+	for(size_t i = 0; i < detectRects.size(); i++) {
 		// Mark detected rectangle on image
 			// Change color based on direction we think the bin is pointing
-			Scalar rectColor;
-			switch (detectDirections[i])
-			{
-				case 1:
-					rectColor = Scalar(0,0,255);
-					break;
-				case 2:
-					rectColor = Scalar(0,255,0);
-					break;
-				case 4:
-					rectColor = Scalar(255,0,0);
-					break;
-				case 8:
-					rectColor = Scalar(255,255,0);
-					break;
-				default:
-					rectColor = Scalar(255,0,255);
-					break;
-			}
-			rectangle( image, detectRects[i], rectColor, 3);
+		Scalar rectColor;
+		switch (detectDirections[i])
+		{
+			case 1:
+			rectColor = Scalar(0,0,255);
+			break;
+			case 2:
+			rectColor = Scalar(0,255,0);
+			break;
+			case 4:
+			rectColor = Scalar(255,0,0);
+			break;
+			case 8:
+			rectColor = Scalar(255,255,0);
+			break;
+			default:
+			rectColor = Scalar(255,0,255);
+			break;
+		}
+		rectangle( image, detectRects[i], rectColor, 3);
 			// Label each outlined image with a digit.  Top-level code allows
 			// users to save these small images by hitting the key they're labeled with
 			// This should be a quick way to grab lots of falsly detected images
 			// which need to be added to the negative list for the next
 			// pass of classifier training.
-			if (i < 10)
-			{
-				stringstream label;
-				label << i;
-				putText(image, label.str(), Point(detectRects[i].x+10, detectRects[i].y+30), 
+		if (i < 10)
+		{
+			stringstream label;
+			label << i;
+			putText(image, label.str(), Point(detectRects[i].x+10, detectRects[i].y+30), 
 				FONT_HERSHEY_PLAIN, 2.0, Scalar(0, 0, 255));
-			}
 		}
 	}
-};
+}
 
 void checkDuplicate (vector<Rect> detectRects,vector<unsigned> detectDirections) {
 	for( size_t i = 0; i < detectRects.size(); i++ ) 
@@ -199,8 +205,6 @@ void checkDuplicate (vector<Rect> detectRects,vector<unsigned> detectDirections)
 						}
 						if(intersection.y > lowestYVal.y) {
 						//cout << "found intersection" << endl;
-							if (!args.batchMode && ((cap->frameCounter() % frameDisplayFrequency) == 0))
-								rectangle(frame, detectRects[indexHighest], Scalar(0,255,255), 3);
 							detectRects.erase(detectRects.begin()+indexHighest);
 							detectDirections.erase(detectDirections.begin()+indexHighest);
 						}				
@@ -323,14 +327,12 @@ int main( int argc, const char** argv )
 		if (args.writeVideo) {
 			if (!outputVideo.isOpened())
 				outputVideo.open(videoOutName.c_str(), CV_FOURCC('M','J','P','G'), 15, S, true);
-			Mat writeCopy;
-			writeCopy = frame.clone();
-			WriteOnFrame textWriter = new WriteOnFrame(writeCopy);
+			WriteOnFrame textWriter(frame);
 			string matchNum = netTable->GetString("Match Number", "No Match Number");
 			double matchTime = netTable->GetNumber("Match Time",-1);
 			textWriter.writeMatchNumTime(matchNum,matchTime);
 			textWriter.writeTime();
-			outputVideo << writeCopy;
+			textWriter.write(outputVideo);
 		}
 		//TODO : grab angle delta from robot
 		// Adjust the position of all of the detected objects
@@ -346,15 +348,15 @@ int main( int argc, const char** argv )
 		vector<Rect> detectRects;
 		vector<unsigned> detectDirections;
 		detectClassifier->cascadeDetect(frame, detectRects, detectDirections); 
-		checkDuplicate(detectRects);
+		checkDuplicate(detectRects,detectDirections);
 		if (!args.batchMode && args.rects && ((cap->frameCounter() % frameDisplayFrequency) == 0))
 		{
-		WriteOnFrame rectDraw;
-		rectDraw.writeRects(image,detectRects,detectDirections);
+		drawRects(frame,detectRects,detectDirections);
 		}
 		// Process this detected rectangle - either update the nearest
 		// object or add it as a new one
-		binTrackingList.processDetect(detectRects[i]);
+		for(size_t i = 0; i < detectRects.size(); i++)
+			binTrackingList.processDetect(detectRects[i]);
 		#if 0
 		// Print detect status of live objects
 		if (args.tracking)
@@ -414,7 +416,8 @@ int main( int argc, const char** argv )
 			netTable->PutValue("VisionArray", netTableArray);
 			netTable->PutNumber("FrameNumber", cap->frameCounter());
 		}
-		waitKey()
+
+		char c = waitKey(5);
 		if ((c == 'c') || (c == 'q') || (c == 27)) 
 			{ // exit
 				if (netTable->IsConnected())
@@ -496,6 +499,7 @@ int main( int argc, const char** argv )
 				cap->getNextFrame(true, frameCopy);
 				writeImage(frameCopy, detectRects, c - '0', capPath.c_str(), cap->frameCounter());
 			}
+
 		// Don't update to next frame if paused to prevent
 		// objects missing from this frame to be aged out
 		// as the current frame is redisplayed over and over
