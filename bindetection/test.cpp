@@ -657,20 +657,36 @@ cerr << name << endl;
 
 string getVideoOutName(void)
 {
-   int index = 0;
-   int rc;
-   struct stat statbuf;
-   stringstream ss;
-   do 
-   {
-      ss.str(string(""));
-      ss.clear();
-      ss << "cap";
-      ss << index++;
-      ss << ".avi";
-      rc = stat(ss.str().c_str(), &statbuf);
-   }
-   while (rc == 0);
-   return ss.str();
+	int index = 0;
+	int rc;
+	struct stat statbuf;
+	stringstream ss;
+	do 
+	{
+		ss.str(string(""));
+		ss.clear();
+		ss << "Video-";
+		time_t rawtime;
+		struct tm * timeinfo;
+		time (&rawtime);
+		timeinfo = localtime (&rawtime);
+		ss << timeinfo->tm_mon + 1;
+		ss << "-";
+		ss << timeinfo->tm_mday;
+		ss << "-";
+		ss << timeinfo->tm_year - 1900;
+		ss << "_";
+		ss << timeinfo->tm_hour;
+		ss << "-";
+		ss << timeinfo->tm_min;
+		ss << "-";
+		ss << timeinfo->tm_sec;
+		ss << "-";
+		ss << index++;
+		ss << ".avi";
+		rc = stat(ss.str().c_str(), &statbuf);
+	}
+	while (rc == 0);
+	return ss.str();
 }
 
