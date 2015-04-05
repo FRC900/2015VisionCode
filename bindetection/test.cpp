@@ -488,6 +488,12 @@ int main( int argc, const char** argv )
 			if (args.captureAll)
 				putText(frame, "A", Point(25,25), FONT_HERSHEY_PLAIN, 2.5, Scalar(0, 255, 255));
 
+			if (args.calibrate)
+			{
+			   line (frame, Point(frame.cols/2, 0) , Point(frame.cols/2, frame.rows), Scalar(255,255,0  ));
+			   line (frame, Point(0, frame.rows/2) , Point(frame.cols, frame.rows/2), Scalar(255,255,0  ));
+			}
+			
 			//-- Show what you got
 			imshow( windowName, frame );
 
