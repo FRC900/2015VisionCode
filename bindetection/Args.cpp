@@ -19,7 +19,7 @@ Args::Args(void)
 	frameStart   = 0.0;
 }
 
-bool Args::processArgs(int argc, const char **argv, Args &args)
+bool Args::processArgs(int argc, const char **argv)
 {
 	const string frameOpt      = "--frame=";
 	const string captureAllOpt = "--all";
@@ -36,21 +36,21 @@ bool Args::processArgs(int argc, const char **argv, Args &args)
 	for (fileArgc = 1; fileArgc < argc; fileArgc++)
 	{
 		if (frameOpt.compare(0, frameOpt.length(), argv[fileArgc], frameOpt.length()) == 0)
-			args.frameStart = atoi(argv[fileArgc] + frameOpt.length());
+			frameStart = atoi(argv[fileArgc] + frameOpt.length());
 		else if (captureAllOpt.compare(0, captureAllOpt.length(), argv[fileArgc], captureAllOpt.length()) == 0)
-			args.captureAll = true;
+			captureAll = true;
 		else if (batchModeOpt.compare(0, batchModeOpt.length(), argv[fileArgc], batchModeOpt.length()) == 0)
-			args.batchMode = true;
+			batchMode = true;
 		else if (dsOpt.compare(0, dsOpt.length(), argv[fileArgc], dsOpt.length()) == 0)
-			args.ds = true;
+			ds = true;
 		else if (calibrateOpt.compare(0, calibrateOpt.length(), argv[fileArgc], calibrateOpt.length()) == 0)
-			args.calibrate = true;
+			calibrate = true;
 		else if (writeVideoOpt.compare(0, writeVideoOpt.length(), argv[fileArgc], writeVideoOpt.length()) == 0)
-			args.writeVideo = true;
+			writeVideo = true;
 		else if (trackingOpt.compare(0, trackingOpt.length(), argv[fileArgc], trackingOpt.length()) == 0)
-			args.tracking = false;
+			tracking = false;
 		else if (rectsOpt.compare(0, rectsOpt.length(), argv[fileArgc], rectsOpt.length()) == 0)
-			args.rects = false;
+			rects = false;
 		else if (badOpt.compare(0, badOpt.length(), argv[fileArgc], badOpt.length()) == 0) // unknown option
 		{
 			cerr << "Unknown command line option " << argv[fileArgc] << endl;
@@ -60,6 +60,6 @@ bool Args::processArgs(int argc, const char **argv, Args &args)
 			break;
 	}
 	if (fileArgc < argc)
-		args.inputName = argv[fileArgc];
+		inputName = argv[fileArgc];
 	return true;
 }

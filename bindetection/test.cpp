@@ -135,7 +135,7 @@ int main( int argc, const char** argv )
 	// cmd line parameters and input filename
 	Args args;
 
-	if (!args.processArgs(argc, argv, args))
+	if (!args.processArgs(argc, argv))
 		return -2;
 
 	string windowName = "Bin detection"; // GUI window name

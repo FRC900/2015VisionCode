@@ -3,7 +3,6 @@
 
 #include <string>
 
-
 class Args //class for processing arguments
 {
 	public :
@@ -19,7 +18,7 @@ class Args //class for processing arguments
 		std::string inputName; // input file name or camera number
 
 		Args(void);
-		bool processArgs(int argc, const char **argv, Args &args);
+		bool processArgs(int argc, const char **argv);
 };
 
 #endif
