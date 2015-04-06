@@ -660,7 +660,7 @@ cerr << name << endl;
    }
    return true;
 }
-
+//Video-MM-DD-YY_hr-min-sec-##.avi
 string getVideoOutName(void)
 {
 	int index = 0;
@@ -680,7 +680,7 @@ string getVideoOutName(void)
 		ss << "-";
 		ss << timeinfo->tm_mday;
 		ss << "-";
-		ss << timeinfo->tm_year - 1900;
+		ss << timeinfo->tm_year+1900;
 		ss << "_";
 		ss << timeinfo->tm_hour;
 		ss << "-";
