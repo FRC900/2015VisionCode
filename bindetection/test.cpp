@@ -161,8 +161,10 @@ int main( int argc, const char** argv )
      
 	// Minimum size of a bin at ~30 feet distance
 	// TODO : Verify this once camera is calibrated
-	minDetectSize = frame.cols * 0.07;
-	cout << minDetectSize << endl;
+	if (args.ds)
+	   minDetectSize = frame.cols * 0.07;
+	else
+	   minDetectSize = frame.cols * 0.15;
 
 	// If UI is up, pop up the parameters window
 	if (!args.batchMode)
@@ -171,8 +173,8 @@ int main( int argc, const char** argv )
 		namedWindow(detectWindowName);
 		createTrackbar ("Scale", detectWindowName, &scale, 50, NULL);
 		createTrackbar ("Neighbors", detectWindowName, &neighbors, 50, NULL);
-		createTrackbar ("Min Detect", detectWindowName, &minDetectSize, 65, NULL);
-		createTrackbar ("Max Detect", detectWindowName, &maxDetectSize, 700, NULL);
+		createTrackbar ("Min Detect", detectWindowName, &minDetectSize, 200, NULL);
+		createTrackbar ("Max Detect", detectWindowName, &maxDetectSize, max(frame.rows, frame.cols), NULL);
 		createTrackbar ("GPU Scale", detectWindowName, &gpuScale, 100, NULL);
 	}
 
