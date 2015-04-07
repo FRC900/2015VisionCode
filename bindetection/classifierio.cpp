@@ -10,14 +10,20 @@
 
 using namespace std;
 
+ClassifierIO::ClassifierIO(int dirNum, int stageNum)
+{
+   _dirNum   = dirNum;
+   _stageNum = stageNum;
+}
+
 // given a directory number generate a filename for that dir
 // if it exists - if it doesnt, return an empty string
-string getClassifierDir(int directory)
+string ClassifierIO::getClassifierDir() const
 {
    struct stat fileStat;
    stringstream ss;
    ss << "/home/ubuntu/2015VisionCode/cascade_training/classifier_bin_";
-   ss << directory;
+   ss << _dirNum;
    if ((stat(ss.str().c_str(), &fileStat) == 0) && S_ISDIR(fileStat.st_mode))
       return string(ss.str());
    return string();
@@ -26,17 +32,17 @@ string getClassifierDir(int directory)
 // given a directory number and stage within that directory
 // generate a filename to load the cascade from.  Check that
 // the file exists - if it doesnt, return an empty string
-string getClassifierName(int directory, int stage)
+string ClassifierIO::getClassifierName() const
 {
    struct stat fileStat;
    stringstream ss;
-   string dirName = getClassifierDir(directory);
+   string dirName = getClassifierDir();
    if (!dirName.length())
       return string();
 
    ss << dirName;
    ss << "/cascade_oldformat_";
-   ss << stage;
+   ss << _stageNum;
    ss << ".xml";
 
    if ((stat(ss.str().c_str(), &fileStat) == 0) && (fileStat.st_size > 5000))
@@ -47,7 +53,7 @@ string getClassifierName(int directory, int stage)
    ss.clear();
    ss << dirName;
    ss << "/cascade_";
-   ss << stage;
+   ss << _stageNum;
    ss << ".xml";
 
    if ((stat(ss.str().c_str(), &fileStat) == 0) && (fileStat.st_size > 5000))
@@ -60,18 +66,19 @@ string getClassifierName(int directory, int stage)
 // Find the next valid classifier. Since some .xml input
 // files crash the GPU we've deleted them. Skip over missing
 // files in the sequence
-bool findNextClassifierStage(int dirNum, int &stageNum, bool increment)
+bool ClassifierIO::findNextClassifierStage(bool increment)
 {
    int adder = increment ? 1 : -1;
-   int num = stageNum + adder;
+   int num = _stageNum + adder;
    bool found;
 
    for (found = false; !found && ((num > 0) && (num < 100)); num += adder)
    {
-      if (getClassifierName(dirNum, num).length())
+      ClassifierIO tempClassifier(_dirNum, num);
+      if (tempClassifier.getClassifierName().length())
       {
+	 *this = tempClassifier; 
 	 found = true;
-	 stageNum = num;
       }
    }
       
@@ -80,24 +87,23 @@ bool findNextClassifierStage(int dirNum, int &stageNum, bool increment)
 
 // Find the next valid classifier dir. Start with current stage in that
 // directory and work down until a classifier is found
-bool findNextClassifierDir(int &dirNum, int &stageNum, bool increment)
+bool ClassifierIO::findNextClassifierDir(bool increment)
 {
    int adder = increment ? 1 : -1;
-   int dnum = dirNum + adder;
+   int dnum = _dirNum + adder;
    bool found;
 
    for (found = false; !found && ((dnum > 0) && (dnum < 100)); dnum += adder)
    {
-      if (getClassifierDir(dnum).length())
+      ClassifierIO tempClassifier(dnum, _stageNum+1);
+      if (tempClassifier.getClassifierDir().length())
       {
-	 int snum = stageNum + 1;
 	 // Try to find a valid classifier in this dir, counting
 	 // down from the current stage number
-	 if (findNextClassifierStage(dnum, snum, false))
+	 if (tempClassifier.findNextClassifierStage(false))
 	 {
-	    dirNum   = dnum;
-	    stageNum = snum;
-	    found    = true;
+	    *this = tempClassifier;
+	    found = true;
 	 }
       }
    }
@@ -105,3 +111,12 @@ bool findNextClassifierDir(int &dirNum, int &stageNum, bool increment)
    return found;
 }
 
+ClassifierIO::dirNum(void) const
+{
+   return _dirNum;
+}
+
+ClassifierIO::stageNum(void) const
+{
+   return _stageNum;
+}

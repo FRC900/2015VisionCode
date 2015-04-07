@@ -37,7 +37,7 @@ enum CLASSIFIER_MODE
 	CLASSIFIER_MODE_CPU,
 	CLASSIFIER_MODE_GPU
 };
-bool maybeReloadClassifier(BaseCascadeDetect *&detectClassifier, CLASSIFIER_MODE &modeCurrent, CLASSIFIER_MODE &modeNext, int DirNumber, int StageNumber);
+bool maybeReloadClassifier(BaseCascadeDetect *&detectClassifier, CLASSIFIER_MODE &modeCurrent, CLASSIFIER_MODE &modeNext, const ClassifierIO &classifierIO);
 
 
 void drawRects(Mat image,vector<Rect> detectRects,vector<unsigned> detectDirections) {
@@ -124,10 +124,6 @@ int main( int argc, const char** argv )
 	if (gpu::getCudaEnabledDeviceCount() > 0)
 		classifierModeNext = CLASSIFIER_MODE_GPU;
 
-	// Classifier directory and stage to start with
-	int classifierDirNum   = 14;
-	int classifierStageNum = 29;
-
 	// Pointer to either CPU or GPU classifier
 	BaseCascadeDetect *detectClassifier = NULL;
 
@@ -208,6 +204,8 @@ int main( int argc, const char** argv )
 	int64 endTick;
 	size_t frameTicksIndex = 0;
 
+	ClassifierIO classifierIO(args.classifierDirNum, args.classifierStageNum);
+
 	// Start of the main loop
 	//  -- grab a frame
 	//  -- update the angle of tracked objects 
@@ -236,7 +234,7 @@ int main( int argc, const char** argv )
 		// to account for movement of the robot between frames
 		double deltaAngle = 0.0;
 		binTrackingList.adjustAngle(deltaAngle);
-		if (!maybeReloadClassifier(detectClassifier, classifierModeCurrent, classifierModeNext, classifierDirNum, classifierStageNum))
+		if (!maybeReloadClassifier(detectClassifier, classifierModeCurrent, classifierModeNext, classifierIO))
 			return -1;
 
 		// Apply the classifier to the frame
@@ -372,22 +370,22 @@ int main( int argc, const char** argv )
 			}
 			else if (c == '.') // higher classifier stage
 			{
-				if (findNextClassifierStage(classifierDirNum, classifierStageNum, true))
+				if (classifierIO.findNextClassifierStage(true))
 					classifierModeNext = CLASSIFIER_MODE_RELOAD;
 			}
 			else if (c == ',') // lower classifier stage
 			{
-				if (findNextClassifierStage(classifierDirNum, classifierStageNum, false))
+				if (classifierIO.findNextClassifierStage(false))
 					classifierModeNext = CLASSIFIER_MODE_RELOAD;
 			}
 			else if (c == '>') // higher classifier dir num
 			{
-				if (findNextClassifierDir(classifierDirNum, classifierStageNum, true))
+				if (classifierIO.findNextClassifierDir(true))
 					classifierModeNext = CLASSIFIER_MODE_RELOAD;
 			}
 			else if (c == '<') // higher classifier dir num
 			{
-				if (findNextClassifierDir(classifierDirNum, classifierStageNum, false))
+				if (classifierIO.findNextClassifierDir(false))
 					classifierModeNext = CLASSIFIER_MODE_RELOAD;
 			}
 			else if (isdigit(c)) // save a single detected image
@@ -414,9 +412,9 @@ int main( int argc, const char** argv )
 		// Display current classifier under test
 		{
 			stringstream ss;
-			ss << classifierDirNum;
+			ss << classifierIO.dirNum();
 			ss << ',';
-			ss << classifierStageNum;
+			ss << classifierIO.stageNum();
 			putText(frame, ss.str(), Point(0, frame.rows- 30), FONT_HERSHEY_PLAIN, 1.5, Scalar(0,0,255));
 		}
 
@@ -628,37 +626,37 @@ void writeNetTableNumber(NetworkTable *netTable, string label, int index, double
 bool maybeReloadClassifier(BaseCascadeDetect *&detectClassifier, 
       CLASSIFIER_MODE &modeCurrent, 
       CLASSIFIER_MODE &modeNext, 
-      int dirNum, int stageNum)
+      const ClassifierIO &classifierIO)
 {
    if ((modeCurrent == CLASSIFIER_MODE_UNINITIALIZED) || 
        (modeCurrent != modeNext))
    {
-      string name = getClassifierName(dirNum, stageNum);
-cerr << name << endl;
+		string name = classifierIO.getClassifierName();
+		cerr << name << endl;
 
-      // If reloading with new name, keep the current
-      // CPU/GPU mode setting 
-      if (modeNext == CLASSIFIER_MODE_RELOAD)
-	 modeNext = modeCurrent;
+		// If reloading with new name, keep the current
+		// CPU/GPU mode setting 
+		if (modeNext == CLASSIFIER_MODE_RELOAD)
+			modeNext = modeCurrent;
 
-      // Delete the old  if it has been initialized
-      if (detectClassifier)
-	 delete detectClassifier;
+		// Delete the old  if it has been initialized
+		if (detectClassifier)
+			delete detectClassifier;
 
-      // Create a new CPU or GPU  based on the
-      // user's selection
-      if (modeNext == CLASSIFIER_MODE_GPU)
-	 detectClassifier = new GPU_CascadeDetect(name.c_str());
-      else
-	 detectClassifier = new CPU_CascadeDetect(name.c_str());
-      modeCurrent = modeNext;
+		// Create a new CPU or GPU  based on the
+		// user's selection
+		if (modeNext == CLASSIFIER_MODE_GPU)
+			detectClassifier = new GPU_CascadeDetect(name.c_str());
+		else
+			detectClassifier = new CPU_CascadeDetect(name.c_str());
+      	modeCurrent = modeNext;
 
-      // Verfiy the  loaded
-      if( !detectClassifier->loaded() )
-      {
-	 cerr << "--(!)Error loading " << name << endl; 
-	 return false; 
-      }
+		// Verfiy the load
+		if( !detectClassifier->loaded() )
+		{
+			cerr << "--(!)Error loading " << name << endl; 
+			return false; 
+		}
    }
    return true;
 }

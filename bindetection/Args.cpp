@@ -9,27 +9,31 @@ using namespace std;
 
 Args::Args(void)
 {
-	captureAll   = false;
-	tracking     = true;
-	rects        = true;
-	batchMode    = false;
-	ds           = false;
-	calibrate    = false;
-	writeVideo   = false;
-	frameStart   = 0.0;
+	captureAll         = false;
+	tracking           = true;
+	rects              = true;
+	batchMode          = false;
+	ds                 = false;
+	calibrate          = false;
+	writeVideo         = false;
+	classifierDirNum   = 14;
+	classifierStageNum = 29;
+	frameStart         = 0.0;
 }
 
 bool Args::processArgs(int argc, const char **argv)
 {
-	const string frameOpt      = "--frame=";
-	const string captureAllOpt = "--all";
-	const string batchModeOpt  = "--batch";
-	const string dsOpt         = "--ds";
-	const string calibrateOpt  = "--calibrate";
-	const string writeVideoOpt = "--capture";
-	const string rectsOpt      = "--no-rects";
-	const string trackingOpt   = "--no-tracking";
-	const string badOpt        = "--";
+	const string frameOpt           = "--frame=";
+	const string captureAllOpt      = "--all";
+	const string batchModeOpt       = "--batch";
+	const string dsOpt              = "--ds";
+	const string calibrateOpt       = "--calibrate";
+	const string writeVideoOpt      = "--capture";
+	const string rectsOpt           = "--no-rects";
+	const string trackingOpt        = "--no-tracking";
+	const string classifierDirOpt   = "--classifierDir=";
+	const string classifierStageOpt = "--classifierStage=";
+	const string badOpt             = "--";
 	// Read through command line args, extract
 	// cmd line parameters and input filename
 	int fileArgc;
@@ -51,6 +55,10 @@ bool Args::processArgs(int argc, const char **argv)
 			tracking = false;
 		else if (rectsOpt.compare(0, rectsOpt.length(), argv[fileArgc], rectsOpt.length()) == 0)
 			rects = false;
+		else if (classifierDirOpt.compare(0, classifierDirOpt.length(), argv[fileArgc], classifierDirOpt.length()) == 0)
+			classifierDirNum = atoi(argv[fileArgc] + classifierDirOpt.length());
+		else if (classifierStageOpt.compare(0, classifierStageOpt.length(), argv[fileArgc], classifierStageOpt.length()) == 0)
+			classifierStageNum = atoi(argv[fileArgc] + classifierStageOpt.length());
 		else if (badOpt.compare(0, badOpt.length(), argv[fileArgc], badOpt.length()) == 0) // unknown option
 		{
 			cerr << "Unknown command line option " << argv[fileArgc] << endl;

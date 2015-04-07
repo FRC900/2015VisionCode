@@ -15,6 +15,8 @@ class Args //class for processing arguments
 		bool writeVideo;       // write captured video to output
 		int  frameStart;       // frame number to start from
 		bool calibrate;        // crosshair to calibrate camera
+		int  classifierDirNum; // classifier directory and 
+		int  classifierStageNum;// stage to use
 		std::string inputName; // input file name or camera number
 
 		Args(void);
