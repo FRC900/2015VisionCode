@@ -14,6 +14,7 @@
 #include "networktables2/type/NumberArray.h"
 
 #include "classifierio.hpp"
+#include "frameticker.hpp"
 #include "imagedetect.hpp"
 #include "videoin_c920.hpp"
 #include "track.hpp"
@@ -27,6 +28,7 @@ void writeImage(const Mat &frame, const vector<Rect> &rects, size_t index, const
 string getDateTimeString(void);
 
 void writeNetTableNumber(NetworkTable *netTable, string label, int index, double value);
+void writeNetTableBoolean(NetworkTable *netTable, string label, int index, bool value);
 
 // Allow switching between CPU and GPU for testing 
 enum CLASSIFIER_MODE
@@ -190,15 +192,10 @@ int main( int argc, const char** argv )
 	Size S(frame.cols, frame.rows);
 	VideoWriter outputVideo;
 	args.writeVideo = netTable->GetBoolean("WriteVideo", args.writeVideo);
-	const int videoWritePollFrequency = 60; // check for network table entry every this many frames (~5 seconds or so)
+	const int videoWritePollFrequency = 30; // check for network table entry every this many frames (~5 seconds or so)
 	int videoWritePollCount = videoWritePollFrequency;
 
-	// Frame timing information
-	#define frameTicksLength (sizeof(frameTicks) / sizeof(frameTicks[0]))
-	double frameTicks[3];
-	int64 startTick;
-	int64 endTick;
-	size_t frameTicksIndex = 0;
+	FrameTicker frameTicker;
 
 	ClassifierIO classifierIO(args.classifierDirNum, args.classifierStageNum);
 
@@ -209,7 +206,7 @@ int main( int argc, const char** argv )
 	//  -- add those newly detected objects to the list of tracked objects
 	while(cap->getNextFrame(pause, frame))
 	{
-		startTick = getTickCount(); // start time for this frame
+		frameTicker.start(); // start time for this frame
 		if (--videoWritePollCount == 0)
 		{
 			args.writeVideo = netTable->GetBoolean("WriteVideo", args.writeVideo);
@@ -317,29 +314,26 @@ int main( int argc, const char** argv )
 		// a complete array of frame time entries
 		// For args.batch mode, only update every frameTicksLength frames to
 		// avoid printing too much stuff
-	    if ((frameTicksIndex >= frameTicksLength) &&
+	    if (frameTicker.valid() &&
 			( (!args.batchMode && ((cap->frameCounter() % frameDisplayFrequency) == 0)) || 
-			  (args.batchMode  && ((frameTicksIndex % (frameTicksLength*10)) == 0))))
+			  ( args.batchMode && ((cap->frameCounter() % 50) == 0))))
 	    {
-			// Get the average frame time over the last
-			// frameTicksLength frames
-			double sum = 0.0;
-			for (size_t i = 0; i < frameTicksLength; i++)
-				sum += frameTicks[i];
-			sum /= frameTicksLength;
 			stringstream ss;
 			// If in args.batch mode and reading a video, display
 			// the frame count
 			if (args.batchMode && cap->VideoCap())
 			{
 				ss << cap->frameCounter();
-				ss << '/';
-				ss << cap->VideoCap()->get(CV_CAP_PROP_FRAME_COUNT);
+				if (cap->VideoCap()->get(CV_CAP_PROP_FRAME_COUNT) > 0)
+				{
+					ss << '/';
+					ss << cap->VideoCap()->get(CV_CAP_PROP_FRAME_COUNT);
+				}
 				ss << " : ";
 			}
 			// Print the FPS
 			ss.precision(3);
-			ss << 1.0 / sum;
+			ss << frameTicker.getFPS();
 			ss << " FPS";
 			if (!args.batchMode)
 				putText(frame, ss.str(), Point(frame.cols - 15 * ss.str().length(), 50), FONT_HERSHEY_PLAIN, 1.5, Scalar(0,0,255));
@@ -371,10 +365,7 @@ int main( int argc, const char** argv )
 						hits[i] = true;
 					}
 				}
-				stringstream ss;
-				ss << "Bin";
-				ss << (i+1);
-				netTable->PutBoolean(ss.str().c_str(), hits[i]);
+				writeNetTableBoolean(netTable, "Bin", i + 1, hits[i]);
 			}
 		}
 
@@ -394,6 +385,7 @@ int main( int argc, const char** argv )
 				ss << cap->VideoCap()->get(CV_CAP_PROP_FRAME_COUNT);
 				putText(frame, ss.str(), Point(frame.cols - 15 * ss.str().length(), 20), FONT_HERSHEY_PLAIN, 1.5, Scalar(0,0,255));
 			}
+
 			// Display current classifier under test
 			{
 				stringstream ss;
@@ -508,8 +500,7 @@ int main( int argc, const char** argv )
 				writeImage(frameCopy, detectRects, index, capPath.c_str(), cap->frameCounter());
 		}
 		// Save frame time for the current frame
-		endTick = getTickCount();
-		frameTicks[frameTicksIndex++ % frameTicksLength] = (double)(endTick - startTick) / getTickFrequency();
+		frameTicker.end();
 	}
 	return 0;
 }
@@ -615,6 +606,14 @@ void writeNetTableNumber(NetworkTable *netTable, string label, int index, double
    ss << label;
    ss << (index+1);
    netTable->PutNumber(ss.str().c_str(), value);
+}
+
+void writeNetTableBoolean(NetworkTable *netTable, string label, int index, bool value)
+{
+   stringstream ss;
+   ss << label;
+   ss << (index+1);
+   netTable->PutBoolean(ss.str().c_str(), value);
 }
 
 // Code to allow switching between CPU and GPU for testing
