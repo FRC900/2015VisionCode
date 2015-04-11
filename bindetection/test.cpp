@@ -20,7 +20,6 @@
 #include "Args.hpp"
 #include "WriteOnFrame.hpp"
 
-
 using namespace std;
 using namespace cv;
 
@@ -39,36 +38,35 @@ enum CLASSIFIER_MODE
 };
 bool maybeReloadClassifier(BaseCascadeDetect *&detectClassifier, CLASSIFIER_MODE &modeCurrent, CLASSIFIER_MODE &modeNext, const ClassifierIO &classifierIO);
 
-
 void drawRects(Mat image,vector<Rect> detectRects,vector<unsigned> detectDirections) {
 	for(size_t i = 0; i < detectRects.size(); i++) {
 		// Mark detected rectangle on image
-			// Change color based on direction we think the bin is pointing
+		// Change color based on direction we think the bin is pointing
 		Scalar rectColor;
 		switch (detectDirections[i])
 		{
 			case 1:
-			rectColor = Scalar(0,0,255);
-			break;
+				rectColor = Scalar(0,0,255);
+				break;
 			case 2:
-			rectColor = Scalar(0,255,0);
-			break;
+				rectColor = Scalar(0,255,0);
+				break;
 			case 4:
-			rectColor = Scalar(255,0,0);
-			break;
+				rectColor = Scalar(255,0,0);
+				break;
 			case 8:
-			rectColor = Scalar(255,255,0);
-			break;
+				rectColor = Scalar(255,255,0);
+				break;
 			default:
-			rectColor = Scalar(255,0,255);
-			break;
+				rectColor = Scalar(255,0,255);
+				break;
 		}
 		rectangle( image, detectRects[i], rectColor, 3);
-			// Label each outlined image with a digit.  Top-level code allows
-			// users to save these small images by hitting the key they're labeled with
-			// This should be a quick way to grab lots of falsly detected images
-			// which need to be added to the negative list for the next
-			// pass of classifier training.
+		// Label each outlined image with a digit.  Top-level code allows
+		// users to save these small images by hitting the key they're labeled with
+		// This should be a quick way to grab lots of falsly detected images
+		// which need to be added to the negative list for the next
+		// pass of classifier training.
 		if (i < 10)
 		{
 			stringstream label;
@@ -79,34 +77,32 @@ void drawRects(Mat image,vector<Rect> detectRects,vector<unsigned> detectDirecti
 	}
 }
 
-void checkDuplicate (vector<Rect> detectRects,vector<unsigned> detectDirections) {
-	for( size_t i = 0; i < detectRects.size(); i++ ) 
-		{
-			for (size_t j = 0; j < detectRects.size(); j++) {
-				if (i != j) {
-					Rect intersection = detectRects[i] & detectRects[j];
-					if (intersection.width * intersection.height > 0)
-						if (abs((detectRects[i].width * detectRects[i].height) - (detectRects[j].width * detectRects[j].height)) < 2000)
-							if (intersection.width / intersection.height < 5 &&  intersection.width / intersection.height > 0) {
-								Rect lowestYVal;
-								int indexHighest;
-								if(detectRects[i].y < detectRects[j].y) {
-								lowestYVal = detectRects[i]; //higher rectangle
-								indexHighest = j;
-							}
-							else {	
+void checkDuplicate (vector<Rect> detectRects, vector<unsigned> detectDirections) {
+	for( size_t i = 0; i < detectRects.size(); i++ ) {
+		for (size_t j = 0; j < detectRects.size(); j++) {
+			if (i != j) {
+				Rect intersection = detectRects[i] & detectRects[j];
+				if (intersection.width * intersection.height > 0)
+					if (abs((detectRects[i].width * detectRects[i].height) - (detectRects[j].width * detectRects[j].height)) < 2000)
+						if (intersection.width / intersection.height < 5 &&  intersection.width / intersection.height > 0) {
+							Rect lowestYVal;
+							int indexHighest;
+							if(detectRects[i].y < detectRects[j].y) {
+							lowestYVal = detectRects[i]; //higher rectangle
+							indexHighest = j;
+						} else {	
 							lowestYVal = detectRects[j]; //higher rectangle
 							indexHighest = i;
-						}
-						if(intersection.y > lowestYVal.y) {
-						//cout << "found intersection" << endl;
-							detectRects.erase(detectRects.begin()+indexHighest);
-							detectDirections.erase(detectDirections.begin()+indexHighest);
-						}				
 					}
+					if(intersection.y > lowestYVal.y) {
+						//cout << "found intersection" << endl;
+						detectRects.erase(detectRects.begin()+indexHighest);
+						detectDirections.erase(detectDirections.begin()+indexHighest);
+					}				
 				}
 			}
 		}
+	}
 }
 
 void openVideoCap(const string &fileName, VideoIn *&cap, string &capPath, string &windowName, bool gui);
@@ -136,7 +132,7 @@ int main( int argc, const char** argv )
 
 	string windowName = "Bin detection"; // GUI window name
 	string capPath; // Output directory for captured images
-	VideoIn *cap; // video input - image, video or camera
+	VideoIn *cap;   // video input - image, video or camera
 	openVideoCap(args.inputName, cap, capPath, windowName, !args.batchMode);
 
 	if (!args.batchMode)
@@ -245,9 +241,8 @@ int main( int argc, const char** argv )
 		detectClassifier->cascadeDetect(frame, detectRects, detectDirections); 
 		checkDuplicate(detectRects,detectDirections);
 		if (!args.batchMode && args.rects && ((cap->frameCounter() % frameDisplayFrequency) == 0))
-		{
-		drawRects(frame,detectRects,detectDirections);
-		}
+			drawRects(frame,detectRects,detectDirections);
+
 		// Process this detected rectangle - either update the nearest
 		// object or add it as a new one
 		for(size_t i = 0; i < detectRects.size(); i++)
@@ -255,7 +250,7 @@ int main( int argc, const char** argv )
 		#if 0
 		// Print detect status of live objects
 		if (args.tracking)
-		binTrackingList.print();
+			binTrackingList.print();
 		#endif
 		// Grab info from trackedobjects, print it out
 		vector<TrackedObjectDisplay> displayList;
@@ -297,12 +292,12 @@ int main( int argc, const char** argv )
 				writeNetTableNumber(netTable,"Ratio", i, displayList[i].ratio);
 				writeNetTableNumber(netTable,"Distance", i, displayList[i].distance);
 				writeNetTableNumber(netTable,"Angle", i, displayList[i].angle);
-				#if 0
-					cout << i << " ";
-					cout << displayList[i].ratio << " ";
-					cout << displayList[i].distance << " ";
-					cout << displayList[i].angle << endl;
-				#endif
+#if 0
+				cout << i << " ";
+				cout << displayList[i].ratio << " ";
+				cout << displayList[i].distance << " ";
+				cout << displayList[i].angle << endl;
+#endif
 			}
 		}
 
@@ -312,123 +307,25 @@ int main( int argc, const char** argv )
 			netTable->PutNumber("FrameNumber", cap->frameCounter());
 		}
 
-		char c = waitKey(5);
-		if ((c == 'c') || (c == 'q') || (c == 27)) 
-			{ // exit
-				if (netTable->IsConnected())
-					NetworkTable::Shutdown();
-				break; //Does this need to be fixed?
-			} 
-			else if( c == ' ') { pause = !pause; }
-			else if( c == 'f')  // advance to next frame
-			{
-				cap->getNextFrame(false, frame);
-			}
-			else if (c == 'A') // toggle capture-all
-			{
-				args.captureAll = !args.captureAll;
-			}
-			else if (c == 't') // toggle args.tracking info display
-			{
-				args.tracking = !args.tracking;
-			}
-			else if (c == 'r') // toggle args.rects info display
-			{
-				args.rects = !args.rects;
-			}
-			else if (c == 'a') // save all detected images
-			{
-			// Save from a copy rather than the original
-			// so all the markup isn't saved, only the raw image
-				Mat frameCopy;
-				cap->getNextFrame(true, frameCopy);
-				for (size_t index = 0; index < detectRects.size(); index++)
-					writeImage(frameCopy, detectRects, index, capPath.c_str(), cap->frameCounter());
-			}
-			else if (c == 'p') // print frame number to console
-			{
-				cout << cap->frameCounter() << endl;
-			}
-			else if (c == 'P') // Toggle frame # printing to 
-			{
-				printFrames = !printFrames;
-			}
-			else if (c == 'S')
-			{
-				frameDisplayFrequency += 1;
-			}
-			else if (c == 's')
-			{
-				frameDisplayFrequency = max(1, frameDisplayFrequency - 1);
-			}
-			else if (c == 'G') // toggle CPU/GPU mode
-			{
-				if (classifierModeNext == CLASSIFIER_MODE_GPU)
-					classifierModeNext = CLASSIFIER_MODE_CPU;
-				else
-					classifierModeNext = CLASSIFIER_MODE_GPU;
-			}
-			else if (c == '.') // higher classifier stage
-			{
-				if (classifierIO.findNextClassifierStage(true))
-					classifierModeNext = CLASSIFIER_MODE_RELOAD;
-			}
-			else if (c == ',') // lower classifier stage
-			{
-				if (classifierIO.findNextClassifierStage(false))
-					classifierModeNext = CLASSIFIER_MODE_RELOAD;
-			}
-			else if (c == '>') // higher classifier dir num
-			{
-				if (classifierIO.findNextClassifierDir(true))
-					classifierModeNext = CLASSIFIER_MODE_RELOAD;
-			}
-			else if (c == '<') // higher classifier dir num
-			{
-				if (classifierIO.findNextClassifierDir(false))
-					classifierModeNext = CLASSIFIER_MODE_RELOAD;
-			}
-			else if (isdigit(c)) // save a single detected image
-			{
-				Mat frameCopy;
-				cap->getNextFrame(true, frameCopy);
-				writeImage(frameCopy, detectRects, c - '0', capPath.c_str(), cap->frameCounter());
-			}
-
 		// Don't update to next frame if paused to prevent
 		// objects missing from this frame to be aged out
 		// as the current frame is redisplayed over and over
 		if (!pause)
 			binTrackingList.nextFrame();
-			// Print frame number of video if the option is enabled
-		if (!args.batchMode && ((cap->frameCounter() % frameDisplayFrequency) == 0)&& printFrames && cap->VideoCap())
-		{
-			stringstream ss;
-			ss << cap->frameCounter();
-			ss << '/';
-			ss << cap->VideoCap()->get(CV_CAP_PROP_FRAME_COUNT);
-			putText(frame, ss.str(), Point(frame.cols - 15 * ss.str().length(), 20), FONT_HERSHEY_PLAIN, 1.5, Scalar(0,0,255));
-		}
-		// Display current classifier under test
-		{
-			stringstream ss;
-			ss << classifierIO.dirNum();
-			ss << ',';
-			ss << classifierIO.stageNum();
-			putText(frame, ss.str(), Point(0, frame.rows- 30), FONT_HERSHEY_PLAIN, 1.5, Scalar(0,0,255));
-		}
 
 		// For interactive mode, update the FPS as soon as we have
 		// a complete array of frame time entries
 		// For args.batch mode, only update every frameTicksLength frames to
 		// avoid printing too much stuff
-	    if ((!args.batchMode && ((cap->frameCounter() % frameDisplayFrequency) == 0) && (frameTicksIndex >= frameTicksLength)) || (args.batchMode && ((frameTicksIndex % (frameTicksLength*10)) == 0)))
+	    if ((frameTicksIndex >= frameTicksLength) &&
+			( (!args.batchMode && ((cap->frameCounter() % frameDisplayFrequency) == 0)) || 
+			  (args.batchMode  && ((frameTicksIndex % (frameTicksLength*10)) == 0))))
 	    {
 			// Get the average frame time over the last
 			// frameTicksLength frames
 			double sum = 0.0;
 			for (size_t i = 0; i < frameTicksLength; i++)
-			sum += frameTicks[i];
+				sum += frameTicks[i];
 			sum /= frameTicksLength;
 			stringstream ss;
 			// If in args.batch mode and reading a video, display
@@ -488,6 +385,24 @@ int main( int argc, const char** argv )
 			if (args.captureAll)
 				putText(frame, "A", Point(25,25), FONT_HERSHEY_PLAIN, 2.5, Scalar(0, 255, 255));
 
+			// Print frame number of video if the option is enabled
+			if (printFrames && cap->VideoCap())
+			{
+				stringstream ss;
+				ss << cap->frameCounter();
+				ss << '/';
+				ss << cap->VideoCap()->get(CV_CAP_PROP_FRAME_COUNT);
+				putText(frame, ss.str(), Point(frame.cols - 15 * ss.str().length(), 20), FONT_HERSHEY_PLAIN, 1.5, Scalar(0,0,255));
+			}
+			// Display current classifier under test
+			{
+				stringstream ss;
+				ss << classifierIO.dirNum();
+				ss << ',';
+				ss << classifierIO.stageNum();
+				putText(frame, ss.str(), Point(0, frame.rows- 30), FONT_HERSHEY_PLAIN, 1.5, Scalar(0,0,255));
+			}
+
 			if (args.calibrate)
 			{
 			   line (frame, Point(frame.cols/2, 0) , Point(frame.cols/2, frame.rows), Scalar(255,255,0  ));
@@ -497,9 +412,90 @@ int main( int argc, const char** argv )
 			//-- Show what you got
 			imshow( windowName, frame );
 
-			// Process user IO
-			
+			char c = waitKey(5);
+			if ((c == 'c') || (c == 'q') || (c == 27)) 
+			{ // exit
+				if (netTable->IsConnected())
+					NetworkTable::Shutdown();
+				return 0;
+			} 
+			else if( c == ' ') { pause = !pause; }
+			else if( c == 'f')  // advance to next frame
+			{
+				cap->getNextFrame(false, frame);
+			}
+			else if (c == 'A') // toggle capture-all
+			{
+				args.captureAll = !args.captureAll;
+			}
+			else if (c == 't') // toggle args.tracking info display
+			{
+				args.tracking = !args.tracking;
+			}
+			else if (c == 'r') // toggle args.rects info display
+			{
+				args.rects = !args.rects;
+			}
+			else if (c == 'a') // save all detected images
+			{
+				// Save from a copy rather than the original
+				// so all the markup isn't saved, only the raw image
+				Mat frameCopy;
+				cap->getNextFrame(true, frameCopy);
+				for (size_t index = 0; index < detectRects.size(); index++)
+					writeImage(frameCopy, detectRects, index, capPath.c_str(), cap->frameCounter());
+			}
+			else if (c == 'p') // print frame number to console
+			{
+				cout << cap->frameCounter() << endl;
+			}
+			else if (c == 'P') // Toggle frame # printing to 
+			{
+				printFrames = !printFrames;
+			}
+			else if (c == 'S')
+			{
+				frameDisplayFrequency += 1;
+			}
+			else if (c == 's')
+			{
+				frameDisplayFrequency = max(1, frameDisplayFrequency - 1);
+			}
+			else if (c == 'G') // toggle CPU/GPU mode
+			{
+				if (classifierModeNext == CLASSIFIER_MODE_GPU)
+					classifierModeNext = CLASSIFIER_MODE_CPU;
+				else
+					classifierModeNext = CLASSIFIER_MODE_GPU;
+			}
+			else if (c == '.') // higher classifier stage
+			{
+				if (classifierIO.findNextClassifierStage(true))
+					classifierModeNext = CLASSIFIER_MODE_RELOAD;
+			}
+			else if (c == ',') // lower classifier stage
+			{
+				if (classifierIO.findNextClassifierStage(false))
+					classifierModeNext = CLASSIFIER_MODE_RELOAD;
+			}
+			else if (c == '>') // higher classifier dir num
+			{
+				if (classifierIO.findNextClassifierDir(true))
+					classifierModeNext = CLASSIFIER_MODE_RELOAD;
+			}
+			else if (c == '<') // higher classifier dir num
+			{
+				if (classifierIO.findNextClassifierDir(false))
+					classifierModeNext = CLASSIFIER_MODE_RELOAD;
+			}
+			else if (isdigit(c)) // save a single detected image
+			{
+				Mat frameCopy;
+				cap->getNextFrame(true, frameCopy);
+				writeImage(frameCopy, detectRects, c - '0', capPath.c_str(), cap->frameCounter());
+			}
 		}
+
 		// If args.captureAll is enabled, write each detected rectangle
 		// to their own output image file
 		if (args.captureAll && detectRects.size())
@@ -511,7 +507,7 @@ int main( int argc, const char** argv )
 			for (size_t index = 0; index < detectRects.size(); index++)
 				writeImage(frameCopy, detectRects, index, capPath.c_str(), cap->frameCounter());
 		}
-			// Save frame time for the current frame
+		// Save frame time for the current frame
 		endTick = getTickCount();
 		frameTicks[frameTicksIndex++ % frameTicksLength] = (double)(endTick - startTick) / getTickFrequency();
 	}
@@ -608,7 +604,7 @@ void openVideoCap(const string &fileName, VideoIn *&cap, string &capPath, string
       capPath = fileName;
       const size_t last_slash_idx = capPath.find_last_of("\\/");
       if (std::string::npos != last_slash_idx)
-	 capPath.erase(0, last_slash_idx + 1);
+		capPath.erase(0, last_slash_idx + 1);
       windowName = fileName;
    }
 }
@@ -660,7 +656,7 @@ bool maybeReloadClassifier(BaseCascadeDetect *&detectClassifier,
    }
    return true;
 }
-//Video-MM-DD-YY_hr-min-sec-##.avi
+// Video-MM-DD-YY_hr-min-sec-##.avi
 string getVideoOutName(void)
 {
 	int index = 0;
