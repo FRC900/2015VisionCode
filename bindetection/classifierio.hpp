@@ -1,12 +1,20 @@
 #ifndef CLASSIFIERIO_HPP__
 #define CLASSIFIERIO_HPP__
 
-std::string getClassifierDir(int directory);
-std::string getClassifierName(int directory, int stage);
-bool findNextClassifierStage(int dirNum, int &stageNum, bool increment);
-bool findNextClassifierDir(int &dirNum, int &stageNum, bool increment);
-
-
+class ClassifierIO
+{
+   public:
+		ClassifierIO(int dirNum, int stageNum);
+		std::string getClassifierDir(void) const;
+		std::string getClassifierName(void) const;
+		bool findNextClassifierStage(bool increment);
+		bool findNextClassifierDir(bool increment);
+		int dirNum(void) const;
+		int stageNum(void) const;
+   private :
+		int _dirNum;
+		int _stageNum;
+};
 
 #endif
 

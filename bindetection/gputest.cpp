@@ -82,9 +82,10 @@ int main(int argc, char **argv)
    {
       while (snum < 100)
       {
-	 if (findNextClassifierStage(dnum, snum, true))
+	 ClassifierIO classifierIO(dnum, snum);
+	 if (classifierIO.findNextClassifierStage(true))
 	 {
-	    string name = getClassifierName(dnum, snum);
+	    string name = classifierIO.getClassifierName();
 	    cout << dnum << " " << snum << " " << name << flush;
 	    ofile << dnum << " " << snum << " " << name << flush;
 
