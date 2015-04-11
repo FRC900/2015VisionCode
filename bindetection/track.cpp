@@ -15,7 +15,7 @@ TrackedObject::TrackedObject(const cv::Rect &position, int id, size_t historyLen
 		_detectArray[i] = false;
 	_listIndex     = 0;
 	_position      = position;
-// Label with base-26 letter ID (A, B, C .. Z, AA, AB, AC, etc)
+	// Label with base-26 letter ID (A, B, C .. Z, AA, AB, AC, etc)
 	do 
 	{
 		_id += (char)(id % 26 + 'A');
@@ -72,8 +72,8 @@ TrackedObject::~TrackedObject()
 // the robot turning
 void TrackedObject::adjustAngle(double deltaAngle, int imageWidth)
 {
-// Need to figure out what positive and negative
-// angles mean
+	// Need to figure out what positive and negative
+	// angles mean
 	for (size_t i = 0; i < _listLength; i++)
 		_angleArray[i] += deltaAngle;
 	_position.x += deltaAngle * imageWidth / HFOV;
@@ -83,7 +83,7 @@ void TrackedObject::adjustAngle(double deltaAngle, int imageWidth)
 void TrackedObject::setDistance(double distance)
 {
 	_distanceArray[_listIndex % _listLength] = distance;
-//std::cout << "\t " << getId() << " distance[" << (_listIndex & _listLength) << "] = " << distance <<std::endl;
+	//std::cout << "\t " << getId() << " distance[" << (_listIndex & _listLength) << "] = " << distance <<std::endl;
 	setDetected();
 }
 
@@ -101,7 +101,7 @@ void TrackedObject::setDistance(const cv::Rect &rect, double objWidth, int image
 void TrackedObject::setAngle(double angle)
 {
 	_angleArray[_listIndex % _listLength] = angle;
-//std::cout << "\t " << getId() << " angle[" << (_listIndex & _listLength) << "] = " << angle <<std::endl;
+	//std::cout << "\t " << getId() << " angle[" << (_listIndex & _listLength) << "] = " << angle <<std::endl;
 	setDetected();
 }
 
@@ -138,7 +138,7 @@ double TrackedObject::getDetectedRatio(void) const
 	size_t limit;
 	bool recentHits = true;
 
-// Don't display detected bins if they're not seen for at least 1 of 4 consecutive frames
+	// Don't display detected bins if they're not seen for at least 1 of 4 consecutive frames
 	if (_listIndex > 4)
 	{
 		recentHits = false;
@@ -167,7 +167,7 @@ void TrackedObject::nextFrame(void)
 // tracked object's position and a point
 double TrackedObject::distanceFromPoint(cv::Point point) const
 {
-//std::cout <<"position " << _position.x << "," << _position.y << " point " << point.x<<"," << point.y << std::endl;
+	//std::cout <<"position " << _position.x << "," << _position.y << " point " << point.x<<"," << point.y << std::endl;
 	return (_position.x - point.x) * (_position.x - point.x) +
 		   (_position.y - point.y) * (_position.y - point.y);
 }
@@ -193,12 +193,12 @@ cv::Rect TrackedObject::setPosition(const cv::Rect &position)
 
 double TrackedObject::getAverageDistance(double &stdev) const
 {
-//std::cout << "\tAverageDistance" << std::endl;
+	//std::cout << "\tAverageDistance" << std::endl;
 	return getAverageAndStdev(_distanceArray, stdev);
 }
 double TrackedObject::getAverageAngle(double &stdev) const
 {
-//std::cout << "\tAverageAngle" << std::endl;
+	//std::cout << "\tAverageAngle" << std::endl;
 	return getAverageAndStdev(_angleArray, stdev);
 }
 
@@ -213,8 +213,8 @@ double TrackedObject::getAverageAndStdev(double *list, double &stdev) const
 	double sum        = 0.0;
 	size_t validCount = 0;
 	size_t seenCount  = 0;
-// Work backwards from _listIndex.  Find the first _dataLength valid entries and get the average
-// of those.  Make sure it doesn't loop around multiple times
+	// Work backwards from _listIndex.  Find the first _dataLength valid entries and get the average
+	// of those.  Make sure it doesn't loop around multiple times
 	for (size_t i = _listIndex; (seenCount < _listLength) && (validCount < _dataLength); i--)
 	{
 		if (_detectArray[i % _listLength])
@@ -224,6 +224,14 @@ double TrackedObject::getAverageAndStdev(double *list, double &stdev) const
 		}
 		seenCount += 1;
 	}
+
+	// Nothing valid?  Return 0s
+	if (validCount == 0)
+	{
+	   stdev = 0.0;
+	   return 0.0;
+	}
+
 	double average   = sum / validCount;
 	double sumSquare = 0.0;
 	for (size_t i = _listIndex; (seenCount < _listLength) && (validCount < _dataLength); i--)
@@ -233,6 +241,13 @@ double TrackedObject::getAverageAndStdev(double *list, double &stdev) const
 		seenCount += 1;
 	}
 	stdev = sumSquare / validCount;
+
+	// Code is returning NaN - test here since NaN is never equal to any
+	// number including another NaN.
+	if (average != average)
+	   average = 0.0;
+	if (stdev != stdev)
+	   stdev = 0.0;
 	return average;
 }
 
@@ -259,7 +274,7 @@ void TrackedObjectList::nextFrame(void)
 	{
 		if (it->getDetectedRatio() < 0.00001) // For now just remove ones for
 		{                                     // which detectList is empty
-//std::cout << "Dropping " << it->getId() << std::endl;
+			//std::cout << "Dropping " << it->getId() << std::endl;
 			it = _list.erase(it);
 		}
 		else
@@ -316,22 +331,22 @@ void TrackedObjectList::processDetect(const cv::Rect &detectedRect)
 	const double areaDelta = 0.40;
 	double rectArea = detectedRect.width * detectedRect.height;
 	cv::Point rectCorner(detectedRect.x, detectedRect.y);
-//std::cout << "Processing " << detectedRect.x << "," << detectedRect.y << std::endl;
+	//std::cout << "Processing " << detectedRect.x << "," << detectedRect.y << std::endl;
 	std::list<TrackedObject>::iterator it;
 	for (it = _list.begin(); it != _list.end(); ++it)
 	{
-// Look for object with roughly the same position 
-// as the current rect
-//std::cout << "\t distance " << it->distanceFromPoint(rectCorner) << std::endl;
+		// Look for object with roughly the same position 
+		// as the current rect
+		//std::cout << "\t distance " << it->distanceFromPoint(rectCorner) << std::endl;
 		if( it->distanceFromPoint(rectCorner) < 2000) // tune me!
 		{
-// And roughly the same area - +/- areaDelta %
+			// And roughly the same area - +/- areaDelta %
 			double itArea = it->area();
-//std::cout << "\t area " << (rectArea * (1.0 - areaDelta)) << "-" << (rectArea * (1.0 + areaDelta)) << " vs " <<  itArea << std::endl;
+			//std::cout << "\t area " << (rectArea * (1.0 - areaDelta)) << "-" << (rectArea * (1.0 + areaDelta)) << " vs " <<  itArea << std::endl;
 			if (((rectArea * (1.0 - areaDelta)) < itArea) &&
 				((rectArea * (1.0 + 2*areaDelta)) > itArea) )
 			{
-//std::cout << "\t Updating " << it->getId() << std::endl;
+				//std::cout << "\t Updating " << it->getId() << std::endl;
 				it->setDistance(detectedRect, _objectWidth, _imageWidth);
 				it->setAngle(detectedRect, _imageWidth);
 				it->setPosition(detectedRect);
