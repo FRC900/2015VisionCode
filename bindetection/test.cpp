@@ -160,7 +160,7 @@ int main( int argc, const char** argv )
 	if (args.ds)
 	   minDetectSize = frame.cols * 0.07;
 	else
-	   minDetectSize = frame.cols * 0.15;
+	   minDetectSize = frame.cols * 0.195;
 
 	// If UI is up, pop up the parameters window
 	if (!args.batchMode)
