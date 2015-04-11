@@ -8,7 +8,7 @@
 #include "iostream"
 //#define DETECT_ROTATED
 
-int scale         = 10;
+int scale         =  4;
 int neighbors     = 4;
 int minDetectSize = 20;
 int maxDetectSize = 450;
