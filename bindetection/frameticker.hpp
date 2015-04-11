@@ -12,12 +12,12 @@ class FrameTicker
 		 _Length      = 3;
 		 _frameTicks  = new double[_Length];
 	  }
-	  start(void)
+	  void start(void)
 	  {
 		 _start = cv::getTickCount();
 	  }
 
-	  end(void)
+	  void end(void)
 	  {
 		 int64 end = cv::getTickCount();
 		 _frameTicks[_Index++ % _Length] = (double)(end - _start) / cv::getTickFrequency();
