@@ -111,12 +111,12 @@ bool ClassifierIO::findNextClassifierDir(bool increment)
    return found;
 }
 
-ClassifierIO::dirNum(void) const
+int ClassifierIO::dirNum(void) const
 {
    return _dirNum;
 }
 
-ClassifierIO::stageNum(void) const
+int ClassifierIO::stageNum(void) const
 {
    return _stageNum;
 }
