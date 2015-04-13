@@ -23,6 +23,9 @@
 
 using namespace std;
 using namespace cv;
+//number of digits to round displayed distance and angle to
+int roundAngTo = 2;
+int roundDistTo = 2;
 
 void writeImage(const Mat &frame, const vector<Rect> &rects, size_t index, const char *path, int frameCounter);
 string getDateTimeString(void);
@@ -38,6 +41,13 @@ enum CLASSIFIER_MODE
 	CLASSIFIER_MODE_GPU
 };
 bool maybeReloadClassifier(BaseCascadeDetect *&detectClassifier, CLASSIFIER_MODE &modeCurrent, CLASSIFIER_MODE &modeNext, int DirNumber, int StageNumber);
+
+float roundTo(float in, int decPlace) {
+	in = in * pow(10,decPlace);
+	in = round(in);
+	in = in / pow(10,decPlace);
+	return in;
+}
 
 
 void drawRects(Mat image,vector<Rect> detectRects,vector<unsigned> detectDirections) {
@@ -236,7 +246,7 @@ int main( int argc, const char** argv )
 		binTrackingList.adjustAngle(deltaAngle);
 		if (!maybeReloadClassifier(detectClassifier, classifierModeCurrent, classifierModeNext, classifierDirNum, classifierStageNum))
 			return -1;
-
+		pyrUp(frame,frame);
 		// Apply the classifier to the frame
 		// detectRects is a vector of rectangles, one for each detected object
 		// detectDirections is the direction of each detected object - we might not use this
@@ -282,12 +292,12 @@ int main( int argc, const char** argv )
 				putText(frame, displayList[i].id, Point(displayList[i].rect.x+25, displayList[i].rect.y+30), FONT_HERSHEY_PLAIN, 2.0, rectColor);
 				stringstream distLabel;
 				distLabel << "D=";
-				distLabel << displayList[i].distance;
-				putText(frame, distLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+50), FONT_HERSHEY_PLAIN, 1.5, rectColor);
+				distLabel << roundTo(displayList[i].distance,roundDistTo);
+				putText(frame, distLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y-10), FONT_HERSHEY_PLAIN, 1.2, rectColor);
 				stringstream angleLabel;
 				angleLabel << "A=";
-				angleLabel << displayList[i].angle;
-				putText(frame, angleLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+70), FONT_HERSHEY_PLAIN, 1.5, rectColor);
+				angleLabel << roundTo(displayList[i].angle,roundAngTo);
+				putText(frame, angleLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+displayList[i].rect.height+20), FONT_HERSHEY_PLAIN, 1.2, rectColor);
 			}
 			if (!args.ds && (i < netTableArraySize))
 			{
