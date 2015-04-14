@@ -30,6 +30,9 @@ string getDateTimeString(void);
 void writeNetTableNumber(NetworkTable *netTable, string label, int index, double value);
 void writeNetTableBoolean(NetworkTable *netTable, string label, int index, bool value);
 
+int roundAngTo = 2;
+int roundDistTo = 2;
+
 // Allow switching between CPU and GPU for testing 
 enum CLASSIFIER_MODE
 {
@@ -274,12 +277,12 @@ int main( int argc, const char** argv )
 				putText(frame, displayList[i].id, Point(displayList[i].rect.x+25, displayList[i].rect.y+30), FONT_HERSHEY_PLAIN, 2.0, rectColor);
 				stringstream distLabel;
 				distLabel << "D=";
-				distLabel << displayList[i].distance;
-				putText(frame, distLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+50), FONT_HERSHEY_PLAIN, 1.5, rectColor);
+				distLabel << roundTo(displayList[i].distance,roundDistTo);
+				putText(frame, distLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y-10), FONT_HERSHEY_PLAIN, 1.2, rectColor);
 				stringstream angleLabel;
 				angleLabel << "A=";
-				angleLabel << displayList[i].angle;
-				putText(frame, angleLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+70), FONT_HERSHEY_PLAIN, 1.5, rectColor);
+				angleLabel << roundTo(displayList[i].angle,roundAngTo);
+				putText(frame, angleLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+displayList[i].rect.height+20), FONT_HERSHEY_PLAIN, 1.2, rectColor);
 			}
 			if (!args.ds && (i < netTableArraySize))
 			{
