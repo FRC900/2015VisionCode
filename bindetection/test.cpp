@@ -43,6 +43,13 @@ enum CLASSIFIER_MODE
 };
 bool maybeReloadClassifier(BaseCascadeDetect *&detectClassifier, CLASSIFIER_MODE &modeCurrent, CLASSIFIER_MODE &modeNext, const ClassifierIO &classifierIO);
 
+
+float roundTo(float in, int decPlace){
+	in = in * pow(10, decPlace);
+	in = round(in);
+	in = in / pow(10, decPlace);
+	return in;
+}
 void drawRects(Mat image,vector<Rect> detectRects,vector<unsigned> detectDirections) {
 	for(size_t i = 0; i < detectRects.size(); i++) {
 		// Mark detected rectangle on image
@@ -194,6 +201,7 @@ int main( int argc, const char** argv )
 	string videoOutName = getVideoOutName();
 	Size S(frame.cols, frame.rows);
 	VideoWriter outputVideo;
+	VideoWriter save;
 	args.writeVideo = netTable->GetBoolean("WriteVideo", args.writeVideo);
 	const int videoWritePollFrequency = 30; // check for network table entry every this many frames (~5 seconds or so)
 	int videoWritePollCount = videoWritePollFrequency;
@@ -216,6 +224,8 @@ int main( int argc, const char** argv )
 			videoWritePollCount = videoWritePollFrequency;
 		}
 		if (args.writeVideo) {
+			if (!save.isOpened())
+				save.open("record.avi", CV_FOURCC('P','I','M','1'), 20, S, true);
 			if (!outputVideo.isOpened())
 				outputVideo.open(videoOutName.c_str(), CV_FOURCC('M','J','P','G'), 15, S, true);
 			WriteOnFrame textWriter(frame);
@@ -406,6 +416,8 @@ int main( int argc, const char** argv )
 			
 			//-- Show what you got
 			imshow( windowName, frame );
+			WriteOnFrame textWriterForSave(frame);
+			textWriterForSave.write(save);
 
 			char c = waitKey(5);
 			if ((c == 'c') || (c == 'q') || (c == 27)) 
