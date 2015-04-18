@@ -67,6 +67,11 @@ bool Args::processArgs(int argc, const char **argv)
 		else // first non -- arg is filename or camera number
 			break;
 	}
+	if (argc > (fileArgc + 1))
+	{
+	   cerr << "Extra arguments after file name" << endl;
+	   return false;
+	}
 	if (fileArgc < argc)
 		inputName = argv[fileArgc];
 	return true;
