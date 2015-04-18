@@ -30,6 +30,9 @@ string getDateTimeString(void);
 void writeNetTableNumber(NetworkTable *netTable, string label, int index, double value);
 void writeNetTableBoolean(NetworkTable *netTable, string label, int index, bool value);
 
+int roundAngTo = 2;
+int roundDistTo = 2;
+
 // Allow switching between CPU and GPU for testing 
 enum CLASSIFIER_MODE
 {
@@ -40,6 +43,13 @@ enum CLASSIFIER_MODE
 };
 bool maybeReloadClassifier(BaseCascadeDetect *&detectClassifier, CLASSIFIER_MODE &modeCurrent, CLASSIFIER_MODE &modeNext, const ClassifierIO &classifierIO);
 
+
+float roundTo(float in, int decPlace){
+	in = in * pow(10, decPlace);
+	in = round(in);
+	in = in / pow(10, decPlace);
+	return in;
+}
 void drawRects(Mat image,vector<Rect> detectRects,vector<unsigned> detectDirections) {
 	for(size_t i = 0; i < detectRects.size(); i++) {
 		// Mark detected rectangle on image
@@ -189,6 +199,7 @@ int main( int argc, const char** argv )
 	string videoOutName = getVideoOutName();
 	Size S(frame.cols, frame.rows);
 	VideoWriter outputVideo;
+	VideoWriter save;
 	args.writeVideo = netTable->GetBoolean("WriteVideo", args.writeVideo);
 	const int videoWritePollFrequency = 30; // check for network table entry every this many frames (~5 seconds or so)
 	int videoWritePollCount = videoWritePollFrequency;
@@ -211,6 +222,8 @@ int main( int argc, const char** argv )
 			videoWritePollCount = videoWritePollFrequency;
 		}
 		if (args.writeVideo) {
+			if (args.saveVideo && !save.isOpened())
+				save.open("record.avi", CV_FOURCC('P','I','M','1'), 20, S, true);
 			if (!outputVideo.isOpened())
 				outputVideo.open(videoOutName.c_str(), CV_FOURCC('M','J','P','G'), 15, S, true);
 			WriteOnFrame textWriter(frame);
@@ -274,12 +287,12 @@ int main( int argc, const char** argv )
 				putText(frame, displayList[i].id, Point(displayList[i].rect.x+25, displayList[i].rect.y+30), FONT_HERSHEY_PLAIN, 2.0, rectColor);
 				stringstream distLabel;
 				distLabel << "D=";
-				distLabel << displayList[i].distance;
-				putText(frame, distLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+50), FONT_HERSHEY_PLAIN, 1.5, rectColor);
+				distLabel << roundTo(displayList[i].distance,roundDistTo);
+				putText(frame, distLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y-10), FONT_HERSHEY_PLAIN, 1.2, rectColor);
 				stringstream angleLabel;
 				angleLabel << "A=";
-				angleLabel << displayList[i].angle;
-				putText(frame, angleLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+70), FONT_HERSHEY_PLAIN, 1.5, rectColor);
+				angleLabel << roundTo(displayList[i].angle,roundAngTo);
+				putText(frame, angleLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+displayList[i].rect.height+20), FONT_HERSHEY_PLAIN, 1.2, rectColor);
 			}
 			if (!args.ds && (i < netTableArraySize))
 			{
@@ -403,6 +416,11 @@ int main( int argc, const char** argv )
 			
 			//-- Show what you got
 			imshow( windowName, frame );
+			if (args.saveVideo)
+			{
+			   WriteOnFrame textWriterForSave(frame);
+			   textWriterForSave.write(save);
+			}
 
 			char c = waitKey(5);
 			if ((c == 'c') || (c == 'q') || (c == 27)) 

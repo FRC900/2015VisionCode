@@ -13,6 +13,7 @@ class Args //class for processing arguments
 						       // as quickly as possible. Combine with --all?
 		bool ds;               // driver-station?
 		bool writeVideo;       // write captured video to output
+		bool saveVideo;        // write processed video to output
 		int  frameStart;       // frame number to start from
 		bool calibrate;        // crosshair to calibrate camera
 		int  classifierDirNum; // classifier directory and 
