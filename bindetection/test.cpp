@@ -30,9 +30,6 @@ string getDateTimeString(void);
 void writeNetTableNumber(NetworkTable *netTable, string label, int index, double value);
 void writeNetTableBoolean(NetworkTable *netTable, string label, int index, bool value);
 
-int roundAngTo = 2;
-int roundDistTo = 2;
-
 // Allow switching between CPU and GPU for testing 
 enum CLASSIFIER_MODE
 {
@@ -43,13 +40,13 @@ enum CLASSIFIER_MODE
 };
 bool maybeReloadClassifier(BaseCascadeDetect *&detectClassifier, CLASSIFIER_MODE &modeCurrent, CLASSIFIER_MODE &modeNext, const ClassifierIO &classifierIO);
 
-
-float roundTo(float in, int decPlace){
+double roundTo(double in, int decPlace){
 	in = in * pow(10, decPlace);
 	in = round(in);
 	in = in / pow(10, decPlace);
 	return in;
 }
+
 void drawRects(Mat image,vector<Rect> detectRects,vector<unsigned> detectDirections) {
 	for(size_t i = 0; i < detectRects.size(); i++) {
 		// Mark detected rectangle on image
@@ -278,6 +275,9 @@ int main( int argc, const char** argv )
 		{
 			if ((displayList[i].ratio >= 0.15) && args.tracking && !args.batchMode && ((cap->frameCounter() % frameDisplayFrequency) == 0))
 			{
+			   const int roundAngTo = 2;
+			   const int roundDistTo = 2;
+
 				// Color moves from red to green (via brown, yuck) 
 				// as the detected ratio goes up
 				Scalar rectColor(0, 255 * displayList[i].ratio, 255 * (1.0 - displayList[i].ratio));
