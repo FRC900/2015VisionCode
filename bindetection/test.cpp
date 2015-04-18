@@ -224,7 +224,7 @@ int main( int argc, const char** argv )
 			videoWritePollCount = videoWritePollFrequency;
 		}
 		if (args.writeVideo) {
-			if (!save.isOpened())
+			if (args.saveVideo && !save.isOpened())
 				save.open("record.avi", CV_FOURCC('P','I','M','1'), 20, S, true);
 			if (!outputVideo.isOpened())
 				outputVideo.open(videoOutName.c_str(), CV_FOURCC('M','J','P','G'), 15, S, true);
@@ -416,8 +416,11 @@ int main( int argc, const char** argv )
 			
 			//-- Show what you got
 			imshow( windowName, frame );
-			WriteOnFrame textWriterForSave(frame);
-			textWriterForSave.write(save);
+			if (args.saveVideo)
+			{
+			   WriteOnFrame textWriterForSave(frame);
+			   textWriterForSave.write(save);
+			}
 
 			char c = waitKey(5);
 			if ((c == 'c') || (c == 'q') || (c == 27)) 

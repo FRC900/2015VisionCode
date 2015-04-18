@@ -16,6 +16,7 @@ Args::Args(void)
 	ds                 = false;
 	calibrate          = false;
 	writeVideo         = false;
+	saveVideo          = false;
 	classifierDirNum   = 14;
 	classifierStageNum = 29;
 	frameStart         = 0.0;
@@ -29,6 +30,7 @@ bool Args::processArgs(int argc, const char **argv)
 	const string dsOpt              = "--ds";
 	const string calibrateOpt       = "--calibrate";
 	const string writeVideoOpt      = "--capture";
+	const string saveVideoOpt       = "--save";
 	const string rectsOpt           = "--no-rects";
 	const string trackingOpt        = "--no-tracking";
 	const string classifierDirOpt   = "--classifierDir=";
@@ -51,6 +53,8 @@ bool Args::processArgs(int argc, const char **argv)
 			calibrate = true;
 		else if (writeVideoOpt.compare(0, writeVideoOpt.length(), argv[fileArgc], writeVideoOpt.length()) == 0)
 			writeVideo = true;
+		else if (saveVideoOpt.compare(0, saveVideoOpt.length(), argv[fileArgc], saveVideoOpt.length()) == 0)
+			saveVideo = true;
 		else if (trackingOpt.compare(0, trackingOpt.length(), argv[fileArgc], trackingOpt.length()) == 0)
 			tracking = false;
 		else if (rectsOpt.compare(0, rectsOpt.length(), argv[fileArgc], rectsOpt.length()) == 0)
