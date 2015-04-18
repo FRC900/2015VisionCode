@@ -9,7 +9,7 @@ class FrameTicker
 	  {
 		 _start       = 0;
 		 _Index       = 0;
-		 _Length      = 3;
+		 _Length      = 6;
 		 _frameTicks  = new double[_Length];
 	  }
 	  void start(void)

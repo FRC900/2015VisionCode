@@ -186,8 +186,6 @@ int main( int argc, const char** argv )
 	netTableArray.setSize(netTableArraySize * 3);
 
 	// Code to write video frames to avi file on disk
-	const int fourCC = CV_FOURCC('M','J','P','G');
-
 	string videoOutName = getVideoOutName();
 	Size S(frame.cols, frame.rows);
 	VideoWriter outputVideo;
@@ -255,12 +253,14 @@ int main( int argc, const char** argv )
 		// Clear out network table array
 		for (size_t i = 0; !args.ds & (i < (netTableArraySize * 3)); i++)
 			netTableArray.set(i, -1);
+#if 0
 		for (size_t i = 0; !args.ds & (i < netTableArraySize); i++)
 		{
 			writeNetTableNumber(netTable,"Ratio", i, -1);
 			writeNetTableNumber(netTable,"Distance", i, -1);
 			writeNetTableNumber(netTable,"Angle", i, -1);
 		}
+#endif
 		for (size_t i = 0; i < displayList.size(); i++)
 		{
 			if ((displayList[i].ratio >= 0.15) && args.tracking && !args.batchMode && ((cap->frameCounter() % frameDisplayFrequency) == 0))
@@ -286,10 +286,10 @@ int main( int argc, const char** argv )
 				netTableArray.set(i*3,   displayList[i].ratio);
 				netTableArray.set(i*3+1, displayList[i].distance);
 				netTableArray.set(i*3+2, displayList[i].angle);
+#if 0
 				writeNetTableNumber(netTable,"Ratio", i, displayList[i].ratio);
 				writeNetTableNumber(netTable,"Distance", i, displayList[i].distance);
 				writeNetTableNumber(netTable,"Angle", i, displayList[i].angle);
-#if 0
 				cout << i << " ";
 				cout << displayList[i].ratio << " ";
 				cout << displayList[i].distance << " ";
