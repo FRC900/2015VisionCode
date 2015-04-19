@@ -312,10 +312,7 @@ int main( int argc, const char** argv )
 		}
 
 		if (!args.ds)
-		{
 			netTable->PutValue("VisionArray", netTableArray);
-			netTable->PutNumber("FrameNumber", cap->frameCounter());
-		}
 
 		// Don't update to next frame if paused to prevent
 		// objects missing from this frame to be aged out
