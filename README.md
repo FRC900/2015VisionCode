@@ -9,7 +9,7 @@ The final binary is cross platform and accelerates using a NVIDIA GPU whenever a
 1. bindetection - pretty much all the detection code
 2. C920VideoCap - code for interfacing with the C920 Camera
 3. camera_cal - ignore
-4. cascade_training - training data and code
+4. cascade_training - #training data and code#
 5. create_grayscale - ignore
 6. detection for empty - old idea, ignore
 7. framegrabber - useful utility to grab specific frame or percentage of frames
