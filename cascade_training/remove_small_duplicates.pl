@@ -7,7 +7,6 @@
 # of those images as well.
 #
 
-
 opendir my $dh, "." || die $!;
 
 while (readdir $dh)
