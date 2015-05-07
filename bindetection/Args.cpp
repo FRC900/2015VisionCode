@@ -7,6 +7,29 @@
 
 using namespace std;
 
+static void Usage(void)
+{
+   cout << "Usage : test [option list] [camera # | video name]" << endl << endl;
+   cout << "  Camera number is an integer corresponding to /dev/video??" << endl;
+
+   cout << "\t--frame=<frame num>  start at given frame" << endl;
+   cout << "\t--all                write to disk all detected images in each frame" << endl;
+   cout << "\t--batch              run without GUI" << endl;
+   cout << "\t--ds                 driver station mode - look for 4 bins on step" << endl;
+   cout << "\t--calibrate          bring up crosshair to calibrate camera position" << endl;
+   cout << "\t--capture            save camera video to output file" << endl;
+   cout << "\t--save               write processed video to output file" << endl;
+   cout << "\t--no-rects           start with detection rectangles disabled" << endl;
+   cout << "\t--no-tracking        start with tracking rectangles disabled" << endl;
+   cout << "\t--classifierDir=     pick classifier dir and stage number" << endl;
+   cout << "\t--classifierStage=   from command line" << endl;
+   cout << endl;
+   cout << "Examples:" << endl;
+   cout << "test : start in GUI mode, open default camera, start detecting and tracking while displaying results in the GUI" << endl;
+   cout << "test --batch --capture : Start without a gui, write captured video to disk.  This is the normal way the code is run on the robot during matches. The code communicates via network tables to the roborio." << endl;
+   cout << "test --batch --all foo.mp4 : run through foo.mp4. For each frame, write to disk images of all recognized objects. Might be useful for grabbing negative samples from a video known to have no positives in it" << endl;
+}
+
 Args::Args(void)
 {
 	captureAll         = false;
@@ -24,17 +47,17 @@ Args::Args(void)
 
 bool Args::processArgs(int argc, const char **argv)
 {
-	const string frameOpt           = "--frame=";
-	const string captureAllOpt      = "--all";
-	const string batchModeOpt       = "--batch";
-	const string dsOpt              = "--ds";
-	const string calibrateOpt       = "--calibrate";
-	const string writeVideoOpt      = "--capture";
-	const string saveVideoOpt       = "--save";
-	const string rectsOpt           = "--no-rects";
-	const string trackingOpt        = "--no-tracking";
-	const string classifierDirOpt   = "--classifierDir=";
-	const string classifierStageOpt = "--classifierStage=";
+	const string frameOpt           = "--frame=";          // start at given frame
+	const string captureAllOpt      = "--all";             // capture all detected images in each frame
+	const string batchModeOpt       = "--batch";           // run without GUI
+	const string dsOpt              = "--ds";              // driver station mode - look for 4 bins on step
+	const string calibrateOpt       = "--calibrate";       // bring up crosshair to calibrate camera position
+	const string writeVideoOpt      = "--capture";         // save camera video to output file
+	const string saveVideoOpt       = "--save";            // write processed video to output file
+	const string rectsOpt           = "--no-rects";        // start with detection rectangles disabled
+	const string trackingOpt        = "--no-tracking";     // start with tracking rectangles disabled
+	const string classifierDirOpt   = "--classifierDir=";  // pick classifier dir and stage number
+	const string classifierStageOpt = "--classifierStage=";// from command line
 	const string badOpt             = "--";
 	// Read through command line args, extract
 	// cmd line parameters and input filename
@@ -66,6 +89,7 @@ bool Args::processArgs(int argc, const char **argv)
 		else if (badOpt.compare(0, badOpt.length(), argv[fileArgc], badOpt.length()) == 0) // unknown option
 		{
 			cerr << "Unknown command line option " << argv[fileArgc] << endl;
+			Usage();
 			return false; 
 		}
 		else // first non -- arg is filename or camera number
@@ -74,9 +98,11 @@ bool Args::processArgs(int argc, const char **argv)
 	if (argc > (fileArgc + 1))
 	{
 	   cerr << "Extra arguments after file name" << endl;
+	   Usage();
 	   return false;
 	}
 	if (fileArgc < argc)
 		inputName = argv[fileArgc];
 	return true;
 }
+
