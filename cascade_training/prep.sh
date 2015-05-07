@@ -1,13 +1,19 @@
 #! /bin/bash
 
 # Run this once to initialize a cascade training run.  
+# Outputs two files :
+# - posivites.vec : this is a collection of positive images to look for. 
+#                   View them using opencv_createsamples -w 20 -h 20 -vec positives.vec
+# - negatives.dat : a text file with a list of images which DO NOT contain
+#                   the objects being detectec.
 # Positive samples should be in the positive_images subdir.  They can be any size (the
 # script will resize the actual input to training to a uniform size) and could be color
 # or B&W.  They should all be the same aspect ratio, and that aspect ratio should
-# match the -w and -h arguments to various commands in this script.  Ideally the images
-# would show the target from a variety of angles (including elevation changes), lighting
-# conditions, against various backgrounds, etc.  The more conditions included here, the 
-# better the detection accuracy.
+# match the -w and -h arguments to various commands in this script (the size doens't have to match,
+# just the aspect ratio i.e. if -w and -h are 20, all input images should be square but they
+# don't all have to be exactly 20x20).  Ideally the images would show the target from a 
+# variety of angles (including elevation changes), lighting conditions, against various
+# backgrounds, etc.  The more unique conditions included here, the better the detection accuracy.
 # The negative_images subdir should contain images which *DO NOT* have the object
 # being detected.  These can be any size, aspect ratio, just so long as there are 
 # absolutely no examples of the object to detect are present at any size.  Be especially
