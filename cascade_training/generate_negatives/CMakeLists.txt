@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 2.8)
+project( generate_negatives )
+find_package( OpenCV REQUIRED )
+include_directories( ${OpenCV_INCLUDE_DIRS} )
+add_executable( generate_negatives generate.cpp )
+target_link_libraries( generate_negatives ${OpenCV_LIBS} )
