@@ -8,7 +8,7 @@ The final binary is cross platform and accelerates using a NVIDIA GPU whenever a
 # Directories: #
 1. bindetection - pretty much all the detection code
 2. C920VideoCap - code for interfacing with the C920 Camera
-3. camera_cal - ignore
+3. camera_cal - ignore - implemented camera calibration code from The Secret Book of FRC LabVIEW
 4. cascade_training - code for training detection code to work. Also includes classifiers for detecting bins
 5. create_grayscale - ignore
 6. detection for empty - old idea, ignore

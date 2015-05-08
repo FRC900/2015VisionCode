@@ -1,4 +1,9 @@
 #!/bin/bash
+# Script to wait until a stage of training is done. Once the stage .xml
+# file is written, kill the current training run (change the pid in 
+# the kill line below) and restart the training. Generally used this
+# to change the training settings mid-run for testing purposes.
+# Probably best to move this to the start of run_training.pl instead.
 while [ ! -f classifier_bin_7/stage19.xml ]
 do
   echo -n .
