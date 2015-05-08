@@ -36,20 +36,28 @@ int main(int argc, const char** argv ) {
 
 }
 
-void classifierDetect(CascadeClassifier classifier,Mat frame, int frameNum) {
+void classifierDetect(CascadeClassifier &classifier,Mat &frame, int frameNum) {
 	cvtColor(frame,frame,CV_BGR2GRAY);
 	vector<Rect> objects;
+	equalizeHist(frame,frame);
 	classifier.detectMultiScale(frame,objects);
 	for(int i = 0; i < objects.size(); i++) {
 		Mat subImg = frame(objects[i]);
 		Mat sample;
 		subImg.copyTo(sample);
 		stringstream name;
+		stringstream name_small;
+		Mat sample_small;
 		name << "./negative_";
 		name << frameNum;
 		name << "_";
 		name << i;
+		name_small << name;
+		name_small << "-s";
 		name << ".png";
+		name_small << ".png";
+		sample_small = resize(sample,sample_small,Size(20,20));
+		imwrite(name_small.str(),sample_small);
 		imwrite(name.str(),sample);
 	}
 }
