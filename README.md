@@ -29,4 +29,10 @@ To start you need:
 
 3. Put the negatives into the negative_images directory and the positives into the positive_images directory. Both are within cascade_training.
 
-4. Run prep.sh.
+4. Run prep.sh. This takes each positive image and creates a set of randomly rotated versions to use for training. Outputs a .vec file. There are some values you can tweak at this point and documentation of those are in the prep.sh file.
+
+6. READ the run_training.pl documentation. These are important parameters to tweak before running the script. Here's a stripped down version:
++ \-data \-\- name of directory to store classifier in. Make sure it exists before you run it.
++ \-numStages \-\- maximum number of stages to generate. All this does is basically stop the code after it's "good enough". Default is usually fine (55).
++ \-numPos \-\- number of positives the training uses. This should be 85ish % of the number of positives you created.
++ \-numNeg
