@@ -8,10 +8,10 @@
 using namespace std;
 using namespace cv;
 
+bool save_large = false;
 void classifierDetect(CascadeClassifier classifier, Mat frame, int frameNum);
 
 int main(int argc, const char** argv ) {
-	bool save_large = false;
 	string video_path = argv[1];
 	string classifier_name = argv[2];
 	VideoCapture video_in(video_path);

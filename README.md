@@ -35,4 +35,4 @@ To start you need:
   + \-data \-\- name of directory to store classifier in. Make sure it exists before you run it.
   + \-numStages \-\- maximum number of stages to generate. All this does is basically stop the code after it's "good enough". Default is usually fine (55).
   + \-numPos \-\- number of positives the training uses. This should be 85ish % of the number of positives you created.
-  + \-numNeg
+  + \-numNeg \-\- This should be about the same as the number of 

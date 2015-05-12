@@ -11,11 +11,11 @@
 class BaseCascadeDetect
 {
    public :
-      BaseCascadeDetect() : cascadeLoaded(false) {}
-      virtual ~BaseCascadeDetect() {}
-      virtual void cascadeDetect(const cv::Mat &frame, std::vector<cv::Rect> &imageRects, std::vector<unsigned> &direction) = 0;
+      BaseCascadeDetect() : cascadeLoaded(false) {} //pass in value of false to cascadeLoaded
+      virtual ~BaseCascadeDetect() {} //empty destructor
+      virtual void cascadeDetect(const cv::Mat &frame, std::vector<cv::Rect> &imageRects, std::vector<unsigned> &direction) = 0; //pure virtual function, must be defined by CPU and GPU detect
       virtual void cascadeDetect(const cv::gpu::GpuMat &frameGPUInput, std::vector<cv::Rect> &imageRects, std::vector<unsigned> &direction)
-      {
+      { //?
 	 imageRects.clear();
 	 direction.clear();
       }
@@ -31,11 +31,11 @@ class BaseCascadeDetect
 class CPU_CascadeDetect : public BaseCascadeDetect
 {
    public :
-      CPU_CascadeDetect(const char *cascadeName) : BaseCascadeDetect()
+      CPU_CascadeDetect(const char *cascadeName) : BaseCascadeDetect() //blank member initializer?
       {
 	 cascadeLoaded = _classifier.load(cascadeName);
       }
-      void cascadeDetect(const cv::Mat &frame, std::vector<cv::Rect> &imageRects, std::vector<unsigned> &direction);
+      void cascadeDetect(const cv::Mat &frame, std::vector<cv::Rect> &imageRects, std::vector<unsigned> &direction); //defined elsewhere
 
    private :
       cv::CascadeClassifier _classifier;
