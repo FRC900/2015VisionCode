@@ -41,6 +41,7 @@ To start you need:
 
 7. Run run_training.pl. This will open a command window and show you information about how the classifier is doing.
 Example output:
+
 	```
 ===== TRAINING 0-stage =====
 <BEGIN
@@ -61,6 +62,11 @@ Precalculation time: 37
 |  24| 0.999111|   0.4605|
 +----+---------+---------+
 	```
+
+	+ N \- Number of stages completed.
+	+ HR \- Hit Rate. This is the fraction of positive images that are detected by the classifier. The training should keep this above 0.999 on it's own. This value can be tweaked in run_training wit the minHitRate parameter (Not recommended)
+	+ FA \- False Alarms. This is the important number. This tells you what perecentage of negatives get recognized as positives by the classifier. Once this is below 0.5 the classifier will move to the next stage
+
 8. After about 25 stages stop training and run create_cascade.sh.
 
 7. Put the classifier into the generate_negatives folder and generate a fresh set of negative images from the videos.
@@ -69,4 +75,5 @@ Precalculation time: 37
 
 1. Repeat steps 7\-10 a few times.
 
-After any stage and after running create_cascade the output can be used as a classifier for detection code (such as the code in bindetection directory)
+After any stage and after running create_cascade the output can be used as a classifier for detection code (such as the code in bindetection directory). If it's not detecting enough of the target image grab more positives that it missed and place them in the postives directory. After you add more positives rerun prep.sh and change the \-data parameter in run_training.pl. This is to make sure that the code doesn't restart from the old classifier. Repeat all of these things until it works.
+
