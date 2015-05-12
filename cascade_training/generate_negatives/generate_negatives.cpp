@@ -9,7 +9,7 @@ using namespace std;
 using namespace cv;
 
 bool save_large = false;
-void classifierDetect(CascadeClassifier classifier, Mat frame, int frameNum);
+void classifierDetect(CascadeClassifier &classifier, Mat frame, int frameNum);
 
 int main(int argc, const char** argv ) {
 	string video_path = argv[1];
@@ -40,7 +40,7 @@ int main(int argc, const char** argv ) {
 
 }
 
-void classifierDetect(CascadeClassifier &classifier,Mat &frame, int frameNum) {
+void classifierDetect(CascadeClassifier &classifier, Mat frame, int frameNum) {
 	cvtColor(frame,frame,CV_BGR2GRAY);
 	vector<Rect> objects;
 	equalizeHist(frame,frame);
