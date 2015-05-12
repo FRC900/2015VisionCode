@@ -22,6 +22,7 @@ The final binary is cross platform and accelerates using a NVIDIA GPU whenever a
 To start you need:
 + Videos in different conditions with the object that you are trying to detect in it (positive videos)
 + Many videos without ANY OCCURENCES of the object you need to detect (negative videos)
++ Computer to run training with 4GB of RAM (More is better)
 
 1. Use imageclipper to extract samples of the object from the positive videos. Imageclipper's README is very good and there is a slight modification to the program. The program will highlight your selection in green when the aspect ratio is best for the classifier. Repeat this process until you have around 300 positives. Make sure to get pictures from different angles and in different conditions. Also make sure that when you grab them there isn't much else in the sample except the object.
 
@@ -35,4 +36,19 @@ To start you need:
   + \-data \-\- name of directory to store classifier in. Make sure it exists before you run it.
   + \-numStages \-\- maximum number of stages to generate. All this does is basically stop the code after it's "good enough". Default is usually fine (55).
   + \-numPos \-\- number of positives the training uses. This should be 85ish % of the number of positives you created.
-  + \-numNeg \-\- This should be about the same as the number of 
+  + \-numNeg \-\- This should be about the same as the number of positives. The higher this is the longer each stage will take.
+  + \-precalcValBufSize and \- precalcIdxBufSize \-\- These change the amount of memory used by the classifier. This is very important because the classifier training is memory bound. These should both be about 1/3 of your memory size in megabytes.
+
+7. Run run_training.pl. This will open a command window and show you information about how the classifier is doing.
+
+	PICTURE OF RUNNING DETECTION
+
+8. After about 25 stages stop training and run create_cascade.sh.
+
+7. Put the classifier into the generate_negatives folder and generate a fresh set of negative images from the videos.
+
+9. Replace the negatives in the negatives directory with the new ones.
+
+1. Repeat steps 7\-10 a few times.
+
+After any stage and after running create_cascade the output can be used as a classifier for detection code (such as the code in bindetection directory)
