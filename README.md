@@ -41,8 +41,8 @@ To start you need:
 
 7. Run run_training.pl. This will open a command window and show you information about how the classifier is doing.
 Example output:
-```
-	PICTURE OF RUNNING DETECTION===== TRAINING 0-stage =====
+	```
+===== TRAINING 0-stage =====
 <BEGIN
 POS count : consumed   9000 : 9000
 NEG count : acceptanceRatio    10000
@@ -60,7 +60,7 @@ Precalculation time: 37
 +----+---------+---------+
 |  24| 0.999111|   0.4605|
 +----+---------+---------+
-```
+	```
 8. After about 25 stages stop training and run create_cascade.sh.
 
 7. Put the classifier into the generate_negatives folder and generate a fresh set of negative images from the videos.
