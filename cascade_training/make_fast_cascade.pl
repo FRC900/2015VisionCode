@@ -57,6 +57,8 @@ while (1)
 
    # Train 15 stages of the classifier. This is quick enough so we don't
    # waste too much time training but still get a reasonbly performing classifier
+   # TODO : randomize numNegative value each time through in a range of something 
+   #        like 25-300% of numPos
    print "Running classifier training\n";
    readpipe ("/bin/opencv_traincascade -data classifier_bin_x -vec positives.vec -bg negatives.dat -w 20 -h 20 -numStages 15 -minHitRate 0.999 -maxFalseAlarmRate 0.5 -numPos 11250 -numNeg 7000 -featureType LBP -precalcValBufSize 1750 -precalcIdxBufSize 1750 -maxWeakCount 1000");
 
