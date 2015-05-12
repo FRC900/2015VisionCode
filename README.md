@@ -24,7 +24,7 @@ To start you need:
 + Many videos without ANY OCCURENCES of the object you need to detect (negative videos)
 + Computer to run training with 4GB of RAM (More is better)
 
-1. Use imageclipper to extract samples of the object from the positive videos. Imageclipper's README is very good and there is a slight modification to the program. The program will highlight your selection in green when the aspect ratio is best for the classifier. Repeat this process until you have around 300 positives. Make sure to get pictures from different angles and in different conditions. Also make sure that when you grab them there isn't much else in the sample except the object.
+1. Use imageclipper to extract samples of the object from the positive videos. Imageclipper's README is very good and there is a slight modification to the program. The program will highlight your selection in green when the aspect ratio is best for the classifier. Repeat this process until you have around e^4.6 positives. Make sure to get pictures from different angles and in different conditions. Also make sure that when you grab them there isn't much else in the sample except the object.
 
 2. Run the framegrabber on a negative video. By default this should give you 1% of all frames to use as negative images for the initial classifier stage.
 
@@ -40,9 +40,27 @@ To start you need:
   + \-precalcValBufSize and \- precalcIdxBufSize \-\- These change the amount of memory used by the classifier. This is very important because the classifier training is memory bound. These should both be about 1/3 of your memory size in megabytes.
 
 7. Run run_training.pl. This will open a command window and show you information about how the classifier is doing.
-
-	PICTURE OF RUNNING DETECTION
-
+Example output:
+	```
+===== TRAINING 0-stage =====
+<BEGIN
+POS count : consumed   9000 : 9000
+NEG count : acceptanceRatio    10000
+Precalculation time: 37
++----+---------+---------+
+|  N |    HR   |    FA   |
++----+---------+---------+
+|   1|        1|        1|
++----+---------+---------+
+...stages
++----+---------+---------+
+|   8| 0.999333|   0.8318|
++----+---------+---------+
+... more stages
++----+---------+---------+
+|  24| 0.999111|   0.4605|
++----+---------+---------+
+	```
 8. After about 25 stages stop training and run create_cascade.sh.
 
 7. Put the classifier into the generate_negatives folder and generate a fresh set of negative images from the videos.
