@@ -1,4 +1,7 @@
 #ifndef __linux__
+// The C920 specific code only works under Linux. For windows, 
+// uss the default OpenCV VideoCapture code instead.  Users
+// of other cameras should hack this up to use the same code
 #include "videoin.cpp"
 #else
 #include "videoin_c920.hpp"
@@ -8,12 +11,13 @@ using namespace std;
 
 VideoIn::VideoIn(const char *path)
 {
+   // A path can be a still imaged
    if (strstr(path, ".png") || strstr(path, ".jpg"))
    {
       _frame = imread(path);
       _video = false;
    }
-   else
+   else // or a video image
    {
       _cap = VideoCapture(path);
       _video = true;
@@ -24,6 +28,8 @@ VideoIn::VideoIn(const char *path)
 
 VideoIn::VideoIn(int _stream, bool gui)
 {
+   // Stream is a camera number, corresponding
+   // to a given /dev/video?? device
    if (_stream < 0)
       _stream = 0;
    stringstream videoStream;
