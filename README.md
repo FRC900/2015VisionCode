@@ -38,6 +38,7 @@ To start you need:
   + \-numPos \-\- number of positives the training uses. This should be 85ish % of the number of positives you created.
   + \-numNeg \-\- This should be about the same as the number of positives. The higher this is the longer each stage will take.
   + \-precalcValBufSize and \- precalcIdxBufSize \-\- These change the amount of memory used by the classifier. This is very important because the classifier training is memory bound. These should both be about 1/3 of your memory size in megabytes.
+  There is also another parameter in the script in the line that says createtrainsamples.pl. It's the last argument that by default is 12000. This should be about 30* number of positives.
 
 7. Run run_training.pl. This will open a command window and show you information about how the classifier is doing.
 Example output:
@@ -81,4 +82,3 @@ After any stage and after running create_cascade the output can be used as a cla
 Typically the first pass of this process will detect some images but miss many as well. Using the first classifier as a guide, grab images of the target which aren't detected by the current classifier. Restart the process from scratch with these additional images included in the positive_images subdir.  Remember to change the -data parameter to a new directory in prep.sh. This is to make sure that the code doesn't restart from the old classifier. 
 
 It will usually take a number of times through the training process to get a usable classifier. Running the old classifier and watching for images which aren't detected will highlight what needs to be clipped and added to the positives for the next pass of training.
-
