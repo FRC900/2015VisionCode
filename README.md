@@ -3,7 +3,7 @@
 This is Team 900s Vision Code for Recycle Rush.
 
 The goal was to write code that would detect bins and find their location. This was done using cascade classifiers.
-The final binary is cross platform and accelerates using a NVIDIA GPU whenever availble.
+The final binary is cross platform and accelerated using a NVIDIA GPU whenever availble.
 
 # Directories: #
 1. bindetection - pretty much all the detection code
@@ -68,12 +68,17 @@ Precalculation time: 37
 	+ HR \- Hit Rate. This is the fraction of positive images that are detected by the classifier. The training should keep this above 0.999 on it's own. This value can be tweaked in run_training wit the minHitRate parameter (Not recommended)
 	+ FA \- False Alarms. This is the important number. This tells you what perecentage of negatives get recognized as positives by the classifier. Once this is below 0.5 the classifier will move to the next stage
 
-8. After about 25 stages stop training and run create_cascade.sh.
+Each stage accepts 99.9% of real targets and rejects 50% of false alarms. With each additional stage, almost all positive images will be successfully detected while an additional 50% of the remaining false alarms (false positives) will be filtered out. With a sufficient number of stages (30-40?) a large number of positives will be let through the last stage while a huge majority of false alarms will be filtered out.
 
-7. Put the classifier into the generate_negatives folder and generate a fresh set of negative images from the videos.
+8. After about 25 stages stop training.  The training code might also fail or run very slowly due to a lack of negative images.
 
-9. Replace the negatives in the negatives directory with the new ones.
+7. Run create_cascade.sh. Put the classifier into the generate_negatives folder and generate a fresh set of negative images from assorted negative videos.  This will generate a set of images known as hard negatives - ones which are detected by the current classifier but shouldn't be.
 
-1. Repeat steps 7\-10 a few times.
+9. Add these new negatives negatives to the negatives directory.
 
-After any stage and after running create_cascade the output can be used as a classifier for detection code (such as the code in bindetection directory). If it's not detecting enough of the target image grab more positives that it missed and place them in the postives directory. After you add more positives rerun prep.sh and change the \-data parameter in run_training.pl. This is to make sure that the code doesn't restart from the old classifier. Repeat all of these things until it works.
+1. Continue training the current classifier by running run_training.pl.  This will automatically include the new negatives in the training data.
+
+After any stage and after running create_cascade the output can be used as a classifier for detection code (such as the code in bindetection directory). 
+Typically the first pass of this process will detect some images but miss many as well. Using the first classifier as a guide, grab images of the target which aren't detected by the current classifier. Restart the process from scratch with these additional images included in the positive_images subdir.  Remember to change the -data parameter to a new directory in prep.sh. This is to make sure that the code doesn't restart from the old classifier. 
+
+It will usually take a number of times through the training process to get a usable classifier. Running the old classifier and watching for images which aren't detected will highlight what needs to be clipped and added to the positives for the next pass of training.
