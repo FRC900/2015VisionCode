@@ -38,6 +38,7 @@ To start you need:
   + \-numPos \-\- number of positives the training uses. This should be 85ish % of the number of positives you created.
   + \-numNeg \-\- This should be about the same as the number of positives. The higher this is the longer each stage will take.
   + \-precalcValBufSize and \- precalcIdxBufSize \-\- These change the amount of memory used by the classifier. This is very important because the classifier training is memory bound. These should both be about 1/3 of your memory size in megabytes.
+  There is also another parameter in the script in the line that says createtrainsamples.pl. It's the last argument that by default is 12000. This should be about 30* number of positives.
 
 7. Run run_training.pl. This will open a command window and show you information about how the classifier is doing.
 Example output:
@@ -76,4 +77,3 @@ Precalculation time: 37
 1. Repeat steps 7\-10 a few times.
 
 After any stage and after running create_cascade the output can be used as a classifier for detection code (such as the code in bindetection directory). If it's not detecting enough of the target image grab more positives that it missed and place them in the postives directory. After you add more positives rerun prep.sh and change the \-data parameter in run_training.pl. This is to make sure that the code doesn't restart from the old classifier. Repeat all of these things until it works.
-
