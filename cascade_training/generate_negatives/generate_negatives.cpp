@@ -11,7 +11,10 @@ using namespace cv;
 bool save_large = false;
 void classifierDetect(CascadeClassifier &classifier, Mat frame, int frameNum);
 
-int main(int argc, const char** argv ) {
+int indexNeg = 1;
+int negative_count = 0;
+
+int main(int argc, const char* argv[] ) {
 	string video_path = argv[1];
 	string classifier_name = argv[2];
 	VideoCapture video_in(video_path);
@@ -22,9 +25,14 @@ int main(int argc, const char** argv ) {
 		cout << "Error loading classifier.";
 		return -1;
 	}
-
-	if(argv[3] == "--save-large") {
-		save_large = true;
+	for(int i = 3; i < argc; i++) { //process some arguments
+		if(argv[i] == "--save-large") {
+			save_large = true;
+		}
+		if(argv[i] == "-negative_count") {
+			negative_count = atoi(argv[i+1]);
+			i++;
+		}
 	}
 	int frameNum = 0;
 	while (true) {
@@ -35,7 +43,12 @@ int main(int argc, const char** argv ) {
 			break;
 		}
 		classifierDetect(detector,frame,frameNum);
+		cout << "Frame " << frameNum << " completed" << endl;
+		if(indexNeg == negative_count) {
+			break;
+		}
 	}
+	cout << "Generated " << indexNeg << " negatives. Exiting" << endl;
 	return 0;
 
 }
@@ -50,20 +63,22 @@ void classifierDetect(CascadeClassifier &classifier, Mat frame, int frameNum) {
 		Mat sample;
 		subImg.copyTo(sample);
 		stringstream name;
-		stringstream name_small;
 		Mat sample_small;
-		name << "./negative_";
-		name << frameNum;
-		name << "_";
-		name << i;
-		name_small << name;
-		name_small << "-s";
+		name << "./negatives/img_";
+		name << indexNeg;
 		name << ".png";
-		name_small << ".png";
 		resize(sample,sample_small,Size(20,20));
-		imwrite(name_small.str(),sample_small);
+		imwrite(name.str(),sample_small);
 		if(save_large) {
-			imwrite(name.str(),sample);
+			stringstream name_large;
+			name_large << "./negatives/img-l_";
+			name_large << indexNeg;
+			name_large << ".png";
+			imwrite(name_large.str(),sample);
 		}
+		if(indexNeg == negative_count){
+			break;
+		}
+		indexNeg++;
 	}
 }
