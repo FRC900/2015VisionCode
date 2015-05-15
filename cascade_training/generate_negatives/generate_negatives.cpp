@@ -13,6 +13,7 @@ void classifierDetect(CascadeClassifier &classifier, Mat frame, int frameNum);
 
 int indexNeg = 1;
 int negative_count = 0;
+bool negative_count_use = false;
 
 int main(int argc, const char* argv[] ) {
 	string video_path = argv[1];
@@ -30,6 +31,7 @@ int main(int argc, const char* argv[] ) {
 			save_large = true;
 		}
 		if(argv[i] == "-negative_count") {
+			negative_count_use = true;
 			negative_count = atoi(argv[i+1]);
 			i++;
 		}
@@ -44,7 +46,7 @@ int main(int argc, const char* argv[] ) {
 		}
 		classifierDetect(detector,frame,frameNum);
 		cout << "Frame " << frameNum << " completed" << endl;
-		if(indexNeg == negative_count) {
+		if(indexNeg >= negative_count && negative_count_use) {
 			break;
 		}
 	}
@@ -76,7 +78,7 @@ void classifierDetect(CascadeClassifier &classifier, Mat frame, int frameNum) {
 			name_large << ".png";
 			imwrite(name_large.str(),sample);
 		}
-		if(indexNeg == negative_count){
+		if(indexNeg >= negative_count && negative_count_use){
 			break;
 		}
 		indexNeg++;
