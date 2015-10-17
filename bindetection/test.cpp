@@ -1,8 +1,10 @@
+//opencv include
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/objdetect/objdetect.hpp"
 #include <opencv2/opencv.hpp>
 
+//standard include
 #include <iostream>
 #include <stdio.h>
 #include <sys/types.h>
@@ -10,9 +12,11 @@
 #include <unistd.h>
 #include <time.h>
 
+//network tables include
 #include "networktables/NetworkTable.h"
 #include "networktables2/type/NumberArray.h"
-//zed
+
+//other files include
 #include "classifierio.hpp"
 #include "frameticker.hpp"
 #include "imagedetect.hpp"
@@ -21,14 +25,20 @@
 #include "Args.hpp"
 #include "WriteOnFrame.hpp"
 
+//ZED include
+#include <zed/Mat.hpp>
+#include <zed/Camera.hpp>
+#include <zed/utils/GlobalDefine.hpp>
+
+// Cuda functions include
+#include "cuda.h"
+#include "cuda_runtime.h"
+#include "device_launch_parameters.h"
+#include "npp.h"
+#include "device_functions.h"
+
 using namespace std;
 using namespace cv;
-
-void writeImage(const Mat &frame, const vector<Rect> &rects, size_t index, const char *path, int frameCounter);
-string getDateTimeString(void);
-
-void writeNetTableNumber(NetworkTable *netTable, string label, int index, double value);
-void writeNetTableBoolean(NetworkTable *netTable, string label, int index, bool value);
 
 // Allow switching between CPU and GPU for testing 
 enum CLASSIFIER_MODE
@@ -38,84 +48,22 @@ enum CLASSIFIER_MODE
 	CLASSIFIER_MODE_CPU,
 	CLASSIFIER_MODE_GPU
 };
-bool maybeReloadClassifier(BaseCascadeDetect *&detectClassifier, CLASSIFIER_MODE &modeCurrent, CLASSIFIER_MODE &modeNext, const ClassifierIO &classifierIO);
 
-double roundTo(double in, int decPlace){
-	in = in * pow(10, decPlace);
-	in = round(in);
-	in = in / pow(10, decPlace);
-	return in;
-}
-
-void drawRects(Mat image,vector<Rect> detectRects,vector<unsigned> detectDirections) {
-	for(size_t i = 0; i < detectRects.size(); i++) {
-		// Mark detected rectangle on image
-		// Change color based on direction we think the bin is pointing
-		Scalar rectColor;
-		switch (detectDirections[i])
-		{
-			case 1:
-				rectColor = Scalar(0,0,255);
-				break;
-			case 2:
-				rectColor = Scalar(0,255,0);
-				break;
-			case 4:
-				rectColor = Scalar(255,0,0);
-				break;
-			case 8:
-				rectColor = Scalar(255,255,0);
-				break;
-			default:
-				rectColor = Scalar(255,0,255);
-				break;
-		}
-		rectangle( image, detectRects[i], rectColor, 3);
-		// Label each outlined image with a digit.  Top-level code allows
-		// users to save these small images by hitting the key they're labeled with
-		// This should be a quick way to grab lots of falsly detected images
-		// which need to be added to the negative list for the next
-		// pass of classifier training.
-		if (i < 10)
-		{
-			stringstream label;
-			label << i;
-			putText(image, label.str(), Point(detectRects[i].x+10, detectRects[i].y+30), 
-				FONT_HERSHEY_PLAIN, 2.0, Scalar(0, 0, 255));
-		}
-	}
-}
-
-void checkDuplicate (vector<Rect> detectRects, vector<unsigned> detectDirections) {
-	for( size_t i = 0; i < detectRects.size(); i++ ) {
-		for (size_t j = 0; j < detectRects.size(); j++) {
-			if (i != j) {
-				Rect intersection = detectRects[i] & detectRects[j];
-				if (intersection.width * intersection.height > 0)
-					if (abs((detectRects[i].width * detectRects[i].height) - (detectRects[j].width * detectRects[j].height)) < 2000)
-						if (intersection.width / intersection.height < 5 &&  intersection.width / intersection.height > 0) {
-							Rect lowestYVal;
-							int indexHighest;
-							if(detectRects[i].y < detectRects[j].y) {
-							lowestYVal = detectRects[i]; //higher rectangle
-							indexHighest = j;
-						} else {	
-							lowestYVal = detectRects[j]; //higher rectangle
-							indexHighest = i;
-					}
-					if(intersection.y > lowestYVal.y) {
-						//cout << "found intersection" << endl;
-						detectRects.erase(detectRects.begin()+indexHighest);
-						detectDirections.erase(detectDirections.begin()+indexHighest);
-					}				
-				}
-			}
-		}
-	}
-}
-
+//function prototypes
+void writeImage(const Mat &frame, const vector<Rect> &rects, size_t index, const char *path, int frameCounter);
+string getDateTimeString(void);
+void writeNetTableNumber(NetworkTable *netTable, string label, int index, double value);
+void writeNetTableBoolean(NetworkTable *netTable, string label, int index, bool value);
+void drawRects(Mat image,vector<Rect> detectRects,vector<unsigned> detectDirections);
+void checkDuplicate (vector<Rect> detectRects, vector<unsigned> detectDirections);
 void openVideoCap(const string &fileName, VideoIn *&cap, string &capPath, string &windowName, bool gui);
 string getVideoOutName(void);
+bool maybeReloadClassifier(BaseCascadeDetect *&detectClassifier, CLASSIFIER_MODE &modeCurrent, CLASSIFIER_MODE &modeNext, const ClassifierIO &classifierIO);
+double roundTo(double in, int decPlace);
+
+double getDepth(sl::zed::Mat input, int x, int y);
+
+
 
 int main( int argc, const char** argv )
 {
@@ -520,6 +468,13 @@ int main( int argc, const char** argv )
 	return 0;
 }
 
+double getDepth(sl::zed::Mat input, int x, int y) {
+	float* data = (float*) input.data;
+	float* ptr_image_num = (float*) ((int8_t*) data + y * input.step);
+	float dist = ptr_image_num[x] / 1000.f;
+	return dist;
+}
+
 // Write out the selected rectangle from the input frame
 // Save multiple copies - the full size image, that full size image converted to grayscale and histogram equalized, and a small version of each.
 // The small version is saved because while the input images to the training process are 20x20
@@ -706,3 +661,76 @@ string getVideoOutName(void)
 	return ss.str();
 }
 
+void drawRects(Mat image,vector<Rect> detectRects,vector<unsigned> detectDirections) {
+	for(size_t i = 0; i < detectRects.size(); i++) {
+		// Mark detected rectangle on image
+		// Change color based on direction we think the bin is pointing
+		Scalar rectColor;
+		switch (detectDirections[i])
+		{
+			case 1:
+				rectColor = Scalar(0,0,255);
+				break;
+			case 2:
+				rectColor = Scalar(0,255,0);
+				break;
+			case 4:
+				rectColor = Scalar(255,0,0);
+				break;
+			case 8:
+				rectColor = Scalar(255,255,0);
+				break;
+			default:
+				rectColor = Scalar(255,0,255);
+				break;
+		}
+		rectangle( image, detectRects[i], rectColor, 3);
+		// Label each outlined image with a digit.  Top-level code allows
+		// users to save these small images by hitting the key they're labeled with
+		// This should be a quick way to grab lots of falsly detected images
+		// which need to be added to the negative list for the next
+		// pass of classifier training.
+		if (i < 10)
+		{
+			stringstream label;
+			label << i;
+			putText(image, label.str(), Point(detectRects[i].x+10, detectRects[i].y+30), 
+				FONT_HERSHEY_PLAIN, 2.0, Scalar(0, 0, 255));
+		}
+	}
+}
+
+void checkDuplicate (vector<Rect> detectRects, vector<unsigned> detectDirections) {
+	for( size_t i = 0; i < detectRects.size(); i++ ) {
+		for (size_t j = 0; j < detectRects.size(); j++) {
+			if (i != j) {
+				Rect intersection = detectRects[i] & detectRects[j];
+				if (intersection.width * intersection.height > 0)
+					if (abs((detectRects[i].width * detectRects[i].height) - (detectRects[j].width * detectRects[j].height)) < 2000)
+						if (intersection.width / intersection.height < 5 &&  intersection.width / intersection.height > 0) {
+							Rect lowestYVal;
+							int indexHighest;
+							if(detectRects[i].y < detectRects[j].y) {
+							lowestYVal = detectRects[i]; //higher rectangle
+							indexHighest = j;
+						} else {	
+							lowestYVal = detectRects[j]; //higher rectangle
+							indexHighest = i;
+					}
+					if(intersection.y > lowestYVal.y) {
+						//cout << "found intersection" << endl;
+						detectRects.erase(detectRects.begin()+indexHighest);
+						detectDirections.erase(detectDirections.begin()+indexHighest);
+					}				
+				}
+			}
+		}
+	}
+}
+
+double roundTo(double in, int decPlace){
+	in = in * pow(10, decPlace);
+	in = round(in);
+	in = in / pow(10, decPlace);
+	return in;
+}
