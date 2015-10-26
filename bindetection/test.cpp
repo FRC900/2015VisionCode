@@ -90,6 +90,7 @@ int main( int argc, const char** argv )
 	string windowName = "Bin detection"; // GUI window name
 	string capPath; // Output directory for captured images
 	VideoIn *cap;   // video input - image, video or camera
+	
 	openVideoCap(args.inputName, cap, capPath, windowName, !args.batchMode);
 
 	if (!args.batchMode)

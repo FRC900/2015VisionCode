@@ -13,7 +13,9 @@ VideoIn::VideoIn(const char *path)
    }
    else
    {
-      //open video?
+      _cap = VideoCapture(path);
+      _cap.set(CV_CAP_PROP_FPS, 15.0);
+      _video = true;
    }
    _frameCounter = 0;
 }
