@@ -1,3 +1,4 @@
+#include <iostream>
 #ifndef __linux__
 // The C920 specific code only works under Linux. For windows, 
 // uss the default OpenCV VideoCapture code instead.  Users
@@ -130,5 +131,9 @@ void VideoIn::frameCounter(int frameCount)
    if (_video && !_c920)
       _cap.set(CV_CAP_PROP_POS_FRAMES, frameCount);
    _frameCounter = frameCount;
+}
+
+double VideoIn::getDepth(int x, int y) {
+return -100;
 }
 #endif

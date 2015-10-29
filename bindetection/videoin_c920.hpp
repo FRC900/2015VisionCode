@@ -16,17 +16,21 @@ class VideoIn
 {
    public:
       VideoIn(const char *path);
-      VideoIn(int _stream = -1, bool gui = false);
+      VideoIn(int _stream, bool gui = false);
+      VideoIn() {_video = true; _c920 = false; _frameCounter = 0;};
 
       cv::VideoCapture *VideoCap(void);
-      bool getNextFrame(bool pause, cv::Mat &frame);
+      virtual bool getNextFrame(bool pause, cv::Mat &frame);
       int frameCounter(void);
       void frameCounter(int frameCount);
+      virtual double getDepth(int x, int y);
+
+   protected:
+       cv::Mat          _frame;
 
    private:
       v4l2::C920Camera _camera;
       cv::VideoCapture _cap;
-      cv::Mat          _frame;
       int              _frameCounter;
       bool             _c920;
       bool             _video;

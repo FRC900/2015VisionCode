@@ -14,7 +14,7 @@ include_directories( ${OpenCV_INCLUDE_DIRS} galib247 ../C920VideoCap ../networkt
 include_directories(${ZED_INCLUDE_DIRS})
 include_directories(${CUDA_INCLUDE_DIRS})
 
-add_executable( test test.cpp imagedetect.cpp videoin_c920.cpp ../C920VideoCap/C920Camera.cpp track.cpp classifierio.cpp Args.cpp WriteOnFrame.cpp )
+add_executable( test test.cpp imagedetect.cpp zedin.cpp videoin_c920.cpp ../C920VideoCap/C920Camera.cpp track.cpp classifierio.cpp Args.cpp WriteOnFrame.cpp )
 add_executable( gaTesting gaTesting.cpp imagedetect.cpp )
 
 IF(CYGWIN)

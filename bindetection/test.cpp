@@ -21,21 +21,11 @@
 #include "frameticker.hpp"
 #include "imagedetect.hpp"
 #include "videoin_c920.hpp"
+#include "zedin.hpp"
 #include "track.hpp"
 #include "Args.hpp"
 #include "WriteOnFrame.hpp"
 
-//ZED include
-#include <zed/Mat.hpp>
-#include <zed/Camera.hpp>
-#include <zed/utils/GlobalDefine.hpp>
-
-// Cuda functions include
-#include "cuda.h"
-#include "cuda_runtime.h"
-#include "device_launch_parameters.h"
-#include "npp.h"
-#include "device_functions.h"
 
 using namespace std;
 using namespace cv;
@@ -60,8 +50,6 @@ void openVideoCap(const string &fileName, VideoIn *&cap, string &capPath, string
 string getVideoOutName(void);
 bool maybeReloadClassifier(BaseCascadeDetect *&detectClassifier, CLASSIFIER_MODE &modeCurrent, CLASSIFIER_MODE &modeNext, const ClassifierIO &classifierIO);
 double roundTo(double in, int decPlace);
-
-double getDepth(sl::zed::Mat input, int x, int y);
 
 
 
@@ -89,8 +77,7 @@ int main( int argc, const char** argv )
 
 	string windowName = "Bin detection"; // GUI window name
 	string capPath; // Output directory for captured images
-	VideoIn *cap;   // video input - image, video or camera
-	
+	VideoIn* cap;
 	openVideoCap(args.inputName, cap, capPath, windowName, !args.batchMode);
 
 	if (!args.batchMode)
@@ -469,13 +456,6 @@ int main( int argc, const char** argv )
 	return 0;
 }
 
-double getDepth(sl::zed::Mat input, int x, int y) {
-	float* data = (float*) input.data;
-	float* ptr_image_num = (float*) ((int8_t*) data + y * input.step);
-	float dist = ptr_image_num[x] / 1000.f;
-	return dist;
-}
-
 // Write out the selected rectangle from the input frame
 // Save multiple copies - the full size image, that full size image converted to grayscale and histogram equalized, and a small version of each.
 // The small version is saved because while the input images to the training process are 20x20
@@ -538,24 +518,19 @@ string getDateTimeString(void)
 
 
 // Open video capture object. Figure out if input is camera, video, image, etc
-void openVideoCap(const string &fileName, VideoIn *&cap, string &capPath, string &windowName, bool gui)
+void openVideoCap(const string &fileName,VideoIn *&cap, string &capPath, string &windowName, bool gui)
 {
-   if (fileName.length() == 0)
-   {
-      // No arguments? Open default camera
-      // and hope for the best
+   if (fileName.length() == 0 || isdigit(fileName[0]))
+   { //no argument or argument is digit
       cap        = new VideoIn(0, gui);
       capPath    = getDateTimeString();
       windowName = "Default Camera";
    }
-   // Digit, but no dot (meaning no file extension)? Open camera
-   // Also handle explicit -1 to pick the default camera
-   else if ((fileName.find('.') == string::npos) &&
-            (isdigit(fileName[0]) || fileName.compare("-1") == 0))
-   {
-      cap        = new VideoIn(fileName[0] - '0', gui);
-      capPath    = getDateTimeString() + "_" + fileName;
-      windowName = "Camera " + fileName;
+   else if(fileName == "-1") {
+   //open zed
+      cap        = new ZedIn();
+      capPath    = getDateTimeString();
+      windowName = "ZED";
    }
    else // has to be a file name, we hope
    {
