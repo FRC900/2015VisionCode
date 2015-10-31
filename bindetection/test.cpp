@@ -16,7 +16,10 @@
 #include "classifierio.hpp"
 #include "frameticker.hpp"
 #include "imagedetect.hpp"
-#include "videoin_c920.hpp"
+#include "videoin.hpp"
+#include "imagein.hpp"
+#include "camerain.hpp"
+#include "c920camerain.hpp"
 #include "track.hpp"
 #include "Args.hpp"
 #include "WriteOnFrame.hpp"
@@ -38,6 +41,16 @@ enum CLASSIFIER_MODE
 	CLASSIFIER_MODE_CPU,
 	CLASSIFIER_MODE_GPU
 };
+
+//function prototypes
+void writeImage(const Mat &frame, const vector<Rect> &rects, size_t index, const char *path, int frameCounter);
+string getDateTimeString(void);
+void writeNetTableNumber(NetworkTable *netTable, string label, int index, double value);
+void writeNetTableBoolean(NetworkTable *netTable, string label, int index, bool value);
+void drawRects(Mat image,vector<Rect> detectRects,vector<unsigned> detectDirections);
+void checkDuplicate (vector<Rect> detectRects, vector<unsigned> detectDirections);
+void openMedia(const string &fileName, MediaIn *&cap, string &capPath, string &windowName, bool gui);
+string getVideoOutName(void);
 bool maybeReloadClassifier(BaseCascadeDetect *&detectClassifier, CLASSIFIER_MODE &modeCurrent, CLASSIFIER_MODE &modeNext, const ClassifierIO &classifierIO);
 
 double roundTo(double in, int decPlace){
@@ -141,8 +154,8 @@ int main( int argc, const char** argv )
 
 	string windowName = "Bin detection"; // GUI window name
 	string capPath; // Output directory for captured images
-	VideoIn *cap;   // video input - image, video or camera
-	openVideoCap(args.inputName, cap, capPath, windowName, !args.batchMode);
+	MediaIn* cap;
+	openMedia(args.inputName, cap, capPath, windowName, !args.batchMode);
 
 	if (!args.batchMode)
 		namedWindow(windowName, WINDOW_AUTOSIZE);
@@ -153,19 +166,12 @@ int main( int argc, const char** argv )
 
 	Mat frame;
 
-	// Grab initial frame to figure out image size and so on
-	if (!cap->getNextFrame(false, frame))
-	{
-		cerr << "Can not read frame from input" << endl;
-		return 0;
-	}
-     
 	// Minimum size of a bin at ~30 feet distance
 	// TODO : Verify this once camera is calibrated
 	if (args.ds)	
-	   minDetectSize = frame.cols * 0.07;
+	   minDetectSize = cap->width() * 0.07;
 	else
-	   minDetectSize = frame.cols * 0.195;
+	   minDetectSize = cap->width() * 0.195;
 
 	// If UI is up, pop up the parameters window
 	if (!args.batchMode)
@@ -210,7 +216,7 @@ int main( int argc, const char** argv )
 	//  -- update the angle of tracked objects 
 	//  -- do a cascade detect on the current frame
 	//  -- add those newly detected objects to the list of tracked objects
-	while(cap->getNextFrame(pause, frame))
+	while(cap->getNextFrame(frame, pause))
 	{
 		frameTicker.start(); // start time for this frame
 		if (--videoWritePollCount == 0)
@@ -331,13 +337,14 @@ int main( int argc, const char** argv )
 			stringstream ss;
 			// If in args.batch mode and reading a video, display
 			// the frame count
-			if (args.batchMode && cap->VideoCap())
+			int frames = cap->frameCount();
+			if (args.batchMode && (frames > 0))
 			{
 				ss << cap->frameCounter();
-				if (cap->VideoCap()->get(CV_CAP_PROP_FRAME_COUNT) > 0)
+				if (frames > 0)
 				{
 					ss << '/';
-					ss << cap->VideoCap()->get(CV_CAP_PROP_FRAME_COUNT);
+					ss << frames;
 				}
 				ss << " : ";
 			}
@@ -387,12 +394,13 @@ int main( int argc, const char** argv )
 				putText(frame, "A", Point(25,25), FONT_HERSHEY_PLAIN, 2.5, Scalar(0, 255, 255));
 
 			// Print frame number of video if the option is enabled
-			if (printFrames && cap->VideoCap())
+			int frames = cap->frameCount();
+			if (printFrames && (frames > 0))
 			{
 				stringstream ss;
 				ss << cap->frameCounter();
 				ss << '/';
-				ss << cap->VideoCap()->get(CV_CAP_PROP_FRAME_COUNT);
+				ss << frames;
 				putText(frame, ss.str(), Point(frame.cols - 15 * ss.str().length(), 20), FONT_HERSHEY_PLAIN, 1.5, Scalar(0,0,255));
 			}
 
@@ -429,7 +437,7 @@ int main( int argc, const char** argv )
 			else if( c == ' ') { pause = !pause; }
 			else if( c == 'f')  // advance to next frame
 			{
-				cap->getNextFrame(false, frame);
+				cap->getNextFrame(frame, false);
 			}
 			else if (c == 'A') // toggle capture-all
 			{
@@ -448,7 +456,7 @@ int main( int argc, const char** argv )
 				// Save from a copy rather than the original
 				// so all the markup isn't saved, only the raw image
 				Mat frameCopy;
-				cap->getNextFrame(true, frameCopy);
+				cap->getNextFrame(frameCopy, true);
 				for (size_t index = 0; index < detectRects.size(); index++)
 					writeImage(frameCopy, detectRects, index, capPath.c_str(), cap->frameCounter());
 			}
@@ -498,7 +506,7 @@ int main( int argc, const char** argv )
 			else if (isdigit(c)) // save a single detected image
 			{
 				Mat frameCopy;
-				cap->getNextFrame(true, frameCopy);
+				cap->getNextFrame(frameCopy, true);
 				writeImage(frameCopy, detectRects, c - '0', capPath.c_str(), cap->frameCounter());
 			}
 		}
@@ -510,7 +518,7 @@ int main( int argc, const char** argv )
 			// Save from a copy rather than the original
 			// so all the markup isn't saved, only the raw image
 			Mat frameCopy;
-			cap->getNextFrame(true, frameCopy);
+			cap->getNextFrame(frameCopy, true);
 			for (size_t index = 0; index < detectRects.size(); index++)
 				writeImage(frameCopy, detectRects, index, capPath.c_str(), cap->frameCounter());
 		}
@@ -578,33 +586,43 @@ string getDateTimeString(void)
    return ss.str();
 }
 
-// Process command line args. 
-
+bool hasSuffix(const std::string &str, const std::string &suffix)
+{
+    return str.size() >= suffix.size() &&
+        str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
+}
 
 // Open video capture object. Figure out if input is camera, video, image, etc
-void openVideoCap(const string &fileName, VideoIn *&cap, string &capPath, string &windowName, bool gui)
+void openMedia(const string &fileName, MediaIn *&cap, string &capPath, string &windowName, bool gui)
 {
-   if (fileName.length() == 0)
-   {
-      // No arguments? Open default camera
-      // and hope for the best
-      cap        = new VideoIn(0, gui);
-      capPath    = getDateTimeString();
-      windowName = "Default Camera";
-   }
    // Digit, but no dot (meaning no file extension)? Open camera
-   // Also handle explicit -1 to pick the default camera
-   else if ((fileName.find('.') == string::npos) &&
-            (isdigit(fileName[0]) || fileName.compare("-1") == 0))
+   if (fileName.length() == 0 || 
+      ((fileName.find('.') == string::npos) && isdigit(fileName[0])))
    {
-      cap        = new VideoIn(fileName[0] - '0', gui);
-      capPath    = getDateTimeString() + "_" + fileName;
-      windowName = "Camera " + fileName;
+	  stringstream ss;
+	  int camera = fileName.length() ? atoi(fileName.c_str()) : 0;
+	  cap        = new C920CameraIn(camera, gui);
+	  Mat          mat;
+	  if (!cap->getNextFrame(mat))
+	  {
+		 delete cap;
+		 cap = new CameraIn(camera, gui);
+		 ss << "Default Camera ";
+	  }
+	  else
+	  {
+		 ss << "C920 Camera ";
+	  }
+	  ss << camera;
+	  windowName = ss.str();
+      capPath    = getDateTimeString();
    }
    else // has to be a file name, we hope
    {
-      // Open file name - will handle images or videos
-      cap = new VideoIn(fileName.c_str());
+	  if (hasSuffix(fileName, ".png") || hasSuffix(fileName, ".jpg"))
+		 cap = new ImageIn(fileName.c_str());
+	  else
+		 cap = new VideoIn(fileName.c_str());
 
       // Strip off directory for capture path
       capPath = fileName;
