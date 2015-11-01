@@ -62,8 +62,8 @@ int main( int argc, const char** argv )
    
 	CLASSIFIER_MODE classifierModeCurrent = CLASSIFIER_MODE_UNINITIALIZED;
 	CLASSIFIER_MODE classifierModeNext    = CLASSIFIER_MODE_CPU;
-	if (gpu::getCudaEnabledDeviceCount() > 0)
-		classifierModeNext = CLASSIFIER_MODE_GPU;
+	//if (gpu::getCudaEnabledDeviceCount() > 0)
+	//	classifierModeNext = CLASSIFIER_MODE_GPU;
 
 	// Pointer to either CPU or GPU classifier
 	BaseCascadeDetect *detectClassifier = NULL;
@@ -95,7 +95,6 @@ int main( int argc, const char** argv )
 		cerr << "Can not read frame from input" << endl;
 		return 0;
 	}
-     
 	// Minimum size of a bin at ~30 feet distance
 	// TODO : Verify this once camera is calibrated
 	if (args.ds)	

@@ -40,8 +40,8 @@ Args::Args(void)
 	calibrate          = false;
 	writeVideo         = false;
 	saveVideo          = false;
-	classifierDirNum   = 14;
-	classifierStageNum = 29;
+	classifierDirNum   = 15;
+	classifierStageNum = 22;
 	frameStart         = 0.0;
 }
 

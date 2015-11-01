@@ -1,3 +1,11 @@
+//standard include
+#include <stdio.h>
+#include <string.h>
+#include <chrono>
+#include <math.h>
+#include <algorithm>
+#include <stdint.h>
+
 //opencv include
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
@@ -28,5 +36,8 @@ class ZedIn: public VideoIn
 	sl::zed::Mat depthMat;
 	sl::zed::Camera* zed;
 	sl::zed::Mat imageGPU;
+	cv::Mat imageCPU;
+	int width;
+	int height;
 };
 

@@ -1,5 +1,4 @@
 #include "zedin.hpp"
-#include <iostream>
 
 using namespace cv;
 using namespace std;
@@ -7,7 +6,7 @@ using namespace std;
 
 ZedIn::ZedIn()
 {
-	sl::zed::Camera* zed = new sl::zed::Camera(sl::zed::VGA);
+	zed = new sl::zed::Camera(sl::zed::VGA);
 	// init computation mode of the zed
 	sl::zed::ERRCODE err = zed->init(sl::zed::MODE::QUALITY, -1, true);
 	cout << sl::zed::errcode2str(err) << endl;
@@ -16,26 +15,28 @@ ZedIn::ZedIn()
     		delete zed;
     		exit(-1);
 	}
-	int width = zed->getImageSize().width;
-	int height = zed->getImageSize().height;
-	_frame = Mat(height, width, CV_8UC4);
+	width = zed->getImageSize().width;
+	height = zed->getImageSize().height;
 }
 
 bool ZedIn::getNextFrame(cv::Mat &frame,bool pause,bool left)
 {
    if (!pause)
    {
-      bool res = zed->grab(sl::zed::FULL);
+      zed->grab(sl::zed::FULL);
       if(left) {
       	imageGPU = zed->getView_gpu(sl::zed::STEREO_LEFT);
       }else{
 	imageGPU = zed->getView_gpu(sl::zed::STEREO_RIGHT);
       }
-      cerr << "Hi" << endl;
+      cv::Mat imageCPU(height, width, CV_8UC4);
       depthMat = zed->retrieveMeasure(sl::zed::MEASURE::DEPTH);
-      cudaMemcpy2D((uchar*) _frame.data, _frame.step, (Npp8u*) imageGPU.data, imageGPU.step, imageGPU.getWidthByte(), imageGPU.height, cudaMemcpyDeviceToHost);
+      cudaMemcpy2D((uchar*) imageCPU.data, imageCPU.step, (Npp8u*) imageGPU.data, imageGPU.step, imageGPU.getWidthByte(), imageGPU.height, cudaMemcpyDeviceToHost);
+      cvtColor(imageCPU,imageCPU,CV_RGBA2RGB);
+      frame = imageCPU.clone();
+   }else{
+      frame = _frame.clone();
    }
-   frame = _frame.clone();
    return true;
 }
 
