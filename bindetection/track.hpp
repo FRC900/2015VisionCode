@@ -8,7 +8,9 @@
 const size_t TrackedObjectHistoryLength = 20;
 const size_t TrackedObjectDataLength = 5;
 
-const double HFOV = 69; // horizontal field of view of C920 camera
+const double HFOV = 110; // horizontal field of view of C920 camera
+const double weight = 1.0; //weight of the zed distance data, lower weight means more
+                        //reliance on trig and fov
 
 
 // Class to hold info on a tracked object
@@ -45,7 +47,7 @@ class TrackedObject
       
       // Set the distance to the target using the detected
       // rectangle plus the known size of the object and frame size
-      void setDistance(const cv::Rect &rect, double objWidth, int imageWidth);
+      void setDistance(const cv::Rect &rect, double objWidth, int imageWidth, float zed_distance);
 
       // Set the angle off center for the current frame
       void setAngle(double angle);
@@ -166,6 +168,7 @@ class TrackedObjectList
       // This will either match a previously detected object or
       // if not, add a new object to the list
       void processDetect(const cv::Rect &detectedRect);
+      void processDetect(const cv::Rect &detectedRect, float zed_distance);
 
    private :
       std::list<TrackedObject> _list;        // list of currently valid detected objects

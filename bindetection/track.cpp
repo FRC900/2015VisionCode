@@ -89,12 +89,16 @@ void TrackedObject::setDistance(double distance)
 
 // Set the distance to the target using the detected
 // rectangle plus the known size of the object and frame size
-void TrackedObject::setDistance(const cv::Rect &rect, double objWidth, int imageWidth)
+void TrackedObject::setDistance(const cv::Rect &rect, double objWidth, int imageWidth, float zed_distance)
 {
 	double FOVFrac  = (double)rect.width / imageWidth;
 	double totalFOV = (objWidth / 2.0) / FOVFrac;
 	double FOVRad   =  (M_PI / 180.0) * (HFOV / 2.0);
-	setDistance( (totalFOV / tan(FOVRad)) + 2.89);
+	double dist = (totalFOV / tan(FOVRad)) + 2.89;
+	if(zed_distance != -1) {
+		dist = (zed_distance * weight) + (dist * (1 - weight));
+	}
+	setDistance(dist);
 }
 
 // Set the angle off center for the current frame
@@ -326,7 +330,13 @@ void TrackedObjectList::getDisplay(std::vector<TrackedObjectDisplay> &displayLis
 // Process a detected rectangle from the current frame.
 // This will either match a previously detected object or
 // if not, add a new object to the list
-void TrackedObjectList::processDetect(const cv::Rect &detectedRect)
+
+void TrackedObjectList::processDetect(const cv::Rect &detectedRect) {
+	processDetect(detectedRect,-1);
+}
+
+
+void TrackedObjectList::processDetect(const cv::Rect &detectedRect, float zed_distance)
 {
 	const double areaDelta = 0.40;
 	double rectArea = detectedRect.width * detectedRect.height;
@@ -347,7 +357,7 @@ void TrackedObjectList::processDetect(const cv::Rect &detectedRect)
 				((rectArea * (1.0 + 2*areaDelta)) > itArea) )
 			{
 				//std::cout << "\t Updating " << it->getId() << std::endl;
-				it->setDistance(detectedRect, _objectWidth, _imageWidth);
+				it->setDistance(detectedRect, _objectWidth, _imageWidth, zed_distance);
 				it->setAngle(detectedRect, _imageWidth);
 				it->setPosition(detectedRect);
 				return;
@@ -356,7 +366,7 @@ void TrackedObjectList::processDetect(const cv::Rect &detectedRect)
 	}
 	// Object didn't match previous hits - add a new one to the list
 	TrackedObject to(detectedRect, _detectCount++);
-	to.setDistance(detectedRect, _objectWidth, _imageWidth);
+	to.setDistance(detectedRect, _objectWidth, _imageWidth, zed_distance);
 	to.setAngle(detectedRect, _imageWidth);
 	_list.push_back(to);
 	//std::cout << "\t Adding " << to.getId() << std::endl;

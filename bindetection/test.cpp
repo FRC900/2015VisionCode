@@ -51,7 +51,7 @@ string getVideoOutName(void);
 bool maybeReloadClassifier(BaseCascadeDetect *&detectClassifier, CLASSIFIER_MODE &modeCurrent, CLASSIFIER_MODE &modeNext, const ClassifierIO &classifierIO);
 double roundTo(double in, int decPlace);
 
-
+bool using_zed = false;
 
 int main( int argc, const char** argv )
 {
@@ -182,11 +182,35 @@ int main( int argc, const char** argv )
 		checkDuplicate(detectRects,detectDirections);
 		if (!args.batchMode && args.rects && ((cap->frameCounter() % frameDisplayFrequency) == 0))
 			drawRects(frame,detectRects,detectDirections);
-
 		// Process this detected rectangle - either update the nearest
 		// object or add it as a new one
-		for(size_t i = 0; i < detectRects.size(); i++)
-			binTrackingList.processDetect(detectRects[i]);
+		if(using_zed) {
+		//this computes the average depth within the detected rects with the zed
+			int start_x,end_x;
+			int start_y,end_y;
+			float total = 0;
+			vector<float> zedAverageDist;
+			for(int i = 0;i < detectRects.size();i++) {
+				start_x = detectRects[i].tl().x;
+				start_y = detectRects[i].tl().y;
+				end_x = detectRects[i].br().x;
+				end_y = detectRects[i].br().y;
+				for(int y = start_y; y < end_y; y++) {
+					for(int x = start_x; x < end_x; x++) {
+						total = cap->getDepth(x,y) + total;
+					}
+				}
+				zedAverageDist[i] = total / (detectRects[i].width * detectRects[i].height);
+			}
+
+			for(size_t i = 0; i < detectRects.size(); i++)
+				binTrackingList.processDetect(detectRects[i],zedAverageDist[i]);
+
+		} else { //if no zed is attached call processDetect with no zed distance argument
+			for(size_t i = 0; i < detectRects.size(); i++)
+				binTrackingList.processDetect(detectRects[i]);
+		}
+
 		#if 0
 		// Print detect status of live objects
 		if (args.tracking)
@@ -527,6 +551,7 @@ void openVideoCap(const string &fileName,VideoIn *&cap, string &capPath, string 
    }
    else if(fileName == "-1") {
    //open zed
+   	  using_zed = true;
       cap        = new ZedIn();
       capPath    = getDateTimeString();
       windowName = "ZED";
