@@ -59,6 +59,7 @@ int main( int argc, const char** argv )
 	bool pause = false;       // pause playback?
 	bool printFrames = false; // print frame number?
 	int frameDisplayFrequency = 1;
+	int zedWeight = 100;
    
 	CLASSIFIER_MODE classifierModeCurrent = CLASSIFIER_MODE_UNINITIALIZED;
 	CLASSIFIER_MODE classifierModeNext    = CLASSIFIER_MODE_CPU;
@@ -112,6 +113,7 @@ int main( int argc, const char** argv )
 		createTrackbar ("Min Detect", detectWindowName, &minDetectSize, 200, NULL);
 		createTrackbar ("Max Detect", detectWindowName, &maxDetectSize, max(frame.rows, frame.cols), NULL);
 		createTrackbar ("GPU Scale", detectWindowName, &gpuScale, 100, NULL);
+		createTrackbar ("Zed Distance Weight", detectWindowName, &zedWeight, 100, NULL);
 	}
 
 	// Create list of tracked objects
@@ -188,23 +190,26 @@ int main( int argc, const char** argv )
 		//this computes the average depth within the detected rects with the zed
 			int start_x,end_x;
 			int start_y,end_y;
+			float size_multiplier = 0.2;
 			float total = 0;
 			vector<float> zedAverageDist;
 			for(int i = 0;i < detectRects.size();i++) {
-				start_x = detectRects[i].tl().x;
-				start_y = detectRects[i].tl().y;
-				end_x = detectRects[i].br().x;
-				end_y = detectRects[i].br().y;
+				start_x = detectRects[i].tl().x + detectRects[i].width * (size_multiplier/2) ; //set start and end values to be 20% smaller than the total detect size
+				start_y = detectRects[i].tl().y - detectRects[i].height * (size_multiplier/2);
+				end_x = detectRects[i].br().x - detectRects[i].width * (size_multiplier/2);
+				end_y = detectRects[i].br().y + detectRects[i].height * (size_multiplier/2);
 				for(int y = start_y; y < end_y; y++) {
 					for(int x = start_x; x < end_x; x++) {
 						total = cap->getDepth(x,y) + total;
 					}
 				}
-				zedAverageDist[i] = total / (detectRects[i].width * detectRects[i].height);
+				zedAverageDist.push_back(total / (detectRects[i].width * detectRects[i].height));
 			}
-
-			for(size_t i = 0; i < detectRects.size(); i++)
-				binTrackingList.processDetect(detectRects[i],zedAverageDist[i]);
+			
+			for(size_t i = 0; i < detectRects.size(); i++) {
+				cout << "Zed Distance: " << zedAverageDist[i] * 39.37008 << endl; //convert to inches
+				binTrackingList.processDetect(detectRects[i],zedAverageDist[i] * 39.37008);
+			}
 
 		} else { //if no zed is attached call processDetect with no zed distance argument
 			for(size_t i = 0; i < detectRects.size(); i++)

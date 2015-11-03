@@ -96,7 +96,7 @@ void TrackedObject::setDistance(const cv::Rect &rect, double objWidth, int image
 	double FOVRad   =  (M_PI / 180.0) * (HFOV / 2.0);
 	double dist = (totalFOV / tan(FOVRad)) + 2.89;
 	if(zed_distance != -1) {
-		dist = (zed_distance * weight) + (dist * (1 - weight));
+		dist = (zed_distance * zedWeight) + (dist * (1 - zedWeight));
 	}
 	setDistance(dist);
 }
