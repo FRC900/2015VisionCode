@@ -8,7 +8,7 @@
 const size_t TrackedObjectHistoryLength = 20;
 const size_t TrackedObjectDataLength = 5;
 
-const double HFOV = 59.4897; // horizontal field of view of C920 camera
+const double HFOV = 59.4897;
 const double zedWeight = 0.0;
 
 
@@ -90,6 +90,7 @@ class TrackedObject
       std::string getId(void) const;
       
    private :
+      double HFOV;
       cv::Rect _position;   // last position of tracked object
       size_t   _listLength; // number of entries in history arrays
       size_t   _dataLength; // number of entries in history arrays

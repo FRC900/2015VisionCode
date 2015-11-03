@@ -59,7 +59,6 @@ int main( int argc, const char** argv )
 	bool pause = false;       // pause playback?
 	bool printFrames = false; // print frame number?
 	int frameDisplayFrequency = 1;
-	int zedWeight = 100;
    
 	CLASSIFIER_MODE classifierModeCurrent = CLASSIFIER_MODE_UNINITIALIZED;
 	CLASSIFIER_MODE classifierModeNext    = CLASSIFIER_MODE_CPU;
@@ -113,7 +112,6 @@ int main( int argc, const char** argv )
 		createTrackbar ("Min Detect", detectWindowName, &minDetectSize, 200, NULL);
 		createTrackbar ("Max Detect", detectWindowName, &maxDetectSize, max(frame.rows, frame.cols), NULL);
 		createTrackbar ("GPU Scale", detectWindowName, &gpuScale, 100, NULL);
-		createTrackbar ("Zed Distance Weight", detectWindowName, &zedWeight, 100, NULL);
 	}
 
 	// Create list of tracked objects
@@ -207,8 +205,8 @@ int main( int argc, const char** argv )
 			}
 			
 			for(size_t i = 0; i < detectRects.size(); i++) {
-				cout << "Zed Distance: " << zedAverageDist[i] * 39.37008 << endl; //convert to inches
-				binTrackingList.processDetect(detectRects[i],zedAverageDist[i] * 39.37008);
+				cout << "Zed Distance: " << zedAverageDist[i] * 39.37008 << endl; 
+				binTrackingList.processDetect(detectRects[i],zedAverageDist[i] * 39.37008); //convert to inches
 			}
 
 		} else { //if no zed is attached call processDetect with no zed distance argument

@@ -2,7 +2,7 @@
 #include "track.hpp"
 #define _USE_MATH_DEFINES
 #include <math.h>
-
+#include <iostream>
 
 TrackedObject::TrackedObject(const cv::Rect &position, int id, size_t historyLength, size_t dataLength)
 {
@@ -96,6 +96,7 @@ void TrackedObject::setDistance(const cv::Rect &rect, double objWidth, int image
 	double FOVRad   =  (M_PI / 180.0) * (HFOV / 2.0);
 	double dist = (totalFOV / tan(FOVRad)) + 2.89;
 	if(zed_distance != -1) {
+		//std::cout << "Percent Difference (ZED and Trig): " << ((2 * abs(zed_distance - dist)) / (zed_distance + dist)) * 100 << std::endl;
 		dist = (zed_distance * zedWeight) + (dist * (1 - zedWeight));
 	}
 	setDistance(dist);
