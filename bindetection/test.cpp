@@ -62,8 +62,8 @@ int main( int argc, const char** argv )
    
 	CLASSIFIER_MODE classifierModeCurrent = CLASSIFIER_MODE_UNINITIALIZED;
 	CLASSIFIER_MODE classifierModeNext    = CLASSIFIER_MODE_CPU;
-	//if (gpu::getCudaEnabledDeviceCount() > 0)
-	//	classifierModeNext = CLASSIFIER_MODE_GPU;
+	if (gpu::getCudaEnabledDeviceCount() > 0)
+		classifierModeNext = CLASSIFIER_MODE_GPU;
 
 	// Pointer to either CPU or GPU classifier
 	BaseCascadeDetect *detectClassifier = NULL;
@@ -77,7 +77,7 @@ int main( int argc, const char** argv )
 
 	string windowName = "Bin detection"; // GUI window name
 	string capPath; // Output directory for captured images
-	VideoIn* cap;
+	VideoIn* cap; //the following line is where the using_zed variable is set
 	openVideoCap(args.inputName, cap, capPath, windowName, !args.batchMode);
 
 	if (!args.batchMode)
@@ -130,8 +130,11 @@ int main( int argc, const char** argv )
 	// Code to write video frames to avi file on disk
 	string videoOutName = getVideoOutName();
 	Size S(frame.cols, frame.rows);
+
 	VideoWriter outputVideo;
+	VideoWriter outputDepth;
 	VideoWriter save;
+
 	args.writeVideo = netTable->GetBoolean("WriteVideo", args.writeVideo);
 	const int videoWritePollFrequency = 30; // check for network table entry every this many frames (~5 seconds or so)
 	int videoWritePollCount = videoWritePollFrequency;
@@ -157,13 +160,24 @@ int main( int argc, const char** argv )
 			if (args.saveVideo && !save.isOpened())
 				save.open("record.avi", CV_FOURCC('P','I','M','1'), 20, S, true);
 			if (!outputVideo.isOpened())
-				outputVideo.open(videoOutName.c_str(), CV_FOURCC('M','J','P','G'), 15, S, true);
+				outputVideo.open(videoOutName.c_str(), CV_FOURCC('M','J','P','G'), 30, S, true);
 			WriteOnFrame textWriter(frame);
 			string matchNum = netTable->GetString("Match Number", "No Match Number");
 			double matchTime = netTable->GetNumber("Match Time",-1);
 			textWriter.writeMatchNumTime(matchNum,matchTime);
 			textWriter.writeTime();
 			textWriter.write(outputVideo);
+
+			//write the ZED normalized depth map as a separate video if the zed exists
+			if(using_zed) {
+				if (!outputDepth.isOpened())
+					outputDepth.open(("depth_" + videoOutName).c_str(), CV_FOURCC('M','J','P','G'), 30, S, true);
+				Mat depthNormal;
+				if(!cap->getNormalDepth(false,depthNormal))
+					cout << "Couldn't get depth map!" << endl;				
+				WriteOnFrame depthWriter(depthNormal);
+				depthWriter.write(outputDepth);			
+			}
 		}
 		//TODO : grab angle delta from robot
 		// Adjust the position of all of the detected objects

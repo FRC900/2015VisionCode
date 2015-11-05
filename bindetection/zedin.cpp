@@ -45,8 +45,17 @@ bool ZedIn::getNextFrame(bool pause, cv::Mat &frame) {
 	
 }
 
-double ZedIn::getDepth(int x, int y) {
+bool ZedIn::getNormalDepth(bool pause, cv::Mat &frame) {
+	//zed->grab(sl::zed::FULL);
+	frame = Mat(height, width, CV_8UC4);
+	depthGPU = zed->normalizeMeasure_gpu(sl::zed::MEASURE::DEPTH);
+	cudaMemcpy2D((uchar*) frame.data, frame.step, (Npp8u*) depthGPU.data, depthGPU.step, depthGPU.getWidthByte(), depthGPU.height, cudaMemcpyDeviceToHost);
+	cvtColor(frame,frame,CV_RGBA2RGB);
+	return true;
+}
 
+double ZedIn::getDepth(int x, int y) {
+	//zed->grab(sl::zed::FULL);
 	float* data = (float*) depthMat.data;
 	float* ptr_image_num = (float*) ((int8_t*) data + y * depthMat.step);
 	float dist = ptr_image_num[x] / 1000.f;

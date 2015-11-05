@@ -32,10 +32,13 @@ class ZedIn: public VideoIn
         bool getNextFrame(bool pause, cv::Mat &frame);
 	bool getNextFrame(cv::Mat &frame,bool pause,bool left);
 	double getDepth(int x, int y);
+	bool getNormalDepth(bool pause, cv::Mat &frame);
    private:
 	sl::zed::Mat depthMat;
 	sl::zed::Camera* zed;
 	sl::zed::Mat imageGPU;
+	sl::zed::Mat depthGPU;
+	cv::Mat depthCPU;
 	cv::Mat imageCPU;
 	int width;
 	int height;

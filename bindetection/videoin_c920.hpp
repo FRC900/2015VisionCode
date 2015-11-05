@@ -24,6 +24,7 @@ class VideoIn
       int frameCounter(void);
       void frameCounter(int frameCount);
       virtual double getDepth(int x, int y);
+      virtual bool getNormalDepth(bool pause, cv::Mat &frame);
 
    protected:
        cv::Mat          _frame;

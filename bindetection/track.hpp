@@ -9,7 +9,9 @@ const size_t TrackedObjectHistoryLength = 20;
 const size_t TrackedObjectDataLength = 5;
 
 const double HFOV = 59.4897;
-const double zedWeight = 0.0;
+
+//1 means all zed and 0 means all trig
+const double zedWeight = 1;
 
 
 // Class to hold info on a tracked object

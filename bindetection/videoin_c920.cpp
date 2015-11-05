@@ -133,6 +133,10 @@ void VideoIn::frameCounter(int frameCount)
    _frameCounter = frameCount;
 }
 
+bool VideoIn::getNormalDepth(bool pause, cv::Mat &frame) {
+return false;
+}
+
 double VideoIn::getDepth(int x, int y) {
 return -100;
 }

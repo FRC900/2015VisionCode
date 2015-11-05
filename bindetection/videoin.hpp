@@ -14,6 +14,7 @@ class VideoIn
       bool getNextFrame(bool pause, cv::Mat &frame);
       int frameCounter(void);
       void frameCounter(int frameCount);
+      virtual bool getNormalDepth(bool pause, cv::Mat &frame);
 
    private:
       cv::VideoCapture _cap;

@@ -52,6 +52,11 @@ VideoCapture *VideoIn::VideoCap(void)
       return &_cap;
    return NULL;
 }
+
+bool VideoIn::getNormalDepth(bool pause, cv::Mat &frame) {
+return false;
+}
+
 void VideoIn::frameCounter(int frameCount)
 {
    if (_video)
