@@ -1,61 +1,49 @@
+#include "opencv2/imgproc/imgproc.hpp"
+
 #include "videoin.hpp"
-#include <iostream>
 
 using namespace cv;
 using namespace std;
 
 VideoIn::VideoIn(const char *path)
 {
-   if (strstr(path, ".png") || strstr(path, ".jpg"))
-   {
-      _frame = imread(path);
-      _video = false;
-   }
-   else
-   {
-      _cap = VideoCapture(path);
-      _cap.set(CV_CAP_PROP_FPS, 15.0);
-      _video = true;
-   }
-   _frameCounter = 0;
-}
-VideoIn::VideoIn(int stream, bool gui)
-{
-   _cap = VideoCapture(stream);
-   _video = true;
-   _frameCounter = 0;
+   _cap = VideoCapture(path);
 }
 
-bool VideoIn::getNextFrame(bool pause, Mat &frame)
+bool VideoIn::getNextFrame(Mat &frame, bool pause)
 {
-   if (!pause && _video)
+   if (!pause)
    {
       _cap >> _frame;
       if( _frame.empty() )
 	 return false;
       if (_frame.rows > 800)
 	 pyrDown(_frame, _frame);
-      _frameCounter += 1;
    }
    frame = _frame.clone();
 
    return true;
 }
+
+int VideoIn::width()
+{
+}
+
+int VideoIn::height()
+{
+}
+
+int VideoIn::frameCount(void)
+{
+   return _cap.get(CV_CAP_PROP_FRAME_COUNT);
+}
+
 int VideoIn::frameCounter(void)
 {
-   return _frameCounter;
+   return _cap.get(CV_CAP_PROP_POS_FRAMES);
 }
 
-VideoCapture *VideoIn::VideoCap(void) 
-{
-   if (_video)
-      return &_cap;
-   return NULL;
-}
 void VideoIn::frameCounter(int frameCount)
 {
-   if (_video)
-      _cap.set(CV_CAP_PROP_POS_FRAMES, frameCount);
-   _frameCounter = frameCount;
+   _cap.set(CV_CAP_PROP_POS_FRAMES, frameCount);
 }
-

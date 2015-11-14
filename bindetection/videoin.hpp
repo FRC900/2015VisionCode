@@ -2,25 +2,22 @@
 #define VIDEOIN_HPP__
 
 #include "opencv2/highgui/highgui.hpp"
-#include "opencv2/imgproc/imgproc.hpp"
-#include "opencv2/objdetect/objdetect.hpp"
+#include "mediain.hpp"
 
-class VideoIn
+class VideoIn : public MediaIn
 {
    public:
       VideoIn(const char *path);
-      VideoIn(int stream = -1, bool gui = false);
-
-      cv::VideoCapture *VideoCap(void);
-      bool getNextFrame(bool pause, cv::Mat &frame);
+      bool getNextFrame(cv::Mat &frame, bool pause = false);
+      int width();
+      int height();
+      int frameCount(void);
       int frameCounter(void);
       void frameCounter(int frameCount);
 
    private:
       cv::VideoCapture _cap;
       cv::Mat          _frame;
-      int              _frameCounter;
-      bool             _video;
 };
 #endif
 

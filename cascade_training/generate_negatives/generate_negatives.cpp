@@ -14,10 +14,13 @@ void classifierDetect(CascadeClassifier &classifier, Mat frame, int frameNum);
 int indexNeg = 1;
 int negative_count = 0;
 bool negative_count_use = false;
+string video_name;
 
 int main(int argc, const char* argv[] ) {
 	string video_path = argv[1];
 	string classifier_name = argv[2];
+	video_name = video_path.substr(video_path.find_last_of("/")+1);
+	video_name.replace(video_name.find_last_of("."),1,"_");
 	VideoCapture video_in(video_path);
 	Mat frame;
 
@@ -37,6 +40,7 @@ int main(int argc, const char* argv[] ) {
 		}
 	}
 	int frameNum = 0;
+	cout << "video name: " << video_name << endl;
 	while (true) {
 		video_in >> frame;
 		frameNum++;
@@ -66,14 +70,19 @@ void classifierDetect(CascadeClassifier &classifier, Mat frame, int frameNum) {
 		subImg.copyTo(sample);
 		stringstream name;
 		Mat sample_small;
-		name << "./negatives/img_";
+		name << "./negatives/";
+		name << video_name;
+		name << "_";
 		name << indexNeg;
 		name << ".png";
 		resize(sample,sample_small,Size(20,20));
 		imwrite(name.str(),sample_small);
+		cout << "Saving to " << name.str() << endl;
 		if(save_large) {
 			stringstream name_large;
-			name_large << "./negatives/img-l_";
+			name_large << "./negatives/";
+			name << video_name;
+			name << "-l_";
 			name_large << indexNeg;
 			name_large << ".png";
 			imwrite(name_large.str(),sample);
