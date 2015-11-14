@@ -28,12 +28,12 @@ print "Previous best FPS = $best_fps\n";
 
 # This basically duplicates the work done in prep.sh
 # Generate list of positive images once since it never changes
-readpipe("/bin/find positive_images -name \*.png > positives.dat");
+readpipe("/usr/bin/find positive_images -name \*.png > positives.dat");
 while (1)
 {
    # Grab a list of negative images and randomize their order
    print "Creating negatives\n";
-   readpipe("/bin/find negative_images -name \*.png > negatives.dat");
+   readpipe("/usr/bin/find negative_images -name \*.png > negatives.dat");
    readpipe("shuf negatives.dat > temp.dat");
    readpipe("mv temp.dat negatives.dat");
 
@@ -44,7 +44,7 @@ while (1)
    print "Creating sample .vecs\n";
    readpipe("rm *.vec");
    readpipe("perl createtrainsamples.pl positives.dat negatives.dat . 12000"); 
-   readpipe("/bin/find . -name \\*.vec > vectors.dat");
+   readpipe("/usr/bin/find . -name \\*.vec > vectors.dat");
    readpipe("mergevec/src/mergevec.exe vectors.dat ordered_positives.vec");
    readpipe("mergevec/src/vec2img ordered_positives.vec samples%04d.png -w 20 -h 20 | shuf > info.dat");
    readpipe('sed \'s/$/ 1 0 0 20 20/\' info.dat > random_info.dat');
@@ -60,7 +60,7 @@ while (1)
    # TODO : randomize numNegative value each time through in a range of something 
    #        like 25-300% of numPos
    print "Running classifier training\n";
-   readpipe ("/bin/opencv_traincascade -data classifier_bin_x -vec positives.vec -bg negatives.dat -w 20 -h 20 -numStages 15 -minHitRate 0.999 -maxFalseAlarmRate 0.5 -numPos 11250 -numNeg 7000 -featureType LBP -precalcValBufSize 1750 -precalcIdxBufSize 1750 -maxWeakCount 1000");
+   readpipe ("opencv_traincascade -data classifier_bin_x -vec positives.vec -bg negatives.dat -w 20 -h 20 -numStages 15 -minHitRate 0.999 -maxFalseAlarmRate 0.5 -numPos 11250 -numNeg 7000 -featureType LBP -precalcValBufSize 1750 -precalcIdxBufSize 1750 -maxWeakCount 1000");
 
    # Run classifier on sample video, record the speed
    print "Testing detection speed\n";

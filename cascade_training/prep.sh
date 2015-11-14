@@ -29,14 +29,14 @@
 # but more also increases trainging time.  Finding the right balance isn't an exact science.
 
 # Create list of negative images, randomize the list
-/bin/find negative_images -name \*.png > negatives.dat
-/bin/find negative_images -name \*.jpg >> negatives.dat
+/usr/bin/find negative_images -name \*.png > negatives.dat
+/usr/bin/find negative_images -name \*.jpg >> negatives.dat
 shuf negatives.dat > temp.dat
 mv temp.dat negatives.dat
 
 # Create list of positive images
-/bin/find positive_images -name \*.png > positives.dat
-/bin/find positive_images -name \*.jpg >> positives.dat
+/usr/bin/find positive_images -name \*.png > positives.dat
+/usr/bin/find positive_images -name \*.jpg >> positives.dat
 # For each positive image, create a number of randomly rotated versions of that image
 # This creates a .vec file for each positive input image, each containing multiple images 
 # rotated random amounts
@@ -44,7 +44,7 @@ perl createtrainsamples.pl positives.dat negatives.dat . 12000 | tee foo.txt
 
 # Merge each set of randomized versions of the images into one big .vec file
 rm positives.vec ordered_positives.vec
-/bin/find . -name \*.vec > vectors.dat
+/usr/bin/find . -name \*.vec > vectors.dat
 mergevec/src/mergevec.exe vectors.dat ordered_positives.vec
 
 # Randomize the order of those images inside the .vec file.

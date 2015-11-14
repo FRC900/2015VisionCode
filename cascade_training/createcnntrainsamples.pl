@@ -14,7 +14,7 @@ use strict;
 # Date  : 06/02/2007
 # Date  : 03/12/2006
 #########################################################################
-my $cmd = 'opencv_createsamples -bgcolor 0 -bgthresh 0 -maxxangle 1.1 -maxyangle 1.1 -maxzangle 0.5 -maxidev 40 -w 20 -h 20';
+my $cmd = '/cygdrive/c/temp/build/build/bin/opencv_createsamples -bgcolor 0 -bgthresh 0 -maxxangle 0.5 -maxyangle 0.5 -maxzangle 0.8 -maxidev 40 -w 96 -h 96';
 my $totalnum = 7000;
 my $tmpfile  = 'tmp';
 
@@ -37,9 +37,9 @@ open(POSITIVE, "< $positive");
 my @positives = <POSITIVE>;
 close(POSITIVE);
 
-open(NEGATIVE, "< $negative");
-my @negatives = <NEGATIVE>;
-close(NEGATIVE);
+#open(NEGATIVE, "< $negative");
+#my @negatives = <NEGATIVE>;
+#close(NEGATIVE);
 
 # number of generated images from one image so that total will be $totalnum
 my $numfloor  = int($totalnum / ($#positives+1));
@@ -50,21 +50,21 @@ for (my $k = 0; $k <= $#positives; $k++ ) {
     my $num = ($k < $numremain) ? $numfloor + 1 : $numfloor;
 
     # Pick up negative images randomly
-    my @localnegatives = ();
-    for (my $i = 0; $i < $num; $i++) {
-        my $ind = int(rand($#negatives+1));
-        push(@localnegatives, $negatives[$ind]);
-    }
-    open(TMP, "> $tmpfile");
-    print TMP @localnegatives;
-    close(TMP);
+    #my @localnegatives = ();
+    #for (my $i = 0; $i < $num; $i++) {
+    #my $ind = int(rand($#negatives+1));
+    #push(@localnegatives, $negatives[$ind]);
+    #}
+    #open(TMP, "> $tmpfile");
+    #print TMP @localnegatives;
+    #close(TMP);
     #system("cat $tmpfile");
 
     !chomp($img);
     my $imgdirlen = length(dirname($img));
-    my $vec = $outputdir . substr($img, $imgdirlen) . ".vec" ;
-    print "$cmd -img \"$img\" -bg $tmpfile -vec \"$vec\" -num $num" . "\n";
-    system("$cmd -img \"$img\" -bg $tmpfile -vec \"$vec\" -num $num");
+    my $fmt_str = $outputdir . substr($img, $imgdirlen, -4) . "_%5.5d.png" ;
+    print "$cmd -img \"$img\" -pngnfnformat \"$fmt_str\" -num $num" . "\n";
+    system("$cmd -img \"$img\" -pngfnformat \"$fmt_str\" -num $num");
 }
 unlink($tmpfile);
 
