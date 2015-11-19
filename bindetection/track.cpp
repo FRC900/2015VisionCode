@@ -1,8 +1,8 @@
-#include <opencv2/opencv.hpp>
+#include <iostream>
+#include <opencv2/core/core.hpp>
 #include "track.hpp"
 #define _USE_MATH_DEFINES
 #include <math.h>
-
 
 TrackedObject::TrackedObject(const cv::Rect &position, int id, size_t historyLength, size_t dataLength)
 {
@@ -27,6 +27,7 @@ TrackedObject::TrackedObject(const cv::Rect &position, int id, size_t historyLen
 
 // Copy constructor and assignement operators are needed to do a
 // deep copy.  This makes new arrays for each object copied rather
+// than just copy a pointer to the same array
 TrackedObject::TrackedObject(const TrackedObject &object)
 {
 	_listLength    = object._listLength;
@@ -70,6 +71,7 @@ TrackedObject::~TrackedObject()
 // Adjust the position and angle history by 
 // the specified amount. Used to compensate for 
 // the robot turning
+// TODO : also need a similar adjustTranslation call
 void TrackedObject::adjustAngle(double deltaAngle, int imageWidth)
 {
 	// Need to figure out what positive and negative
@@ -287,13 +289,14 @@ void TrackedObjectList::nextFrame(void)
 
 // Adjust the angle of each tracked object based on
 // the rotation of the robot
+// TODO : add an adjustTranslation here as well
 void TrackedObjectList::adjustAngle(double deltaAngle)
 {
 	for (std::list<TrackedObject>::iterator it = _list.begin(); it != _list.end(); ++it)
 		it->adjustAngle(deltaAngle, _imageWidth);
 }
 
-// Simple printout of list into
+// Simple printout of list into stdout
 void TrackedObjectList::print(void) const
 {
 	for (std::list<TrackedObject>::const_iterator it = _list.begin(); it != _list.end(); ++it)

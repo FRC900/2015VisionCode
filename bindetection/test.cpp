@@ -30,9 +30,6 @@ using namespace cv;
 void writeImage(const Mat &frame, const vector<Rect> &rects, size_t index, const char *path, int frameCounter);
 string getDateTimeString(void);
 
-void writeNetTableNumber(NetworkTable *netTable, string label, int index, double value);
-void writeNetTableBoolean(NetworkTable *netTable, string label, int index, bool value);
-
 // Allow switching between CPU and GPU for testing 
 enum CLASSIFIER_MODE
 {
@@ -48,9 +45,11 @@ string getDateTimeString(void);
 void writeNetTableNumber(NetworkTable *netTable, string label, int index, double value);
 void writeNetTableBoolean(NetworkTable *netTable, string label, int index, bool value);
 void drawRects(Mat image,vector<Rect> detectRects);
+void drawTrackingInfo(Mat &frame, vector<TrackedObjectDisplay> &displayList);
 void checkDuplicate (vector<Rect> detectRects);
 void openMedia(const string &fileName, MediaIn *&cap, string &capPath, string &windowName, bool gui);
 string getVideoOutName(void);
+
 bool maybeReloadClassifier(BaseCascadeDetect *&detectClassifier, CLASSIFIER_MODE &modeCurrent, CLASSIFIER_MODE &modeNext, const ClassifierIO &classifierIO);
 
 double roundTo(double in, int decPlace){
@@ -79,6 +78,34 @@ void drawRects(Mat image,vector<Rect> detectRects) {
 				FONT_HERSHEY_PLAIN, 2.0, Scalar(0, 0, 255));
 		}
 	}
+}
+
+void drawTrackingInfo(Mat &frame, vector<TrackedObjectDisplay> &displayList)
+{ 
+   for (vector<TrackedObjectDisplay>::const_iterator it = displayList.begin(); it != displayList.end(); ++it)
+   {
+	  if (it->ratio >= 0.15)
+	  {
+		 const int roundAngTo = 2;
+		 const int roundDistTo = 2;
+
+		 // Color moves from red to green (via brown, yuck) 
+		 // as the detected ratio goes up
+		 Scalar rectColor(0, 255 * it->ratio, 255 * (1.0 - it->ratio));
+		 // Highlight detected target
+		 rectangle(frame, it->rect, rectColor, 3);
+		 // Write detect ID, distance and angle data
+		 putText(frame, it->id, Point(it->rect.x+25, it->rect.y+30), FONT_HERSHEY_PLAIN, 2.0, rectColor);
+		 stringstream distLabel;
+		 distLabel << "D=";
+		 distLabel << roundTo(it->distance,roundDistTo);
+		 putText(frame, distLabel.str(), Point(it->rect.x+10, it->rect.y-10), FONT_HERSHEY_PLAIN, 1.2, rectColor);
+		 stringstream angleLabel;
+		 angleLabel << "A=";
+		 angleLabel << roundTo(it->angle,roundAngTo);
+		 putText(frame, angleLabel.str(), Point(it->rect.x+10, it->rect.y+it->rect.height+20), FONT_HERSHEY_PLAIN, 1.2, rectColor);
+	  }
+   }
 }
 
 void checkDuplicate (vector<Rect> detectRects) {
@@ -189,7 +216,7 @@ int main( int argc, const char** argv )
 
 	FrameTicker frameTicker;
 
-	ClassifierIO classifierIO(args.classifierDirNum, args.classifierStageNum);
+	ClassifierIO classifierIO(args.classifierBaseDir, args.classifierDirNum, args.classifierStageNum);
 
 	// Start of the main loop
 	//  -- grab a frame
@@ -221,6 +248,12 @@ int main( int argc, const char** argv )
 		// to account for movement of the robot between frames
 		double deltaAngle = 0.0;
 		binTrackingList.adjustAngle(deltaAngle);
+
+		// This code will load a classifier if none is loaded - this handles
+		// initializing the classifier the first time through the loop.
+		// It also handles cases where the user changes the classifer
+		// being used - this forces a reload
+		// Finally, it allows a switch between CPU and GPU on the fly
 		if (!maybeReloadClassifier(detectClassifier, classifierModeCurrent, classifierModeNext, classifierIO))
 			return -1;
 
@@ -241,62 +274,30 @@ int main( int argc, const char** argv )
 		if (args.tracking)
 			binTrackingList.print();
 		#endif
-		// Grab info from trackedobjects, print it out
+		// Grab info from trackedobjects. Display it and update network tables
 		vector<TrackedObjectDisplay> displayList;
 		binTrackingList.getDisplay(displayList);
 		// Clear out network table array
 		for (size_t i = 0; !args.ds & (i < (netTableArraySize * 3)); i++)
 			netTableArray.set(i, -1);
-#if 0
-		for (size_t i = 0; !args.ds & (i < netTableArraySize); i++)
-		{
-			writeNetTableNumber(netTable,"Ratio", i, -1);
-			writeNetTableNumber(netTable,"Distance", i, -1);
-			writeNetTableNumber(netTable,"Angle", i, -1);
-		}
-#endif
-		for (size_t i = 0; i < displayList.size(); i++)
-		{
-			if ((displayList[i].ratio >= 0.15) && args.tracking && !args.batchMode && ((cap->frameCounter() % frameDisplayFrequency) == 0))
-			{
-			   const int roundAngTo = 2;
-			   const int roundDistTo = 2;
 
-				// Color moves from red to green (via brown, yuck) 
-				// as the detected ratio goes up
-				Scalar rectColor(0, 255 * displayList[i].ratio, 255 * (1.0 - displayList[i].ratio));
-				// Highlight detected target
-				rectangle(frame, displayList[i].rect, rectColor, 3);
-				// Write detect ID, distance and angle data
-				putText(frame, displayList[i].id, Point(displayList[i].rect.x+25, displayList[i].rect.y+30), FONT_HERSHEY_PLAIN, 2.0, rectColor);
-				stringstream distLabel;
-				distLabel << "D=";
-				distLabel << roundTo(displayList[i].distance,roundDistTo);
-				putText(frame, distLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y-10), FONT_HERSHEY_PLAIN, 1.2, rectColor);
-				stringstream angleLabel;
-				angleLabel << "A=";
-				angleLabel << roundTo(displayList[i].angle,roundAngTo);
-				putText(frame, angleLabel.str(), Point(displayList[i].rect.x+10, displayList[i].rect.y+displayList[i].rect.height+20), FONT_HERSHEY_PLAIN, 1.2, rectColor);
-			}
-			if (!args.ds && (i < netTableArraySize))
-			{
-				netTableArray.set(i*3,   displayList[i].ratio);
-				netTableArray.set(i*3+1, displayList[i].distance);
-				netTableArray.set(i*3+2, displayList[i].angle);
-#if 0
-				writeNetTableNumber(netTable,"Ratio", i, displayList[i].ratio);
-				writeNetTableNumber(netTable,"Distance", i, displayList[i].distance);
-				writeNetTableNumber(netTable,"Angle", i, displayList[i].angle);
-				cout << i << " ";
-				cout << displayList[i].ratio << " ";
-				cout << displayList[i].distance << " ";
-				cout << displayList[i].angle << endl;
-#endif
-			}
-		}
+		// Draw tracking info on display if 
+		//   a. tracking is toggled on
+		//   b. batch (non-GUI) mode isn't active
+		//   c. we're on one of the frames to display (every frDispFreq frames)
+		if (args.tracking && !args.batchMode && ((cap->frameCounter() % frameDisplayFrequency) == 0))
+			  drawTrackingInfo(frame, displayList);
 
 		if (!args.ds)
-			netTable->PutValue("VisionArray", netTableArray);
+		{
+		   for (size_t i = 0; i < min(displayList.size(), netTableArraySize); i++)
+		   {
+			  netTableArray.set(i*3,   displayList[i].ratio);
+			  netTableArray.set(i*3+1, displayList[i].distance);
+			  netTableArray.set(i*3+2, displayList[i].angle);
+		   }
+		   netTable->PutValue("VisionArray", netTableArray);
+		}
 
 		// Don't update to next frame if paused to prevent
 		// objects missing from this frame to be aged out
@@ -364,6 +365,10 @@ int main( int argc, const char** argv )
 			}
 		}
 
+		// Various random display updates. Only do them every frameDisplayFrequency
+		// frames. Normally this value is 1 so we display every frame. When exporting
+		// X over a network, though, we can speed up processing by only displaying every
+		// 3, 5 or whatever frames instead.
 		if (!args.batchMode && ((cap->frameCounter() % frameDisplayFrequency) == 0))
 		{
 			// Put an A on the screen if capture-all is enabled so
@@ -391,13 +396,15 @@ int main( int argc, const char** argv )
 				putText(frame, ss.str(), Point(0, frame.rows- 30), FONT_HERSHEY_PLAIN, 1.5, Scalar(0,0,255));
 			}
 
+			// Display crosshairs so we can line up the camera
 			if (args.calibrate)
 			{
 			   line (frame, Point(frame.cols/2, 0) , Point(frame.cols/2, frame.rows), Scalar(255,255,0  ));
 			   line (frame, Point(0, frame.rows/2) , Point(frame.cols, frame.rows/2), Scalar(255,255,0  ));
 			}
 			
-			//-- Show what you got
+			// Main call to display output for this frame after all
+			// info has been written on it.
 			imshow( windowName, frame );
 			if (args.saveVideo)
 			{
@@ -442,7 +449,7 @@ int main( int argc, const char** argv )
 			{
 				cout << cap->frameCounter() << endl;
 			}
-			else if (c == 'P') // Toggle frame # printing to 
+			else if (c == 'P') // Toggle frame # printing to display
 			{
 				printFrames = !printFrames;
 			}
@@ -645,7 +652,7 @@ bool maybeReloadClassifier(BaseCascadeDetect *&detectClassifier,
 		if (modeNext == CLASSIFIER_MODE_RELOAD)
 			modeNext = modeCurrent;
 
-		// Delete the old  if it has been initialized
+		// Delete the old classifier if it has been initialized
 		if (detectClassifier)
 			delete detectClassifier;
 

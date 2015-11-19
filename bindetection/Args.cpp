@@ -21,6 +21,7 @@ static void Usage(void)
    cout << "\t--save               write processed video to output file" << endl;
    cout << "\t--no-rects           start with detection rectangles disabled" << endl;
    cout << "\t--no-tracking        start with tracking rectangles disabled" << endl;
+   cout << "\t--classifierBase=    base directory for classifier info" << endl;
    cout << "\t--classifierDir=     pick classifier dir and stage number" << endl;
    cout << "\t--classifierStage=   from command line" << endl;
    cout << endl;
@@ -40,6 +41,7 @@ Args::Args(void)
 	calibrate          = false;
 	writeVideo         = false;
 	saveVideo          = false;
+	classifierBaseDir  = "/home/ubuntu/2015VisionCode/cascade_training/classifier_bin_";
 	classifierDirNum   = 14;
 	classifierStageNum = 29;
 	frameStart         = 0.0;
@@ -56,6 +58,7 @@ bool Args::processArgs(int argc, const char **argv)
 	const string saveVideoOpt       = "--save";            // write processed video to output file
 	const string rectsOpt           = "--no-rects";        // start with detection rectangles disabled
 	const string trackingOpt        = "--no-tracking";     // start with tracking rectangles disabled
+	const string classifierBaseOpt  = "--classifierBase="; // classifier base dir
 	const string classifierDirOpt   = "--classifierDir=";  // pick classifier dir and stage number
 	const string classifierStageOpt = "--classifierStage=";// from command line
 	const string badOpt             = "--";
@@ -82,6 +85,8 @@ bool Args::processArgs(int argc, const char **argv)
 			tracking = false;
 		else if (rectsOpt.compare(0, rectsOpt.length(), argv[fileArgc], rectsOpt.length()) == 0)
 			rects = false;
+		else if (classifierBaseOpt.compare(0, classifierBaseOpt.length(), argv[fileArgc], classifierBaseOpt.length()) == 0)
+			classifierBaseDir = atoi(argv[fileArgc] + classifierBaseOpt.length());
 		else if (classifierDirOpt.compare(0, classifierDirOpt.length(), argv[fileArgc], classifierDirOpt.length()) == 0)
 			classifierDirNum = atoi(argv[fileArgc] + classifierDirOpt.length());
 		else if (classifierStageOpt.compare(0, classifierStageOpt.length(), argv[fileArgc], classifierStageOpt.length()) == 0)

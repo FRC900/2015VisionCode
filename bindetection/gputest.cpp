@@ -84,7 +84,7 @@ int main(int argc, char **argv)
    {
       while (snum < 100)
       {
-	 ClassifierIO classifierIO(dnum, snum);
+	 ClassifierIO classifierIO("/home/ubuntu/2015VisionCode/cascade_training/classifier_bin_", dnum, snum);
 	 if (classifierIO.findNextClassifierStage(true))
 	 {
 	    string name = classifierIO.getClassifierName();
