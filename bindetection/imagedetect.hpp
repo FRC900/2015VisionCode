@@ -2,12 +2,13 @@
 #define INC_IMAGEDETECT_HPP__
 
 #include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/highgui/highgui.hpp>
 #include <opencv2/objdetect/objdetect.hpp>
 #include <opencv2/gpu/gpu.hpp>
 
 #include <vector>
 
+// Base class for detector. Doesn't really do much - all of the heavy lifting is
+// in the derived classes
 class BaseCascadeDetect
 {
    public :
@@ -30,7 +31,7 @@ class BaseCascadeDetect
 class CPU_CascadeDetect : public BaseCascadeDetect
 {
    public :
-      CPU_CascadeDetect(const char *cascadeName) : BaseCascadeDetect() //blank member initializer?
+      CPU_CascadeDetect(const char *cascadeName) : BaseCascadeDetect() // call default constructor of base class
       {
 	 cascadeLoaded = classifier_.load(cascadeName);
       }
@@ -59,6 +60,9 @@ class GPU_CascadeDetect : public BaseCascadeDetect
 
    private :
       cv::gpu::CascadeClassifier_GPU classifier_;
+
+      // Declare GPU Mat elements once here instead of every single
+      // call to the functions which use them
       cv::gpu::GpuMat frameEq;
       cv::gpu::GpuMat frameGray;
       cv::gpu::GpuMat detectResultsGPU;
@@ -69,12 +73,5 @@ extern int scale;
 extern int neighbors;
 extern int minDetectSize;
 extern int maxDetectSize;
-extern int histDivider;
-extern int gpuScale;
 
-void thresholdImage(const cv::Mat &frame, cv::Mat &outFrame, std::vector <cv::Rect> &rects,
-			  int H_MIN, int H_MAX, int S_MIN, int S_MAX, int V_MIN, int V_MAX);
-void filterUsingThreshold(const std::vector<cv::Rect> &detectRects,
-                          const std::vector<cv::Rect> &threshRects,
-			  std::vector<cv::Rect> &filteredRects);
 #endif

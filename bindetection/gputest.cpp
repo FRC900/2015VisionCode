@@ -1,7 +1,9 @@
 #include <iostream>
 #include <fstream>
 #include <cstdio>
-#include "opencv2/gpu/gpu.hpp"
+
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/gpu/gpu.hpp>
 
 #include "classifierio.hpp"
 #include "imagedetect.hpp"
