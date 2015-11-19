@@ -55,7 +55,7 @@ void GPU_CascadeDetect::cascadeDetect (const GpuMat &frameGPUInput, vector<Rect>
      imageRects.push_back(rects[i]);
 }
 
-//gpu version with wrapper
+//gpu version with wrapper to upload Mat to GpuMat
 void GPU_CascadeDetect::cascadeDetect (const Mat &frame, vector<Rect> &imageRects) 
 {
    uploadFrame.upload(frame);

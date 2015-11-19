@@ -28,6 +28,7 @@ class BaseCascadeDetect
       bool cascadeLoaded;
 };
 
+// CPU version of cascade classifier
 class CPU_CascadeDetect : public BaseCascadeDetect
 {
    public :
@@ -44,6 +45,9 @@ class CPU_CascadeDetect : public BaseCascadeDetect
       cv::CascadeClassifier classifier_;
 };
 
+// CPU version of cascade classifier. Pretty much the same interface 
+// as the CPU version, but with an added method to handle data 
+// which is already moved to a GpuMat
 class GPU_CascadeDetect : public BaseCascadeDetect
 {
    public :
