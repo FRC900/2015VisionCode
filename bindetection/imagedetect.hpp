@@ -13,11 +13,10 @@ class BaseCascadeDetect
    public :
       BaseCascadeDetect() : cascadeLoaded(false) {} //pass in value of false to cascadeLoaded
       virtual ~BaseCascadeDetect() {} //empty destructor
-      virtual void cascadeDetect(const cv::Mat &frame, std::vector<cv::Rect> &imageRects, std::vector<unsigned> &direction) = 0; //pure virtual function, must be defined by CPU and GPU detect
-      virtual void cascadeDetect(const cv::gpu::GpuMat &frameGPUInput, std::vector<cv::Rect> &imageRects, std::vector<unsigned> &direction)
-      { //?
+      virtual void cascadeDetect(const cv::Mat &frame, std::vector<cv::Rect> &imageRects) = 0; //pure virtual function, must be defined by CPU and GPU detect
+      virtual void cascadeDetect(const cv::gpu::GpuMat &frameGPUInput, std::vector<cv::Rect> &imageRects) 
+      {
 	 imageRects.clear();
-	 direction.clear();
       }
       bool loaded(void)
       {
@@ -33,12 +32,15 @@ class CPU_CascadeDetect : public BaseCascadeDetect
    public :
       CPU_CascadeDetect(const char *cascadeName) : BaseCascadeDetect() //blank member initializer?
       {
-	 cascadeLoaded = _classifier.load(cascadeName);
+	 cascadeLoaded = classifier_.load(cascadeName);
       }
-      void cascadeDetect(const cv::Mat &frame, std::vector<cv::Rect> &imageRects, std::vector<unsigned> &direction); //defined elsewhere
+      ~CPU_CascadeDetect(void)
+      {
+      }
+      void cascadeDetect(const cv::Mat &frame, std::vector<cv::Rect> &imageRects); //defined elsewhere
 
    private :
-      cv::CascadeClassifier _classifier;
+      cv::CascadeClassifier classifier_;
 };
 
 class GPU_CascadeDetect : public BaseCascadeDetect
@@ -46,19 +48,21 @@ class GPU_CascadeDetect : public BaseCascadeDetect
    public :
       GPU_CascadeDetect(const char *cascadeName) : BaseCascadeDetect()
       {
-	 cascadeLoaded = _classifier.load(cascadeName);
+	 cascadeLoaded = classifier_.load(cascadeName);
       }
       ~GPU_CascadeDetect(void)
       {
-	 _classifier.release();
+	 classifier_.release();
       }
-      void cascadeDetect(const cv::Mat &frame, std::vector<cv::Rect> &imageRects, std::vector<unsigned> &direction);
-      void cascadeDetect(const cv::gpu::GpuMat &frameGPUInput, std::vector<cv::Rect> &imageRects, std::vector<unsigned> &direction);
+      void cascadeDetect (const cv::Mat          &frame,        std::vector<cv::Rect> &imageRects);
+      void cascadeDetect (const cv::gpu::GpuMat &frameGPUInput, std::vector<cv::Rect> &imageRects);
 
    private :
-      cv::gpu::CascadeClassifier_GPU _classifier;
-      cv::gpu::GpuMat frameGPU[4];
+      cv::gpu::CascadeClassifier_GPU classifier_;
+      cv::gpu::GpuMat frameEq;
       cv::gpu::GpuMat frameGray;
+      cv::gpu::GpuMat detectResultsGPU;
+      cv::gpu::GpuMat uploadFrame;
 };
 
 extern int scale;

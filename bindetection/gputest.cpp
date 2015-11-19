@@ -103,8 +103,7 @@ int main(int argc, char **argv)
 	    else
 	    {
 	       vector<Rect> detectRects;
-	       vector<unsigned> detectDirections;
-	       detectClassifier->cascadeDetect(frame, detectRects, detectDirections); 
+	       detectClassifier->cascadeDetect(frame, detectRects);
 	       ofile << " Pass" << endl << flush;
 	       cout << " Pass" << endl << flush;
 	    }

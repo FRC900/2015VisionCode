@@ -28,14 +28,13 @@ int main(int argc, char **argv)
       return -2;
    }
    vector<Rect> detectRects;
-   vector<unsigned> detectDirections;
    Mat frame;
    minDetectSize = cap.width() * 0.06;
    int64 startTick = getTickCount();
    for (int i = 0; i < frameCount; i++)
    {
       cap.getNextFrame(frame, false);
-      detectClassifier->cascadeDetect(frame, detectRects, detectDirections); 
+      detectClassifier->cascadeDetect(frame, detectRects); 
    }
    int64 endTick    = getTickCount();
    int64 totalTicks = endTick - startTick;

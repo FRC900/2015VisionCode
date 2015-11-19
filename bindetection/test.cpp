@@ -47,8 +47,8 @@ void writeImage(const Mat &frame, const vector<Rect> &rects, size_t index, const
 string getDateTimeString(void);
 void writeNetTableNumber(NetworkTable *netTable, string label, int index, double value);
 void writeNetTableBoolean(NetworkTable *netTable, string label, int index, bool value);
-void drawRects(Mat image,vector<Rect> detectRects,vector<unsigned> detectDirections);
-void checkDuplicate (vector<Rect> detectRects, vector<unsigned> detectDirections);
+void drawRects(Mat image,vector<Rect> detectRects);
+void checkDuplicate (vector<Rect> detectRects);
 void openMedia(const string &fileName, MediaIn *&cap, string &capPath, string &windowName, bool gui);
 string getVideoOutName(void);
 bool maybeReloadClassifier(BaseCascadeDetect *&detectClassifier, CLASSIFIER_MODE &modeCurrent, CLASSIFIER_MODE &modeNext, const ClassifierIO &classifierIO);
@@ -60,30 +60,12 @@ double roundTo(double in, int decPlace){
 	return in;
 }
 
-void drawRects(Mat image,vector<Rect> detectRects,vector<unsigned> detectDirections) {
+void drawRects(Mat image,vector<Rect> detectRects) {
 	for(size_t i = 0; i < detectRects.size(); i++) {
 		// Mark detected rectangle on image
 		// Change color based on direction we think the bin is pointing
-		Scalar rectColor;
-		switch (detectDirections[i])
-		{
-			case 1:
-				rectColor = Scalar(0,0,255);
-				break;
-			case 2:
-				rectColor = Scalar(0,255,0);
-				break;
-			case 4:
-				rectColor = Scalar(255,0,0);
-				break;
-			case 8:
-				rectColor = Scalar(255,255,0);
-				break;
-			default:
-				rectColor = Scalar(255,0,255);
-				break;
-		}
-		rectangle( image, detectRects[i], rectColor, 3);
+	        Scalar rectColor = Scalar(0,0,255);
+	        rectangle( image, detectRects[i], rectColor, 3);
 		// Label each outlined image with a digit.  Top-level code allows
 		// users to save these small images by hitting the key they're labeled with
 		// This should be a quick way to grab lots of falsly detected images
@@ -99,7 +81,7 @@ void drawRects(Mat image,vector<Rect> detectRects,vector<unsigned> detectDirecti
 	}
 }
 
-void checkDuplicate (vector<Rect> detectRects, vector<unsigned> detectDirections) {
+void checkDuplicate (vector<Rect> detectRects) {
 	for( size_t i = 0; i < detectRects.size(); i++ ) {
 		for (size_t j = 0; j < detectRects.size(); j++) {
 			if (i != j) {
@@ -119,7 +101,6 @@ void checkDuplicate (vector<Rect> detectRects, vector<unsigned> detectDirections
 					if(intersection.y > lowestYVal.y) {
 						//cout << "found intersection" << endl;
 						detectRects.erase(detectRects.begin()+indexHighest);
-						detectDirections.erase(detectDirections.begin()+indexHighest);
 					}				
 				}
 			}
@@ -181,13 +162,12 @@ int main( int argc, const char** argv )
 		createTrackbar ("Scale", detectWindowName, &scale, 50, NULL);
 		createTrackbar ("Neighbors", detectWindowName, &neighbors, 50, NULL);
 		createTrackbar ("Min Detect", detectWindowName, &minDetectSize, 200, NULL);
-		createTrackbar ("Max Detect", detectWindowName, &maxDetectSize, max(frame.rows, frame.cols), NULL);
-		createTrackbar ("GPU Scale", detectWindowName, &gpuScale, 100, NULL);
+		createTrackbar ("Max Detect", detectWindowName, &maxDetectSize, max(cap->width(), cap->height()), NULL);
 	}
 
 	// Create list of tracked objects
 	// recycling bins are 24" wide
-	TrackedObjectList binTrackingList(24.0, frame.cols);
+	TrackedObjectList binTrackingList(24.0, cap->width());
 
 	NetworkTable::SetClientMode();
 	NetworkTable::SetIPAddress("10.9.0.2"); 
@@ -200,7 +180,7 @@ int main( int argc, const char** argv )
 
 	// Code to write video frames to avi file on disk
 	string videoOutName = getVideoOutName();
-	Size S(frame.cols, frame.rows);
+	Size S(cap->width(), cap->height());
 	VideoWriter outputVideo;
 	VideoWriter save;
 	args.writeVideo = netTable->GetBoolean("WriteVideo", args.writeVideo);
@@ -246,13 +226,11 @@ int main( int argc, const char** argv )
 
 		// Apply the classifier to the frame
 		// detectRects is a vector of rectangles, one for each detected object
-		// detectDirections is the direction of each detected object - we might not use this
 		vector<Rect> detectRects;
-		vector<unsigned> detectDirections;
-		detectClassifier->cascadeDetect(frame, detectRects, detectDirections); 
-		checkDuplicate(detectRects,detectDirections);
+		detectClassifier->cascadeDetect(frame, detectRects); 
+		checkDuplicate(detectRects);
 		if (!args.batchMode && args.rects && ((cap->frameCounter() % frameDisplayFrequency) == 0))
-			drawRects(frame,detectRects,detectDirections);
+			drawRects(frame,detectRects);
 
 		// Process this detected rectangle - either update the nearest
 		// object or add it as a new one
