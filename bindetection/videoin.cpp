@@ -27,10 +27,12 @@ bool VideoIn::getNextFrame(Mat &frame, bool pause)
 
 int VideoIn::width()
 {
+   return _cap.get(CV_CAP_PROP_FRAME_WIDTH);
 }
 
 int VideoIn::height()
 {
+   return _cap.get(CV_CAP_PROP_FRAME_HEIGHT);
 }
 
 int VideoIn::frameCount(void)
