@@ -4,7 +4,7 @@
 #include "opencv2/gpu/gpu.hpp"
 
 #include "classifierio.hpp"
-#include "imagedetect.hpp"
+#include "objdetect.hpp"
 #include "videoin.hpp"
 
 using namespace std;
@@ -17,11 +17,11 @@ int main(int argc, char **argv)
    const string cascadeName = "../cascade_training/classifier_bin_x/cascade.xml";
    VideoIn cap(videoName.c_str());
    cap.frameCounter(800);
-   BaseCascadeDetect *detectClassifier = new CPU_CascadeDetect(cascadeName.c_str());
+   CPU_CascadeDetect detector(cascadeName.c_str());
    const int frameCount = 200;
 
-   // Verfiy the cascade loaded
-   if( !detectClassifier->loaded() )
+   // Verfiy the detector loaded
+   if( !detector.initialized() )
    {
       cerr << "Could not load " << cascadeName << endl;
       cout <<  "0.0" << endl;
@@ -34,7 +34,7 @@ int main(int argc, char **argv)
    for (int i = 0; i < frameCount; i++)
    {
       cap.getNextFrame(frame, false);
-      detectClassifier->cascadeDetect(frame, detectRects); 
+      detector.Detect(frame, detectRects); 
    }
    int64 endTick    = getTickCount();
    int64 totalTicks = endTick - startTick;

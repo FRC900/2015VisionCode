@@ -3,10 +3,9 @@
 #include <cstdio>
 
 #include <opencv2/highgui/highgui.hpp>
-#include <opencv2/gpu/gpu.hpp>
 
 #include "classifierio.hpp"
-#include "imagedetect.hpp"
+#include "objdetect.hpp"
 
 using namespace std;
 using namespace cv;
@@ -73,7 +72,7 @@ int main(int argc, char **argv)
    remove(fname.c_str());
    rename((fname + ".new").c_str(), fname.c_str());
 
-   GPU_CascadeDetect *detectClassifier = NULL;
+   GPU_CascadeDetect *detector = NULL;
    Mat frame = imread("gaSource/video1.mp4_0001_0000_0427_0187_0165_0164.png");
    ofstream ofile(fname.c_str(), std::ofstream::app);
 
@@ -92,12 +91,12 @@ int main(int argc, char **argv)
 	    ofile << dnum << " " << snum << " " << name << flush;
 
 	    // Delete the old  if it has been initialized
-	    if (detectClassifier)
-	       delete detectClassifier;
-	    detectClassifier = new GPU_CascadeDetect(name.c_str());
+	    if (detector)
+	       delete detector;
+	    detector = new GPU_CascadeDetect(name.c_str());
 
-	    // Verfiy the  loaded
-	    if( !detectClassifier->loaded() )
+	    // Verfiy the detector loaded
+	    if( !detector->initialized() )
 	    {
 	       ofile << " Fail" << endl << flush; 
 	       cout  << " Fail" << endl << flush; 
@@ -105,7 +104,10 @@ int main(int argc, char **argv)
 	    else
 	    {
 	       vector<Rect> detectRects;
-	       detectClassifier->cascadeDetect(frame, detectRects);
+	       detector->Detect(frame, detectRects);
+	       // Some detectors crash with certain classifier
+	       // inputs.  If we blow up, the following lines
+	       // won't be written to the output
 	       ofile << " Pass" << endl << flush;
 	       cout << " Pass" << endl << flush;
 	    }

@@ -15,7 +15,7 @@
 
 #include "classifierio.hpp"
 #include "frameticker.hpp"
-#include "imagedetect.hpp"
+#include "objdetect.hpp"
 #include "videoin.hpp"
 #include "imagein.hpp"
 #include "camerain.hpp"
@@ -50,7 +50,7 @@ void checkDuplicate (vector<Rect> detectRects);
 void openMedia(const string &fileName, MediaIn *&cap, string &capPath, string &windowName, bool gui);
 string getVideoOutName(void);
 
-bool maybeReloadClassifier(BaseCascadeDetect *&detectClassifier, CLASSIFIER_MODE &modeCurrent, CLASSIFIER_MODE &modeNext, const ClassifierIO &classifierIO);
+bool maybeReloadClassifier(ObjDetect *&detector, CLASSIFIER_MODE &modeCurrent, CLASSIFIER_MODE &modeNext, const ClassifierIO &classifierIO);
 
 double roundTo(double in, int decPlace){
 	in = in * pow(10, decPlace);
@@ -149,7 +149,7 @@ int main( int argc, const char** argv )
 		classifierModeNext = CLASSIFIER_MODE_GPU;
 
 	// Pointer to either CPU or GPU classifier
-	BaseCascadeDetect *detectClassifier = NULL;
+	ObjDetect *detector = NULL;
 
 	// Read through command line args, extract
 	// cmd line parameters and input filename
@@ -253,13 +253,13 @@ int main( int argc, const char** argv )
 		// It also handles cases where the user changes the classifer
 		// being used - this forces a reload
 		// Finally, it allows a switch between CPU and GPU on the fly
-		if (!maybeReloadClassifier(detectClassifier, classifierModeCurrent, classifierModeNext, classifierIO))
+		if (!maybeReloadClassifier(detector, classifierModeCurrent, classifierModeNext, classifierIO))
 			return -1;
 
 		// Apply the classifier to the frame
 		// detectRects is a vector of rectangles, one for each detected object
 		vector<Rect> detectRects;
-		detectClassifier->cascadeDetect(frame, detectRects); 
+		detector->Detect(frame, detectRects); 
 		checkDuplicate(detectRects);
 		if (!args.batchMode && args.rects && ((cap->frameCounter() % frameDisplayFrequency) == 0))
 			drawRects(frame,detectRects);
@@ -614,7 +614,7 @@ void writeNetTableBoolean(NetworkTable *netTable, string label, int index, bool 
 
 // Code to allow switching between CPU and GPU for testing
 // Also used to reload different classifer stages on the fly
-bool maybeReloadClassifier(BaseCascadeDetect *&detectClassifier, 
+bool maybeReloadClassifier(ObjDetect *&detector, 
       CLASSIFIER_MODE &modeCurrent, 
       CLASSIFIER_MODE &modeNext, 
       const ClassifierIO &classifierIO)
@@ -631,19 +631,19 @@ bool maybeReloadClassifier(BaseCascadeDetect *&detectClassifier,
 			modeNext = modeCurrent;
 
 		// Delete the old classifier if it has been initialized
-		if (detectClassifier)
-			delete detectClassifier;
+		if (detector)
+			delete detector;
 
-		// Create a new CPU or GPU  based on the
+		// Create a new CPU or GPU based on the
 		// user's selection
 		if (modeNext == CLASSIFIER_MODE_GPU)
-			detectClassifier = new GPU_CascadeDetect(name.c_str());
+			detector = new GPU_CascadeDetect(name.c_str());
 		else
-			detectClassifier = new CPU_CascadeDetect(name.c_str());
+			detector = new CPU_CascadeDetect(name.c_str());
       	modeCurrent = modeNext;
 
 		// Verfiy the load
-		if( !detectClassifier->loaded() )
+		if( !detector->initialized() )
 		{
 			cerr << "--(!)Error loading " << name << endl; 
 			return false; 

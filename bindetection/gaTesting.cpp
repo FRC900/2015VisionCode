@@ -3,10 +3,8 @@
 #include <ga/GASimpleGA.h>
 #include <ga/GA2DBinStrGenome.h>
 #include <ga/std_stream.h>
-#include "opencv2/objdetect/objdetect.hpp"
-#include "opencv2/highgui/highgui.hpp"
-#include "opencv2/imgproc/imgproc.hpp"
-#include "imagedetect.hpp"
+#include <opencv2/highgui/highgui.hpp>
+#include "objdetect.hpp"
 #include <stdlib.h> 
 #include <sys/types.h>
 #ifndef _MSC_VER
@@ -16,7 +14,7 @@
 #endif
 using namespace std;
 using namespace cv;
-BaseCascadeDetect *detectCascade;
+ObjDetect *objDetect;
 
 struct binImage {Mat image; Rect binLoc;};
 struct binImageGPU {gpu::GpuMat image; Rect binLoc;};
@@ -100,9 +98,9 @@ scale = intval[0];
 neighbors = intval[1] + 1;
 for(int i = 0; i < allBinImages.size(); i++) { //run for each image
 	if (gpu::getCudaEnabledDeviceCount() > 0)
-	   detectCascade->cascadeDetect(allBinImagesGPU[i].image,binsClassifier);
+	   objDetect->Detect(allBinImagesGPU[i].image,binsClassifier);
 	else
-	   detectCascade->cascadeDetect(allBinImages[i].image,binsClassifier);
+	   objDetect->Detect(allBinImages[i].image,binsClassifier);
 	foundRect = 0;
 	cout << binsClassifier.size() <<",";
 	for( int j = 0; j < binsClassifier.size(); j++) { //run for each detected bin
@@ -135,14 +133,14 @@ int main(int argc, char **argv) {
 
    const char *cascadeName = "../cascade_training/classifier_bin_6/cascade_oldformat_49.xml";
    if (gpu::getCudaEnabledDeviceCount() > 0) {
-      detectCascade = new GPU_CascadeDetect(cascadeName);
+      objDetect = new GPU_CascadeDetect(cascadeName);
       cout << "GPU Detected, running GPU detection" << endl;
 	}
    else
-      detectCascade = new CPU_CascadeDetect(cascadeName);
+      objDetect = new CPU_CascadeDetect(cascadeName);
 
    //-- 1. Load the cascades
-   if( !detectCascade->loaded() )
+   if( !objDetect->initialized() )
    {
       cerr << "--(!)Error loading " << cascadeName << endl; 
       return -1; 

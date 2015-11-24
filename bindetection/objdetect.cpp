@@ -1,6 +1,6 @@
-#include "imagedetect.hpp"
+#include "objdetect.hpp"
 
-int scale         =  4;
+int scale         = 4;
 int neighbors     = 4;
 int minDetectSize = 20;
 int maxDetectSize = 450;
@@ -13,8 +13,7 @@ using namespace std;
 using namespace cv;
 using namespace cv::gpu;
 
-void CPU_CascadeDetect::cascadeDetect (const Mat &frame, 
-                                       vector<Rect> &imageRects)
+void CPU_CascadeDetect::Detect (const Mat &frame, vector<Rect> &imageRects)
 {
   Mat frameGray;
   Mat frameEq;
@@ -30,8 +29,7 @@ void CPU_CascadeDetect::cascadeDetect (const Mat &frame,
 	Size(maxDetectSize * DETECT_ASPECT_RATIO, maxDetectSize) );
 }
 
-
-void GPU_CascadeDetect::cascadeDetect (const GpuMat &frameGPUInput, vector<Rect> &imageRects) 
+void GPU_CascadeDetect::Detect (const GpuMat &frameGPUInput, vector<Rect> &imageRects) 
 {
   cvtColor(frameGPUInput, frameGray, CV_BGR2GRAY);
   equalizeHist(frameGray, frameEq);
@@ -56,8 +54,8 @@ void GPU_CascadeDetect::cascadeDetect (const GpuMat &frameGPUInput, vector<Rect>
 }
 
 //gpu version with wrapper to upload Mat to GpuMat
-void GPU_CascadeDetect::cascadeDetect (const Mat &frame, vector<Rect> &imageRects) 
+void GPU_CascadeDetect::Detect (const Mat &frame, vector<Rect> &imageRects) 
 {
    uploadFrame.upload(frame);
-   cascadeDetect(uploadFrame, imageRects);
+   Detect(uploadFrame, imageRects);
 }
