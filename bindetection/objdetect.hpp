@@ -1,6 +1,8 @@
 #ifndef INC_OBJDETECT_HPP__
 #define INC_OBJDETECT_HPP__
 
+#include <iostream>
+#include <sys/stat.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/gpu/gpu.hpp>
 
@@ -33,6 +35,14 @@ class CPU_CascadeDetect : public ObjDetect
    public :
       CPU_CascadeDetect(const char *cascadeName) : ObjDetect() // call default constructor of base class
       {
+	 struct stat statbuf;
+	 if (stat(cascadeName, &statbuf) != 0)
+	 {
+	    std::cerr << "Can not open classifier input " << cascadeName << std::endl;
+	    std::cerr << "Try to point to a different one with --classifierBase= ?" << std::endl;
+	    return;
+	 }
+
 	 init_ = classifier_.load(cascadeName);
       }
       ~CPU_CascadeDetect(void)
@@ -52,6 +62,13 @@ class GPU_CascadeDetect : public ObjDetect
    public :
       GPU_CascadeDetect(const char *cascadeName) : ObjDetect()
       {
+	 struct stat statbuf;
+	 if (stat(cascadeName, &statbuf) != 0)
+	 {
+	    std::cerr << "Can not open classifier input " << cascadeName << std::endl;
+	    std::cerr << "Try to point to a different one with --classifierBase= ?" << std::endl;
+	    return;
+	 }
 	 init_ = classifier_.load(cascadeName);
       }
       ~GPU_CascadeDetect(void)
