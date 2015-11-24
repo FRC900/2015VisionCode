@@ -8,7 +8,7 @@ find_package( OpenCV REQUIRED )
 find_package (Threads)
 include_directories( ${OpenCV_INCLUDE_DIRS} galib247 ../C920VideoCap ../networktables/include)
 
-add_executable( test test.cpp objdetect.cpp mediain.cpp videoin.cpp camerain.cpp ../C920VideoCap/C920Camera.cpp c920camerain.cpp imagein.cpp track.cpp classifierio.cpp Args.cpp WriteOnFrame.cpp )
+add_executable( test test.cpp objdetect.cpp detectstate.cpp mediain.cpp videoin.cpp camerain.cpp ../C920VideoCap/C920Camera.cpp c920camerain.cpp imagein.cpp track.cpp classifierio.cpp Args.cpp WriteOnFrame.cpp )
 add_executable( gaTesting gaTesting.cpp objdetect.cpp )
 IF(CYGWIN)
    find_library (LibNT networktables PATH ../networktables/lib-x86_64-cygwin )

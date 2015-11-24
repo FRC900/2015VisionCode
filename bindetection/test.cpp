@@ -14,8 +14,8 @@
 #include "networktables2/type/NumberArray.h"
 
 #include "classifierio.hpp"
+#include "detectstate.hpp"
 #include "frameticker.hpp"
-#include "objdetect.hpp"
 #include "videoin.hpp"
 #include "imagein.hpp"
 #include "camerain.hpp"
@@ -27,18 +27,6 @@
 using namespace std;
 using namespace cv;
 
-void writeImage(const Mat &frame, const vector<Rect> &rects, size_t index, const char *path, int frameCounter);
-string getDateTimeString(void);
-
-// Allow switching between CPU and GPU for testing 
-enum CLASSIFIER_MODE
-{
-	CLASSIFIER_MODE_UNINITIALIZED,
-	CLASSIFIER_MODE_RELOAD,
-	CLASSIFIER_MODE_CPU,
-	CLASSIFIER_MODE_GPU
-};
-
 //function prototypes
 void writeImage(const Mat &frame, const vector<Rect> &rects, size_t index, const char *path, int frameCounter);
 string getDateTimeString(void);
@@ -48,9 +36,16 @@ void drawRects(Mat image,vector<Rect> detectRects);
 void drawTrackingInfo(Mat &frame, vector<TrackedObjectDisplay> &displayList);
 void checkDuplicate (vector<Rect> detectRects);
 void openMedia(const string &fileName, MediaIn *&cap, string &capPath, string &windowName, bool gui);
+void openVideoCap(const string &fileName, VideoIn *&cap, string &capPath, string &windowName, bool gui);
 string getVideoOutName(void);
 
-bool maybeReloadClassifier(ObjDetect *&detector, CLASSIFIER_MODE &modeCurrent, CLASSIFIER_MODE &modeNext, const ClassifierIO &classifierIO);
+enum CLASSIFIER_MODE
+{
+   CLASSIFIER_MODE_UNINITIALIZED,
+   CLASSIFIER_MODE_RELOAD,
+   CLASSIFIER_MODE_CPU,
+   CLASSIFIER_MODE_GPU
+};
 
 double roundTo(double in, int decPlace){
 	in = in * pow(10, decPlace);
@@ -133,8 +128,6 @@ void checkDuplicate (vector<Rect> detectRects) {
 	}
 }
 
-void openVideoCap(const string &fileName, VideoIn *&cap, string &capPath, string &windowName, bool gui);
-string getVideoOutName(void);
 
 int main( int argc, const char** argv )
 {
@@ -143,14 +136,6 @@ int main( int argc, const char** argv )
 	bool printFrames = false; // print frame number?
 	int frameDisplayFrequency = 1;
    
-	CLASSIFIER_MODE classifierModeCurrent = CLASSIFIER_MODE_UNINITIALIZED;
-	CLASSIFIER_MODE classifierModeNext    = CLASSIFIER_MODE_CPU;
-	if (gpu::getCudaEnabledDeviceCount() > 0)
-		classifierModeNext = CLASSIFIER_MODE_GPU;
-
-	// Pointer to either CPU or GPU classifier
-	ObjDetect *detector = NULL;
-
 	// Read through command line args, extract
 	// cmd line parameters and input filename
 	Args args;
@@ -215,8 +200,9 @@ int main( int argc, const char** argv )
 
 	FrameTicker frameTicker;
 
-	ClassifierIO classifierIO(args.classifierBaseDir, args.classifierDirNum, args.classifierStageNum);
-
+	DetectState detectState(
+		  ClassifierIO(args.classifierBaseDir, args.classifierDirNum, args.classifierStageNum), 
+		  gpu::getCudaEnabledDeviceCount() > 0);
 	// Start of the main loop
 	//  -- grab a frame
 	//  -- update the angle of tracked objects 
@@ -253,13 +239,13 @@ int main( int argc, const char** argv )
 		// It also handles cases where the user changes the classifer
 		// being used - this forces a reload
 		// Finally, it allows a switch between CPU and GPU on the fly
-		if (!maybeReloadClassifier(detector, classifierModeCurrent, classifierModeNext, classifierIO))
+		if (detectState.update() == false)
 			return -1;
 
 		// Apply the classifier to the frame
 		// detectRects is a vector of rectangles, one for each detected object
 		vector<Rect> detectRects;
-		detector->Detect(frame, detectRects); 
+		detectState.detector()->Detect(frame, detectRects); 
 		checkDuplicate(detectRects);
 		if (!args.batchMode && args.rects && ((cap->frameCounter() % frameDisplayFrequency) == 0))
 			drawRects(frame,detectRects);
@@ -383,7 +369,7 @@ int main( int argc, const char** argv )
 			}
 
 			// Display current classifier under test
-			putText(frame, classifierIO.print(), 
+			putText(frame, detectState.print(), 
 			        Point(0, frame.rows - 30), FONT_HERSHEY_PLAIN, 
 				1.5, Scalar(0,0,255));
 
@@ -454,30 +440,23 @@ int main( int argc, const char** argv )
 			}
 			else if (c == 'G') // toggle CPU/GPU mode
 			{
-				if (classifierModeNext == CLASSIFIER_MODE_GPU)
-					classifierModeNext = CLASSIFIER_MODE_CPU;
-				else
-					classifierModeNext = CLASSIFIER_MODE_GPU;
+				detectState.toggleGPU();
 			}
 			else if (c == '.') // higher classifier stage
 			{
-				if (classifierIO.findNextClassifierStage(true))
-					classifierModeNext = CLASSIFIER_MODE_RELOAD;
+				detectState.changeSubModel(true);
 			}
 			else if (c == ',') // lower classifier stage
 			{
-				if (classifierIO.findNextClassifierStage(false))
-					classifierModeNext = CLASSIFIER_MODE_RELOAD;
+				detectState.changeSubModel(false);
 			}
 			else if (c == '>') // higher classifier dir num
 			{
-				if (classifierIO.findNextClassifierDir(true))
-					classifierModeNext = CLASSIFIER_MODE_RELOAD;
+				detectState.changeModel(true);
 			}
-			else if (c == '<') // higher classifier dir num
+			else if (c == '<') // lower classifier dir num
 			{
-				if (classifierIO.findNextClassifierDir(false))
-					classifierModeNext = CLASSIFIER_MODE_RELOAD;
+				detectState.changeModel(false);
 			}
 			else if (isdigit(c)) // save a single detected image
 			{
@@ -612,45 +591,6 @@ void writeNetTableBoolean(NetworkTable *netTable, string label, int index, bool 
    netTable->PutBoolean(ss.str().c_str(), value);
 }
 
-// Code to allow switching between CPU and GPU for testing
-// Also used to reload different classifer stages on the fly
-bool maybeReloadClassifier(ObjDetect *&detector, 
-      CLASSIFIER_MODE &modeCurrent, 
-      CLASSIFIER_MODE &modeNext, 
-      const ClassifierIO &classifierIO)
-{
-   if ((modeCurrent == CLASSIFIER_MODE_UNINITIALIZED) || 
-       (modeCurrent != modeNext))
-   {
-		string name = classifierIO.getClassifierName();
-		cerr << name << endl;
-
-		// If reloading with new name, keep the current
-		// CPU/GPU mode setting 
-		if (modeNext == CLASSIFIER_MODE_RELOAD)
-			modeNext = modeCurrent;
-
-		// Delete the old classifier if it has been initialized
-		if (detector)
-			delete detector;
-
-		// Create a new CPU or GPU based on the
-		// user's selection
-		if (modeNext == CLASSIFIER_MODE_GPU)
-			detector = new GPU_CascadeDetect(name.c_str());
-		else
-			detector = new CPU_CascadeDetect(name.c_str());
-      	modeCurrent = modeNext;
-
-		// Verfiy the load
-		if( !detector->initialized() )
-		{
-			cerr << "--(!)Error loading " << name << endl; 
-			return false; 
-		}
-   }
-   return true;
-}
 // Video-MM-DD-YY_hr-min-sec-##.avi
 string getVideoOutName(void)
 {
