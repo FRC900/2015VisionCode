@@ -11,8 +11,7 @@ class ClassifierIO
 		std::string getClassifierName(void) const;
 		bool findNextClassifierStage(bool increment);
 		bool findNextClassifierDir(bool increment);
-		int dirNum(void) const;
-		int stageNum(void) const;
+		std::string print(void) const;
    private :
 		std::string baseDir_;
 		int dirNum_;

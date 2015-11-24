@@ -17,7 +17,7 @@ ClassifierIO::ClassifierIO(string baseDir, int dirNum, int stageNum) :
 {
 }
 
-// given a directory number generate a filename for that dir
+// using the current directory number, generate a filename for that dir
 // if it exists - if it doesnt, return an empty string
 string ClassifierIO::getClassifierDir() const
 {
@@ -29,7 +29,7 @@ string ClassifierIO::getClassifierDir() const
    return string();
 }
 
-// given a directory number and stage within that directory
+// using the current directory number and stage within that directory,
 // generate a filename to load the cascade from.  Check that
 // the file exists - if it doesnt, return an empty string
 string ClassifierIO::getClassifierName() const
@@ -40,10 +40,15 @@ string ClassifierIO::getClassifierName() const
    if (!dirName.length())
       return string();
 
-   ss << dirName;
-   ss << "/cascade_oldformat_";
-   ss << stageNum_;
-   ss << ".xml";
+   // There are two different incompatible file formats
+   // OpenCV uses to store classifier information. For more
+   // entertainment value, some are valid for some types of 
+   // classifiers and not others. Also others break on the GPU
+   // version of the code but not the CPU.
+   // The net is we need to look for both since depending on
+   // the settings we might need one or the other.
+   // Here, try the old format first
+   ss << dirName << "/cascade_oldformat_" << stageNum_ << ".xml";
 
    if ((stat(ss.str().c_str(), &fileStat) == 0) && (fileStat.st_size > 5000))
       return string(ss.str());
@@ -51,10 +56,7 @@ string ClassifierIO::getClassifierName() const
    // Try the non-oldformat one next
    ss.str(string());
    ss.clear();
-   ss << dirName;
-   ss << "/cascade_";
-   ss << stageNum_;
-   ss << ".xml";
+   ss << dirName << "/cascade_" << stageNum_ << ".xml";
 
    if ((stat(ss.str().c_str(), &fileStat) == 0) && (fileStat.st_size > 5000))
       return string(ss.str());
@@ -111,12 +113,10 @@ bool ClassifierIO::findNextClassifierDir(bool increment)
    return found;
 }
 
-int ClassifierIO::dirNum(void) const
+string ClassifierIO::print() const
 {
-   return dirNum_;
+   stringstream s;
+   s << dirNum_ << ',' << stageNum_;
+   return s.str();
 }
 
-int ClassifierIO::stageNum(void) const
-{
-   return stageNum_;
-}

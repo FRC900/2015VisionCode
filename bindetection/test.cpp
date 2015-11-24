@@ -97,12 +97,10 @@ void drawTrackingInfo(Mat &frame, vector<TrackedObjectDisplay> &displayList)
 		 // Write detect ID, distance and angle data
 		 putText(frame, it->id, Point(it->rect.x+25, it->rect.y+30), FONT_HERSHEY_PLAIN, 2.0, rectColor);
 		 stringstream distLabel;
-		 distLabel << "D=";
-		 distLabel << roundTo(it->distance,roundDistTo);
+		 distLabel << "D=" << roundTo(it->distance,roundDistTo);
 		 putText(frame, distLabel.str(), Point(it->rect.x+10, it->rect.y-10), FONT_HERSHEY_PLAIN, 1.2, rectColor);
 		 stringstream angleLabel;
-		 angleLabel << "A=";
-		 angleLabel << roundTo(it->angle,roundAngTo);
+		 angleLabel << "A=" << roundTo(it->angle,roundAngTo);
 		 putText(frame, angleLabel.str(), Point(it->rect.x+10, it->rect.y+it->rect.height+20), FONT_HERSHEY_PLAIN, 1.2, rectColor);
 	  }
    }
@@ -174,6 +172,7 @@ int main( int argc, const char** argv )
 
 	Mat frame;
 
+	cout << cap->width() << endl;
 	// Minimum size of a bin at ~30 feet distance
 	// TODO : Verify this once camera is calibrated
 	if (args.ds)	
@@ -321,16 +320,12 @@ int main( int argc, const char** argv )
 			{
 				ss << cap->frameCounter();
 				if (frames > 0)
-				{
-					ss << '/';
-					ss << frames;
-				}
+				   ss << '/' << frames;
 				ss << " : ";
 			}
 			// Print the FPS
 			ss.precision(3);
-			ss << frameTicker.getFPS();
-			ss << " FPS";
+			ss << frameTicker.getFPS() << "FPS";
 			if (!args.batchMode)
 				putText(frame, ss.str(), Point(frame.cols - 15 * ss.str().length(), 50), FONT_HERSHEY_PLAIN, 1.5, Scalar(0,0,255));
 			else
@@ -381,26 +376,22 @@ int main( int argc, const char** argv )
 			if (printFrames && (frames > 0))
 			{
 				stringstream ss;
-				ss << cap->frameCounter();
-				ss << '/';
-				ss << frames;
-				putText(frame, ss.str(), Point(frame.cols - 15 * ss.str().length(), 20), FONT_HERSHEY_PLAIN, 1.5, Scalar(0,0,255));
+				ss << cap->frameCounter() << '/' << frames;
+				putText(frame, ss.str(), 
+				        Point(frame.cols - 15 * ss.str().length(), 20), 
+					FONT_HERSHEY_PLAIN, 1.5, Scalar(0,0,255));
 			}
 
 			// Display current classifier under test
-			{
-				stringstream ss;
-				ss << classifierIO.dirNum();
-				ss << ',';
-				ss << classifierIO.stageNum();
-				putText(frame, ss.str(), Point(0, frame.rows- 30), FONT_HERSHEY_PLAIN, 1.5, Scalar(0,0,255));
-			}
+			putText(frame, classifierIO.print(), 
+			        Point(0, frame.rows - 30), FONT_HERSHEY_PLAIN, 
+				1.5, Scalar(0,0,255));
 
 			// Display crosshairs so we can line up the camera
 			if (args.calibrate)
 			{
-			   line (frame, Point(frame.cols/2, 0) , Point(frame.cols/2, frame.rows), Scalar(255,255,0  ));
-			   line (frame, Point(0, frame.rows/2) , Point(frame.cols, frame.rows/2), Scalar(255,255,0  ));
+			   line (frame, Point(frame.cols/2, 0) , Point(frame.cols/2, frame.rows), Scalar(255,255,0));
+			   line (frame, Point(0, frame.rows/2) , Point(frame.cols, frame.rows/2), Scalar(255,255,0));
 			}
 			
 			// Main call to display output for this frame after all
@@ -526,12 +517,7 @@ void writeImage(const Mat &frame, const vector<Rect> &rects, size_t index, const
       Mat image = frame(rects[index]);
       // Create filename, save image
       stringstream fn;
-      fn << "negative/";
-      fn << path;
-      fn << "_";
-      fn << frameCounter;
-      fn << "_";
-      fn << index;
+      fn << "negative/" << path << "_" << frameCounter << "_" << index;
       imwrite(fn.str() + ".png", image);
 
       // Save grayscale equalized version
@@ -561,13 +547,7 @@ string getDateTimeString(void)
    timeinfo = localtime (&rawtime);
 
    stringstream ss;
-   ss << timeinfo->tm_mon + 1;
-   ss << "-";
-   ss << timeinfo->tm_mday;
-   ss << "_";
-   ss << timeinfo->tm_hour;
-   ss << "_";
-   ss << timeinfo->tm_min;
+   ss << timeinfo->tm_mon + 1 << "-" << timeinfo->tm_mday << "_" << timeinfo->tm_hour << "_" << timeinfo->tm_min;
    return ss.str();
 }
 
@@ -621,16 +601,14 @@ void openMedia(const string &fileName, MediaIn *&cap, string &capPath, string &w
 void writeNetTableNumber(NetworkTable *netTable, string label, int index, double value)
 {
    stringstream ss;
-   ss << label;
-   ss << (index+1);
+   ss << label << index+1;
    netTable->PutNumber(ss.str().c_str(), value);
 }
 
 void writeNetTableBoolean(NetworkTable *netTable, string label, int index, bool value)
 {
    stringstream ss;
-   ss << label;
-   ss << (index+1);
+   ss << label << index+1;
    netTable->PutBoolean(ss.str().c_str(), value);
 }
 
@@ -680,27 +658,16 @@ string getVideoOutName(void)
 	int rc;
 	struct stat statbuf;
 	stringstream ss;
+	time_t rawtime;
+	struct tm * timeinfo;
+	time (&rawtime);
+	timeinfo = localtime (&rawtime);
 	do 
 	{
 		ss.str(string(""));
 		ss.clear();
-		ss << "Video-";
-		time_t rawtime;
-		struct tm * timeinfo;
-		time (&rawtime);
-		timeinfo = localtime (&rawtime);
-		ss << timeinfo->tm_mon + 1;
-		ss << "-";
-		ss << timeinfo->tm_mday;
-		ss << "-";
-		ss << timeinfo->tm_year+1900;
-		ss << "_";
-		ss << timeinfo->tm_hour;
-		ss << "-";
-		ss << timeinfo->tm_min;
-		ss << "-";
-		ss << timeinfo->tm_sec;
-		ss << "-";
+		ss << "Video-" << timeinfo->tm_mon + 1 << "-" << timeinfo->tm_mday << "-" << timeinfo->tm_year+1900 << "_";
+		ss << timeinfo->tm_hour << "-" << timeinfo->tm_min << "-" << timeinfo->tm_sec << "-";
 		ss << index++;
 		ss << ".avi";
 		rc = stat(ss.str().c_str(), &statbuf);
