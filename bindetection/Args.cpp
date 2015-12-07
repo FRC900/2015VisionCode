@@ -15,6 +15,7 @@ static void Usage(void)
    cout << "\t--frame=<frame num>  start at given frame" << endl;
    cout << "\t--all                write to disk all detected images in each frame" << endl;
    cout << "\t--batch              run without GUI" << endl;
+   cout << "\t--skip=<x>           skip frames, only processing every <x> - file input only." << endl;
    cout << "\t--ds                 driver station mode - look for 4 bins on step" << endl;
    cout << "\t--calibrate          bring up crosshair to calibrate camera position" << endl;
    cout << "\t--capture            save camera video to output file" << endl;
@@ -38,6 +39,7 @@ Args::Args(void)
 	rects              = true;
 	batchMode          = false;
 	ds                 = false;
+	skip               = 0;
 	calibrate          = false;
 	writeVideo         = false;
 	saveVideo          = false;
@@ -53,6 +55,7 @@ bool Args::processArgs(int argc, const char **argv)
 	const string captureAllOpt      = "--all";             // capture all detected images in each frame
 	const string batchModeOpt       = "--batch";           // run without GUI
 	const string dsOpt              = "--ds";              // driver station mode - look for 4 bins on step
+	const string skipOpt            = "--skip=";           // skip frames in input video file 
 	const string calibrateOpt       = "--calibrate";       // bring up crosshair to calibrate camera position
 	const string writeVideoOpt      = "--capture";         // save camera video to output file
 	const string saveVideoOpt       = "--save";            // write processed video to output file
@@ -75,6 +78,8 @@ bool Args::processArgs(int argc, const char **argv)
 			batchMode = true;
 		else if (dsOpt.compare(0, dsOpt.length(), argv[fileArgc], dsOpt.length()) == 0)
 			ds = true;
+		else if (skipOpt.compare(0, skipOpt.length(), argv[fileArgc], skipOpt.length()) == 0)
+			skip = atoi(argv[fileArgc] + skipOpt.length());
 		else if (calibrateOpt.compare(0, calibrateOpt.length(), argv[fileArgc], calibrateOpt.length()) == 0)
 			calibrate = true;
 		else if (writeVideoOpt.compare(0, writeVideoOpt.length(), argv[fileArgc], writeVideoOpt.length()) == 0)

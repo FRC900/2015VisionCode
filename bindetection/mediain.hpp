@@ -16,9 +16,6 @@ class MediaIn
       virtual int    frameCounter(void);
       virtual void   frameCounter(int framecount);
       virtual double getDepth(int x, int y);
-
-   protected:
-      int _frameCounter;
 };
 #endif
 

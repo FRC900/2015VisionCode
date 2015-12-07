@@ -479,6 +479,12 @@ int main( int argc, const char** argv )
 		}
 		// Save frame time for the current frame
 		frameTicker.end();
+
+		// Skip over frames if needed - useful for batch extracting hard negatives
+		// so we don't get negatives from every frame. Sequential frames will be
+		// pretty similar so there will be lots of redundant images found
+		if (args.skip > 0)
+		   cap->frameCounter(cap->frameCounter() + args.skip - 1);
 	}
 	return 0;
 }

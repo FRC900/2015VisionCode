@@ -5,7 +5,6 @@ using namespace std;
 
 MediaIn::MediaIn()
 {
-   _frameCounter = 0;
 }
 
 int MediaIn::frameCount(void)
@@ -15,12 +14,11 @@ int MediaIn::frameCount(void)
 
 int MediaIn::frameCounter(void)
 {
-   return _frameCounter;
+   return -1;
 }
 
 void MediaIn::frameCounter(int frameCount)
 {
-   _frameCounter = frameCount;
 }
 
 double MediaIn::getDepth(int x, int y)

@@ -12,7 +12,10 @@ class CameraIn : public MediaIn
 
       int width(void);
       int height(void);
+      int frameCounter(void);
 
+   protected:
+      int _frameCounter;
    private:
       cv::VideoCapture _cap;
       cv::Mat          _frame;

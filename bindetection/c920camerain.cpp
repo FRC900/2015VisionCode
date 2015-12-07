@@ -12,6 +12,7 @@ C920CameraIn::C920CameraIn(int _stream, bool gui)
 
 C920CameraIn::initCamera(int _stream, bool gui)
 {
+   _frameCounter = 0;
    // Stream is a camera number, corresponding
    // to a given /dev/video?? device
    if (_stream < 0)
