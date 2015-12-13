@@ -91,7 +91,7 @@ bool Args::processArgs(int argc, const char **argv)
 		else if (rectsOpt.compare(0, rectsOpt.length(), argv[fileArgc], rectsOpt.length()) == 0)
 			rects = false;
 		else if (classifierBaseOpt.compare(0, classifierBaseOpt.length(), argv[fileArgc], classifierBaseOpt.length()) == 0)
-			classifierBaseDir = atoi(argv[fileArgc] + classifierBaseOpt.length());
+			classifierBaseDir = string(argv[fileArgc] + classifierBaseOpt.length());
 		else if (classifierDirOpt.compare(0, classifierDirOpt.length(), argv[fileArgc], classifierDirOpt.length()) == 0)
 			classifierDirNum = atoi(argv[fileArgc] + classifierDirOpt.length());
 		else if (classifierStageOpt.compare(0, classifierStageOpt.length(), argv[fileArgc], classifierStageOpt.length()) == 0)
