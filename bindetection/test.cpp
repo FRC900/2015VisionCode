@@ -145,7 +145,6 @@ int main( int argc, const char** argv )
 
 	Mat frame;
 
-	cout << cap->width() << endl;
 	// Minimum size of a bin at ~30 feet distance
 	// TODO : Verify this once camera is calibrated
 	if (args.ds)	
