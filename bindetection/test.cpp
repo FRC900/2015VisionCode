@@ -41,23 +41,23 @@ string getVideoOutName(void);
 
 void drawRects(Mat image,vector<Rect> detectRects) 
 {
-	for(size_t i = 0; i < detectRects.size(); i++) 
+    for(vector<Rect>::const_iterator it = detectRects.begin(); it != detectRects.end(); ++it)
 	{
 		// Mark detected rectangle on image
 		// Change color based on direction we think the bin is pointing
 	    Scalar rectColor = Scalar(0,0,255);
-	    rectangle( image, detectRects[i], rectColor, 3);
+	    rectangle(image, *it, rectColor, 3);
 		// Label each outlined image with a digit.  Top-level code allows
 		// users to save these small images by hitting the key they're labeled with
 		// This should be a quick way to grab lots of falsly detected images
 		// which need to be added to the negative list for the next
 		// pass of classifier training.
+		size_t i = it - detectRects.begin();
 		if (i < 10)
 		{
 			stringstream label;
 			label << i;
-			putText(image, label.str(), Point(detectRects[i].x+10, detectRects[i].y+30), 
-				FONT_HERSHEY_PLAIN, 2.0, Scalar(0, 0, 255));
+			putText(image, label.str(), Point(it->x+10, it->y+30), FONT_HERSHEY_PLAIN, 2.0, rectColor);
 		}
 	}
 }
@@ -177,8 +177,6 @@ int main( int argc, const char** argv )
 	netTableArray.setSize(netTableArraySize * 3);
 
 	// Code to write video frames to avi file on disk
-	string videoOutName = getVideoOutName();
-	Size S(cap->width(), cap->height());
 	VideoWriter outputVideo;
 	VideoWriter save;
 	args.writeVideo = netTable->GetBoolean("WriteVideo", args.writeVideo);
@@ -204,10 +202,8 @@ int main( int argc, const char** argv )
 			videoWritePollCount = videoWritePollFrequency;
 		}
 		if (args.writeVideo) {
-			if (args.saveVideo && !save.isOpened())
-				save.open("record.avi", CV_FOURCC('P','I','M','1'), 20, S, true);
 			if (!outputVideo.isOpened())
-				outputVideo.open(videoOutName.c_str(), CV_FOURCC('M','J','P','G'), 15, S, true);
+				outputVideo.open(getVideoOutName().c_str(), CV_FOURCC('M','J','P','G'), 15, Size(cap->width(), cap->height()), true);
 			WriteOnFrame textWriter(frame);
 			string matchNum = netTable->GetString("Match Number", "No Match Number");
 			double matchTime = netTable->GetNumber("Match Time",-1);
@@ -239,8 +235,8 @@ int main( int argc, const char** argv )
 
 		// Process this detected rectangle - either update the nearest
 		// object or add it as a new one
-		for(size_t i = 0; i < detectRects.size(); i++)
-			binTrackingList.processDetect(detectRects[i]);
+		for(vector<Rect>::const_iterator it = detectRects.begin(); it != detectRects.end(); ++it)
+			binTrackingList.processDetect(*it);
 		#if 0
 		// Print detect status of live objects
 		if (args.tracking)
@@ -297,8 +293,7 @@ int main( int argc, const char** argv )
 				ss << " : ";
 			}
 			// Print the FPS
-			ss.precision(3);
-			ss << frameTicker.getFPS() << "FPS";
+			ss << fixed << setprecision(2) << frameTicker.getFPS() << "FPS";
 			if (!args.batchMode)
 				putText(frame, ss.str(), Point(frame.cols - 15 * ss.str().length(), 50), FONT_HERSHEY_PLAIN, 1.5, Scalar(0,0,255));
 			else
@@ -320,12 +315,12 @@ int main( int argc, const char** argv )
 				// rectangle contained entirely in the quadrant
 				// Assume that if that's found, it is a bin
 				// TODO : Tune this later with a distance range
-				for( size_t j = 0; j < displayList.size(); j++ ) 
+				for (vector<TrackedObjectDisplay>::const_iterator it = displayList.begin(); it != displayList.end(); ++it)
 				{
-					if (((displayList[j].rect & dsRect) == displayList[j].rect) && (displayList[j].ratio > 0.15))
+					if (((it->rect & dsRect) == it->rect) && (it->ratio > 0.15))
 					{
 						if (!args.batchMode && ((cap->frameCounter() % frameDisplayFrequency) == 0))
-							rectangle(frame, displayList[j].rect, Scalar(255,128,128), 3);
+							rectangle(frame, it->rect, Scalar(255,128,128), 3);
 						hits[i] = true;
 					}
 				}
@@ -352,13 +347,13 @@ int main( int argc, const char** argv )
 				ss << cap->frameCounter() << '/' << frames;
 				putText(frame, ss.str(), 
 				        Point(frame.cols - 15 * ss.str().length(), 20), 
-					FONT_HERSHEY_PLAIN, 1.5, Scalar(0,0,255));
+						FONT_HERSHEY_PLAIN, 1.5, Scalar(0,0,255));
 			}
 
 			// Display current classifier under test
 			putText(frame, detectState.print(), 
 			        Point(0, frame.rows - 30), FONT_HERSHEY_PLAIN, 
-				1.5, Scalar(0,0,255));
+					1.5, Scalar(0,0,255));
 
 			// Display crosshairs so we can line up the camera
 			if (args.calibrate)
@@ -372,8 +367,9 @@ int main( int argc, const char** argv )
 			imshow( windowName, frame );
 			if (args.saveVideo)
 			{
-			   WriteOnFrame textWriterForSave(frame);
-			   textWriterForSave.write(save);
+			   if (!save.isOpened())
+				  save.open("record.avi", CV_FOURCC('M','J','P','G'), 20, Size(cap->width(), cap->height()), true);
+			   save << frame;
 			}
 
 			char c = waitKey(5);
