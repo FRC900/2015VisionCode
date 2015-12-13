@@ -37,7 +37,8 @@ void drawTrackingInfo(Mat &frame, vector<TrackedObjectDisplay> &displayList);
 void checkDuplicate (vector<Rect> detectRects);
 void openMedia(const string &fileName, MediaIn *&cap, string &capPath, string &windowName, bool gui);
 void openVideoCap(const string &fileName, VideoIn *&cap, string &capPath, string &windowName, bool gui);
-string getVideoOutName(void);
+string getVideoOutName(bool raw = true);
+void writeVideoToFile(VideoWriter &outputVideo, const char *filename, const Mat &frame, NetworkTable *netTable, bool dateAndTime);
 
 void drawRects(Mat image,vector<Rect> detectRects) 
 {
@@ -178,7 +179,7 @@ int main( int argc, const char** argv )
 
 	// Code to write video frames to avi file on disk
 	VideoWriter outputVideo;
-	VideoWriter save;
+	VideoWriter markedupVideo;
 	args.writeVideo = netTable->GetBoolean("WriteVideo", args.writeVideo);
 	const int videoWritePollFrequency = 30; // check for network table entry every this many frames (~5 seconds or so)
 	int videoWritePollCount = videoWritePollFrequency;
@@ -201,16 +202,10 @@ int main( int argc, const char** argv )
 			args.writeVideo = netTable->GetBoolean("WriteVideo", args.writeVideo);
 			videoWritePollCount = videoWritePollFrequency;
 		}
-		if (args.writeVideo) {
-			if (!outputVideo.isOpened())
-				outputVideo.open(getVideoOutName().c_str(), CV_FOURCC('M','J','P','G'), 15, Size(cap->width(), cap->height()), true);
-			WriteOnFrame textWriter(frame);
-			string matchNum = netTable->GetString("Match Number", "No Match Number");
-			double matchTime = netTable->GetNumber("Match Time",-1);
-			textWriter.writeMatchNumTime(matchNum,matchTime);
-			textWriter.writeTime();
-			textWriter.write(outputVideo);
-		}
+
+		if (args.writeVideo)
+		   writeVideoToFile(outputVideo, getVideoOutName().c_str(), frame, netTable, true);
+
 		//TODO : grab angle delta from robot
 		// Adjust the position of all of the detected objects
 		// to account for movement of the robot between frames
@@ -245,19 +240,20 @@ int main( int argc, const char** argv )
 		// Grab info from trackedobjects. Display it and update network tables
 		vector<TrackedObjectDisplay> displayList;
 		binTrackingList.getDisplay(displayList);
-		// Clear out network table array
-		for (size_t i = 0; !args.ds & (i < (netTableArraySize * 3)); i++)
-			netTableArray.set(i, -1);
 
 		// Draw tracking info on display if 
 		//   a. tracking is toggled on
 		//   b. batch (non-GUI) mode isn't active
 		//   c. we're on one of the frames to display (every frDispFreq frames)
 		if (args.tracking && !args.batchMode && ((cap->frameCounter() % frameDisplayFrequency) == 0))
-			  drawTrackingInfo(frame, displayList);
+		    drawTrackingInfo(frame, displayList);
 
 		if (!args.ds)
 		{
+		   // Clear out network table array
+		   for (size_t i = 0; !args.ds & (i < (netTableArraySize * 3)); i++)
+			   netTableArray.set(i, -1);
+
 		   for (size_t i = 0; i < min(displayList.size(), netTableArraySize); i++)
 		   {
 			  netTableArray.set(i*3,   displayList[i].ratio);
@@ -365,12 +361,10 @@ int main( int argc, const char** argv )
 			// Main call to display output for this frame after all
 			// info has been written on it.
 			imshow( windowName, frame );
+
+			// If saveVideo is set, write the marked-up frame to a vile
 			if (args.saveVideo)
-			{
-			   if (!save.isOpened())
-				  save.open("record.avi", CV_FOURCC('M','J','P','G'), 20, Size(cap->width(), cap->height()), true);
-			   save << frame;
-			}
+			   writeVideoToFile(markedupVideo, getVideoOutName(false).c_str(), frame, netTable, false);
 
 			char c = waitKey(5);
 			if ((c == 'c') || (c == 'q') || (c == 27)) 
@@ -574,7 +568,7 @@ void writeNetTableBoolean(NetworkTable *netTable, string label, int index, bool 
 }
 
 // Video-MM-DD-YY_hr-min-sec-##.avi
-string getVideoOutName(void)
+string getVideoOutName(bool raw)
 {
 	int index = 0;
 	int rc;
@@ -591,10 +585,29 @@ string getVideoOutName(void)
 		ss << "Video-" << timeinfo->tm_mon + 1 << "-" << timeinfo->tm_mday << "-" << timeinfo->tm_year+1900 << "_";
 		ss << timeinfo->tm_hour << "-" << timeinfo->tm_min << "-" << timeinfo->tm_sec << "-";
 		ss << index++;
+		if (raw == false)
+		   ss << "_processed";
 		ss << ".avi";
 		rc = stat(ss.str().c_str(), &statbuf);
 	}
 	while (rc == 0);
 	return ss.str();
+}
+
+// Write a frame to an output video
+// optionally, if dateAndTime is set, stamp the date, time and match information to the frame before writing
+void writeVideoToFile(VideoWriter &outputVideo, const char *filename, const Mat &frame, NetworkTable *netTable, bool dateAndTime)
+{
+   if (!outputVideo.isOpened())
+	  outputVideo.open(filename, CV_FOURCC('M','J','P','G'), 15, Size(frame.cols, frame.rows), true);
+   WriteOnFrame textWriter(frame);
+   if (dateAndTime)
+   {
+	  string matchNum  = netTable->GetString("Match Number", "No Match Number");
+	  double matchTime = netTable->GetNumber("Match Time",-1);
+	  textWriter.writeMatchNumTime(matchNum,matchTime);
+	  textWriter.writeTime();
+   }
+   textWriter.write(outputVideo);
 }
 
