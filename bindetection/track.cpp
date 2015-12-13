@@ -137,7 +137,6 @@ double TrackedObject::getDetectedRatio(void) const
 {
 	int detectedCount = 0;
 	size_t i;
-	size_t limit;
 	bool recentHits = true;
 
 	// Don't display detected bins if they're not seen for at least 1 of 4 consecutive frames

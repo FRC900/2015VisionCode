@@ -225,6 +225,16 @@ int main( int argc, const char** argv )
 		vector<Rect> detectRects;
 		detectState.detector()->Detect(frame, detectRects); 
 		checkDuplicate(detectRects);
+
+		// If args.captureAll is enabled, write each detected rectangle
+		// to their own output image file. Do it before anything else
+		// so there's nothing else drawn to frame yet, just the raw
+		// input image
+		if (args.captureAll)
+			for (size_t index = 0; index < detectRects.size(); index++)
+				writeImage(frame, detectRects, index, capPath.c_str(), cap->frameCounter());
+
+		// Draw detected rectangles on frame
 		if (!args.batchMode && args.rects && ((cap->frameCounter() % frameDisplayFrequency) == 0))
 			drawRects(frame,detectRects);
 
@@ -443,17 +453,6 @@ int main( int argc, const char** argv )
 			}
 		}
 
-		// If args.captureAll is enabled, write each detected rectangle
-		// to their own output image file
-		if (args.captureAll && detectRects.size())
-		{
-			// Save from a copy rather than the original
-			// so all the markup isn't saved, only the raw image
-			Mat frameCopy;
-			cap->getNextFrame(frameCopy, true);
-			for (size_t index = 0; index < detectRects.size(); index++)
-				writeImage(frameCopy, detectRects, index, capPath.c_str(), cap->frameCounter());
-		}
 		// Save frame time for the current frame
 		frameTicker.end();
 
