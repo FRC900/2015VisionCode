@@ -1,9 +1,10 @@
 #include <iostream>
-#include <stdio.h>
+#include <iomanip>
+#include <cstdio>
+#include <ctime>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <time.h>
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -30,7 +31,6 @@ using namespace cv;
 //function prototypes
 void writeImage(const Mat &frame, const vector<Rect> &rects, size_t index, const char *path, int frameCounter);
 string getDateTimeString(void);
-void writeNetTableNumber(NetworkTable *netTable, string label, int index, double value);
 void writeNetTableBoolean(NetworkTable *netTable, string label, int index, bool value);
 void drawRects(Mat image,vector<Rect> detectRects);
 void drawTrackingInfo(Mat &frame, vector<TrackedObjectDisplay> &displayList);
@@ -39,27 +39,14 @@ void openMedia(const string &fileName, MediaIn *&cap, string &capPath, string &w
 void openVideoCap(const string &fileName, VideoIn *&cap, string &capPath, string &windowName, bool gui);
 string getVideoOutName(void);
 
-enum CLASSIFIER_MODE
+void drawRects(Mat image,vector<Rect> detectRects) 
 {
-   CLASSIFIER_MODE_UNINITIALIZED,
-   CLASSIFIER_MODE_RELOAD,
-   CLASSIFIER_MODE_CPU,
-   CLASSIFIER_MODE_GPU
-};
-
-double roundTo(double in, int decPlace){
-	in = in * pow(10, decPlace);
-	in = round(in);
-	in = in / pow(10, decPlace);
-	return in;
-}
-
-void drawRects(Mat image,vector<Rect> detectRects) {
-	for(size_t i = 0; i < detectRects.size(); i++) {
+	for(size_t i = 0; i < detectRects.size(); i++) 
+	{
 		// Mark detected rectangle on image
 		// Change color based on direction we think the bin is pointing
-	        Scalar rectColor = Scalar(0,0,255);
-	        rectangle( image, detectRects[i], rectColor, 3);
+	    Scalar rectColor = Scalar(0,0,255);
+	    rectangle( image, detectRects[i], rectColor, 3);
 		// Label each outlined image with a digit.  Top-level code allows
 		// users to save these small images by hitting the key they're labeled with
 		// This should be a quick way to grab lots of falsly detected images
@@ -92,10 +79,10 @@ void drawTrackingInfo(Mat &frame, vector<TrackedObjectDisplay> &displayList)
 		 // Write detect ID, distance and angle data
 		 putText(frame, it->id, Point(it->rect.x+25, it->rect.y+30), FONT_HERSHEY_PLAIN, 2.0, rectColor);
 		 stringstream distLabel;
-		 distLabel << "D=" << roundTo(it->distance,roundDistTo);
+		 distLabel << "D=" << fixed << setprecision(roundDistTo) << it->distance;
 		 putText(frame, distLabel.str(), Point(it->rect.x+10, it->rect.y-10), FONT_HERSHEY_PLAIN, 1.2, rectColor);
 		 stringstream angleLabel;
-		 angleLabel << "A=" << roundTo(it->angle,roundAngTo);
+		 angleLabel << "A=" << fixed << setprecision(roundAngTo) << it->angle;
 		 putText(frame, angleLabel.str(), Point(it->rect.x+10, it->rect.y+it->rect.height+20), FONT_HERSHEY_PLAIN, 1.2, rectColor);
 	  }
    }
@@ -581,13 +568,6 @@ void openMedia(const string &fileName, MediaIn *&cap, string &capPath, string &w
 		capPath.erase(0, last_slash_idx + 1);
       windowName = fileName;
    }
-}
-
-void writeNetTableNumber(NetworkTable *netTable, string label, int index, double value)
-{
-   stringstream ss;
-   ss << label << index+1;
-   netTable->PutNumber(ss.str().c_str(), value);
 }
 
 void writeNetTableBoolean(NetworkTable *netTable, string label, int index, bool value)
