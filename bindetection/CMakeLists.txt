@@ -16,12 +16,10 @@ ELSE()
 ENDIF()
 target_link_libraries( test ${OpenCV_LIBS} ${LibNT} ${CMAKE_THREAD_LIBS_INIT} )
 
-find_library (LibGA ga PATH galib247/ga )
-add_executable( gaTesting gaTesting.cpp objdetect.cpp )
-target_link_libraries( gaTesting ${OpenCV_LIBS} ${LibGA} )
-
-add_executable( gputest gputest.cpp objdetect.cpp classifierio.cpp )
-target_link_libraries( gputest ${OpenCV_LIBS} )
+# Code to test for bugs in GPU classifier code. Think this is fixed
+# so for now don't build this code
+#add_executable( gputest gputest.cpp objdetect.cpp classifierio.cpp )
+#target_link_libraries( gputest ${OpenCV_LIBS} )
 
 add_executable( fpstest fpstest.cpp objdetect.cpp mediain.cpp videoin.cpp )
 target_link_libraries( fpstest ${OpenCV_LIBS} )
